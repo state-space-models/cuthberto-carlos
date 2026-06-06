@@ -1,36 +1,15 @@
 """Download historical international football data."""
 
-from typing import NamedTuple
 import pandas as pd
-from jax import Array, numpy as jnp
+from jax import numpy as jnp
+
+from cuthberto_carlos.types import ResultData
 
 DATA_URL = (
     "https://raw.githubusercontent.com/martj42/international_results/master/results.csv"
 )
 # I'm not sure exactly how often this data is updated, but it seems pretty frequently
 # Also note it can contain matches in the future (with NA/NaN for home_score and away_score)
-
-
-class ResultData(NamedTuple):
-    """NamedTuple containing JAX arrays for a football match or set of matches.
-
-    Attributes:
-        match_index: Unique integer index for each match, starting from 0.
-        home_team_id: Integer ID for the home team.
-        away_team_id: Integer ID for the away team.
-        home_score: Integer number of goals scored by the home team in the match.
-        away_score: Integer number of goals scored by the away team in the match.
-        timestamp_days: Integer number of days since the origin date for the match.
-        neutral: Boolean indicating whether the match was played on neutral ground.
-    """
-
-    match_index: Array
-    home_team_id: Array
-    away_team_id: Array
-    home_score: Array
-    away_score: Array
-    timestamp_days: Array
-    neutral: Array
 
 
 # TODO: we might want to have the list of teams be static rather than inferred from the
