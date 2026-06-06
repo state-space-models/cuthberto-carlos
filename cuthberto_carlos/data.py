@@ -79,7 +79,7 @@ def download_data(
         away_team_id=jnp.array(data_all["away_team_id"].values),
         home_score=jnp.array(data_all["home_score"].values),
         away_score=jnp.array(data_all["away_score"].values),
-        timestamp_days=jnp.array(data_all["timestamp_days"].values),
+        timestamp=jnp.array(data_all["timestamp_days"].values),
         neutral=jnp.array(data_all["neutral"].values),
     )
 
