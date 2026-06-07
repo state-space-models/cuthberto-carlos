@@ -1,4 +1,4 @@
-"""Defines the ResultData NamedTuple for storing JAX arrays of football match data."""
+"""NamedTuples to be used as model_inputs representing the data required for the SSM."""
 
 from typing import NamedTuple
 from jax import Array
@@ -27,3 +27,17 @@ class ResultData(NamedTuple):
     neutral: Array
     timestamp: Array
     timestamp_previous: Array | None = None
+
+
+class DynamicsOnlyData(NamedTuple):
+    """NamedTuple containing JAX arrays for propagating the state through the dynamics.
+
+    Attributes:
+        team_id: Integer ID for the team.
+        timestamp: Integer number of days since origin for the time to propagate to.
+        timestamp_previous: Integer number of days since origin for the previous state.
+    """
+
+    team_id: Array
+    timestamp: Array
+    timestamp_previous: Array

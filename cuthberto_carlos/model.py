@@ -1,16 +1,18 @@
 """Define the model for football match scores."""
 
+from typing import Any
+
 from jax import Array, numpy as jnp
 from jax.typing import ArrayLike
 from jax.scipy.stats import norm
 from cuthbertlib.types import LogConditionalDensity, LogDensity
 from cuthbert.gaussian import taylor
 
-from cuthberto_carlos.types import ResultData
+from cuthberto_carlos.types import ResultData, DynamicsOnlyData
 
 
 def get_init_log_density(
-    model_inputs: ResultData,
+    model_inputs: Any,
     init_mean: ArrayLike,
     init_sd: ArrayLike,
     num_teams: int | None,
@@ -45,19 +47,20 @@ def get_init_log_density(
 
 def get_dynamics_log_density(
     state: taylor.LinearizedKalmanFilterState,
-    model_inputs: ResultData,
+    model_inputs: ResultData | DynamicsOnlyData,
     tau: ArrayLike,
 ) -> tuple[LogConditionalDensity, Array, Array]:
     """Get log p(x_t | x_{t-1}) for a single factor or vector of stacked factors.
 
+    We have Brownian dynamics:
+    p(x_t | x_{t-1}) = N(x_t | x_{t-1}, tau^2 * (timestamp_t - timestamp_{t-1})).
+
     Args:
         state: The current state of the Kalman filter.
-            Not used.
+            Only used to determine the number of factors to be processed.
         model_inputs: The match data, used to determine the time between matches.
-            Not used.
         tau: Brownian standard deviation per day.
-            Shape (2 * num_joined_factors,) for factors, defence and attack all
-            independently.
+            Shape (,), (1,) or (2,) for defence and attack.
 
     Returns:
         A tuple containing log density function, linearization point for x_{t-1}, and
@@ -66,31 +69,34 @@ def get_dynamics_log_density(
             Gaussian so cuthbert.taylor.gaussian linearization is exact.
     """
     # TODO: Generalise to arbitrary state dim rather than hardcoding 2?
-    tau = jnp.broadcast_to(tau, (2,))
     num_joined_factors = state.mean.shape[0] // 2  # Can be 1
+    tau = jnp.broadcast_to(tau, (2,))
+
+    # x_prev.shape = x.shape = (2 * num_joined_factors,)
+    # Repeat tau num_joined_factors times
+    tau_repeated = jnp.tile(tau, num_joined_factors)
+    assert model_inputs.timestamp_previous is not None, (
+        "model_inputs.timestamp_previous is required for dynamics log density"
+    )
+
+    # timestamp.shape = timestamp_previous.shape = (,) or (1,) or (num_joined_factors,)
+    # process into guaranteed shape (2 * num_joined_factors,)
+    def process_timestamp(t):
+        t = jnp.broadcast_to(t, (num_joined_factors,))
+        return jnp.repeat(t, 2)  # Repeat for defence and attack
+
+    timestamp = process_timestamp(model_inputs.timestamp)
+    timestamp_previous = process_timestamp(model_inputs.timestamp_previous)
+
+    std_devs = tau_repeated * jnp.sqrt(timestamp - timestamp_previous) + 1e-8
+    # Add small nugget to avoid numerical issues when timestamp = timestamp_previous
 
     def dynamics_log_density(x_prev, x):
-        # x_prev.shape = x.shape = (2 * num_joined_factors,)
-        # Repeat tau num_joined_factors times
-        tau_repeated = jnp.tile(tau, num_joined_factors)
-        assert model_inputs.timestamp_previous is not None, (
-            "model_inputs.timestamp_previous is required for dynamics log density"
-        )
-        return norm.logpdf(
-            x,
-            x_prev,
-            jnp.sqrt(
-                (tau_repeated**2)
-                * (model_inputs.timestamp - model_inputs.timestamp_previous)
-            )
-            + 1e-8,  # Add small nugget to avoid numerical issues when timestamp = timestamp_previous
-        ).sum()
+        return norm.logpdf(x, x_prev, std_devs).sum()
 
-    return (
-        dynamics_log_density,
-        jnp.zeros(num_joined_factors * 2),
-        jnp.zeros(num_joined_factors * 2),
-    )
+    linearization_point = jnp.zeros(num_joined_factors * 2)
+    # Shape (2,) or (num_teams, 2) flattened to (2 * num_teams,)
+    return dynamics_log_density, linearization_point, linearization_point
 
 
 def get_observation_func(
