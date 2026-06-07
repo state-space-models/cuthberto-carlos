@@ -1,7 +1,6 @@
 """Define the model for football match scores."""
 
 from typing import Any
-
 from jax import Array, numpy as jnp
 from jax.typing import ArrayLike
 from jax.scipy.stats import norm
