@@ -16,7 +16,7 @@ This follows the framework in [Duffield, Power and Rimella: A state-space perspe
 
 More details on factorial models can be found in DPR and the [factorial documenation in cuthbert](https://state-space-models.github.io/cuthbert/api_cuthbert/factorial/).
 
-#### The Model
+### The Model
 
 The simplest model we could use is an Elo-style logistic model for the probability of a win, loss or draw. However, following 4.6 in DPR and [Karlis and Ntzoufras](https://doi.org/10.1111/1467-9884.00366) we can get more granularity by using a bivariate Poisson model to take into account the number of goals scored by each team.
 
@@ -49,14 +49,14 @@ with $\lambda_1 = \exp(\alpha + x^{\text{att}, i} - x^{\text{def}, j})$, $\lambd
 Overall, the static parameters of the models are $\mu_0 \in \mathbb{R}^2$, $\Sigma_0 \in \mathbb{R}^{2 \times 2}$, $\tau \in \mathbb{R}_{> 0}^2$, $\alpha \in \mathbb{R}$ and $\beta \in \mathbb{R}$.
 
 
-#### Inference
+### Inference
 
 Filtering in this model can be done using either the `cuthbert` SMC or `gaussian` filters combined with the `factorial` functionality.
 
 A nice option is `cuthbert.gaussian.taylor` as in the [(non-factorial) example](https://state-space-models.github.io/cuthbert/quickstart/). Since it only requires log densities and we don't expect the true filtering distributions to be too non-Gaussian, it should work well and be faster than SMC.
 
 
-#### Predictions and output
+### Predictions and output
 
 The end goal will be to generate small prediction graphics prior to each match in the World Cup. These can show 3 things:
 
