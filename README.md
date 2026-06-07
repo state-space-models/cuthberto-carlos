@@ -34,12 +34,15 @@ p(x^i_k \mid x^i_{k-1}) &= \mathrm{N}(x^i_k \mid x^i_{k-1},
 p(y_k \mid x^i_k, x^j_k) &= \mathrm{BivariatePoisson}(y_k \mid x^i_k, x^j_k, \alpha, \beta).
 \end{aligned}
 $$
+
 Where $y_k = (y_k^i, y_k^j)$ is the observed number of goals scored by teams $i$ and $j$ in match $k$.
 
 The bivariate Poisson distribution is defined as follows (see 4.6 in DPR):
+
 $$
 p(y \mid x^i, x^j, \alpha, \beta) = e^{-(\lambda_1 + \lambda_2 + \lambda_3)} \frac{\lambda_1^{y^i}}{y^i!} \frac{\lambda_2^{y^j}}{y^j!} \sum_{k=0}^{\min(y^i, y^j)} \binom{y^i}{k} \binom{y^j}{k} k! \left( \frac{\lambda_{3}}{\lambda_i \lambda_1} \right)^k,
 $$
+
 with $\lambda_1 = \exp(\alpha + x^{\text{att}, i} - x^{\text{def}, j})$, $\lambda_2 = \exp(\alpha + x^{\text{att}, j} - x^{\text{def}, i})$ and $\lambda_3 = \exp(\beta)$.
 
 
