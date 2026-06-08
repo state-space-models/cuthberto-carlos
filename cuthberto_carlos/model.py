@@ -8,27 +8,25 @@ from cuthbertlib.types import LogConditionalDensity, LogDensity
 from cuthbert.gaussian import taylor
 
 from cuthberto_carlos.types import ResultData, DynamicsOnlyData
+from cuthberto_carlos.bivariate_poisson import bivariate_poisson_loglik
 
 
 def get_init_log_density(
     model_inputs: Any,
     init_mean: ArrayLike,
     init_sd: ArrayLike,
-    num_teams: int | None,
+    num_teams: int | None = None,
 ) -> tuple[LogDensity, Array]:
-    """Get log p(x_0).
-
-    x_0 is of shape (2,) or (num_teams, 2), where the 2 state dimensions correspond to
-    strength of attack and defence.
+    """Get log p(x_0) and linearization point.
 
     Args:
         model_inputs: The match data, used to determine the number of teams.
             Not used.
         init_mean: The mean of the initial distribution for each state dimension.
-        init_sd: The standard deviation of the initial distribution for each state dimension.
-        num_teams: The number of teams in the model.
-            Integer or None. If None, the linearization point is of shape (2,),
-            otherwise  (num_teams, 2).
+        init_sd: The standard deviation of the initial distribution for each state
+            dimension.
+        num_teams: The number of teams, used to determine the shape of the
+            linearization point.
 
     Returns:
         A tuple containing log density function and linearization point
@@ -39,8 +37,7 @@ def get_init_log_density(
         # init_mean.shape = (2,), init_sd.shape = (2,)
         return norm.logpdf(x, init_mean, init_sd).sum()
 
-    linearization_point_shape = (2,) if num_teams is None else (num_teams, 2)
-
+    linearization_point_shape = (num_teams, 2) if num_teams is not None else (2,)
     return init_log_density, jnp.zeros(linearization_point_shape)
 
 
@@ -98,13 +95,19 @@ def get_dynamics_log_density(
     return dynamics_log_density, linearization_point, linearization_point
 
 
-def get_observation_func(
-    state: taylor.LinearizedKalmanFilterState, model_inputs: ResultData
+def get_observation_log_potential(
+    state: taylor.LinearizedKalmanFilterState,
+    model_inputs: ResultData,
+    alpha: float,
+    beta: float,
+    max_goals: int = 8,
 ) -> tuple[taylor.LogPotential, Array]:
     """Get log p(y_t | x_t) as a function of x_t for Bivariate Poisson."""
 
-    def log_potential(
-        x,
-    ): ...  # TODO: Bivariate Poisson log potential from https://github.com/SamDuffield/abile/blob/main/abile/models/bivariate_poisson/extended_kalman.py
+    def log_potential(x: Array) -> Array:
+        y = jnp.array([model_inputs.home_score, model_inputs.away_score])
+        x_i = x[:2]
+        x_j = x[2:]
+        return bivariate_poisson_loglik(y, x_i, x_j, alpha, beta, max_goals)
 
     return log_potential, state.mean

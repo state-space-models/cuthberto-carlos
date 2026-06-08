@@ -17,6 +17,7 @@ DATA_URL = (
 def download_data(
     origin_date: str | None = None,
     future_matches: bool = False,
+    max_goals: int = int(1e6),
 ) -> tuple[pd.DataFrame, ResultData, dict[int, str], dict[str, int]]:
     """Download and mildly process historical international football data.
 
@@ -25,6 +26,8 @@ def download_data(
             Defaults to "1872-11-30", the date of the first international football match.
         future_matches: Whether to include matches with dates in the future.
             Defaults to False.
+        max_goals: Removes matches where either team scored more than this many goals.
+            Defaults to a very large number.
 
     Returns:
         A tuple containing:
@@ -51,6 +54,11 @@ def download_data(
         data_all = data_all[
             data_all["home_score"].notna() & data_all["away_score"].notna()
         ]
+
+    # Remove matches with too many goals
+    data_all = data_all[
+        (data_all["home_score"] <= max_goals) & (data_all["away_score"] <= max_goals)
+    ]
 
     # home_score and away_score are floats because of the NaNs,
     # but we want them to be ints. Fill NaNs with -1 if they exist (int doesn't support NaN)
