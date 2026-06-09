@@ -61,17 +61,27 @@ def get_dynamics_log_density(
     state: taylor.LinearizedKalmanFilterState,
     model_inputs: ResultData | DynamicsOnlyData,
     tau: ArrayLike,
+    init_mean: ArrayLike,
+    kappa: ArrayLike,
 ) -> tuple[LogConditionalDensity, Array, Array]:
     """Get log p(x_t | x_{t-1}) for a single factor or vector of stacked factors.
 
-    We have Brownian dynamics:
-    p(x_t | x_{t-1}) = N(x_t | x_{t-1}, tau^2 * (timestamp_t - timestamp_{t-1})).
+    We have Ornstein-Uhlenbeck dynamics:
+    p(x_t | x_{t-1}) = N(mu + phi * (x_{t-1} - mu),
+    tau^2 * (1 - phi^2) / (2 * kappa)),
+    where phi = exp(-kappa * (timestamp_t - timestamp_{t-1})).
+    When kappa = 0, this recovers Brownian dynamics with variance
+    tau^2 * (timestamp_t - timestamp_{t-1}).
 
     Args:
         state: The current state of the Kalman filter.
             Only used to determine the number of factors to be processed.
         model_inputs: The match data, used to determine the time between matches.
-        tau: Brownian standard deviation per day.
+        tau: Diffusion standard deviation per sqrt day.
+            Shape (,), (1,) or (2,) for attack and defence.
+        init_mean: Long-run mean of the OU dynamics.
+            Shape (2,) for attack and defence.
+        kappa: Mean-reversion rate per day. kappa = 0 gives Brownian dynamics.
             Shape (,), (1,) or (2,) for attack and defence.
 
     Returns:
@@ -83,10 +93,14 @@ def get_dynamics_log_density(
     # TODO: Generalise to arbitrary state dim rather than hardcoding 2?
     num_joined_factors = state.mean.shape[0] // 2  # Can be 1
     tau = jnp.broadcast_to(tau, (2,))
+    init_mean = jnp.broadcast_to(init_mean, (2,))
+    kappa = jnp.broadcast_to(kappa, (2,))
 
     # x_prev.shape = x.shape = (2 * num_joined_factors,)
-    # Repeat tau num_joined_factors times
+    # Repeat parameters num_joined_factors times
     tau_repeated = jnp.tile(tau, num_joined_factors)
+    init_mean_repeated = jnp.tile(init_mean, num_joined_factors)
+    kappa_repeated = jnp.tile(kappa, num_joined_factors)
 
     def process_timestamp(t):
         t = jnp.broadcast_to(t, (num_joined_factors,))
@@ -113,12 +127,19 @@ def get_dynamics_log_density(
     timestamp_previous = process_timestamp(timestamp_previous)
 
     elapsed_days = jnp.maximum(timestamp - timestamp_previous, 0)
-    std_devs = tau_repeated * jnp.sqrt(elapsed_days)
-    std_floor = 1e-2
+    phi = jnp.exp(-kappa_repeated * elapsed_days)
+    safe_kappa = jnp.where(kappa_repeated > 0, kappa_repeated, 1.0)
+    one_minus_phi_squared = -jnp.expm1(-2.0 * kappa_repeated * elapsed_days)
+    ou_variance = tau_repeated**2 * one_minus_phi_squared / (2.0 * safe_kappa)
+    brownian_variance = tau_repeated**2 * elapsed_days
+    variance = jnp.where(kappa_repeated > 0, ou_variance, brownian_variance)
+    std_devs = jnp.sqrt(variance)
+    std_floor = 1e-3
     std_devs = jnp.where(std_devs > std_floor, std_devs, std_floor)
 
     def dynamics_log_density(x_prev, x):
-        return norm.logpdf(x, x_prev, std_devs).sum()
+        mean = init_mean_repeated + phi * (x_prev - init_mean_repeated)
+        return norm.logpdf(x, mean, std_devs).sum()
 
     linearization_point = jnp.zeros(num_joined_factors * 2)
     # Shape (2,) or (num_teams, 2) flattened to (2 * num_teams,)
@@ -152,7 +173,6 @@ def get_observation_log_potential(
         x_i = x[:2]
         x_j = x[2:]
         loglik = bivariate_poisson.loglik(y, x_i, x_j, alpha, beta, max_goals)
-        curvature_nugget = 1e-2
-        return loglik - curvature_nugget * jnp.sum(jnp.square(x - state.mean))
+        return loglik
 
     return log_potential, state.mean

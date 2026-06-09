@@ -22,20 +22,21 @@ The simplest model we could use is an Elo-style logistic model for the probabili
 
 The factorial state-space model  stores a time-varying latent two-dimensional state for each team (or factor) which represents its attacking and defensive strength $x_k^i = (x_k^{\text{att}, i}, x_k^{\text{def}, i})$ for team index $i$ at time $t_k$.
 
-Pairing this with Brownian dynamics, the full model is then defined as follows:
+Pairing this with Ornstein-Uhlenbeck dynamics, the full model is then defined as follows:
 
 $$
 \begin{aligned}
 p(x^i_0) &= \mathrm{N}(x^i_0 \mid \mu_0, \Sigma_0),
 \\
-p(x^i_k \mid x^i_{k-1}) &= \mathrm{N}(x^i_k \mid x^i_{k-1},
-\tau^2 (t_k - t_{k-1})),
+p(x^i_k \mid x^i_{k-1}) &= \mathrm{N}\left(x^i_k \mid
+\mu_0 + \phi_k (x^i_{k-1} - \mu_0),
+\frac{\tau^2(1 - \phi_k^2)}{2\kappa}\right),
 \\
 p(y_k \mid x^i_k, x^j_k) &= \mathrm{BivariatePoisson}(y_k \mid x^i_k, x^j_k, \alpha, \beta).
 \end{aligned}
 $$
 
-Where $y_k = (y_k^i, y_k^j)$ is the observed number of goals scored by teams $i$ and $j$ in match $k$.
+where $\phi_k = \exp(-\kappa(t_k - t_{k-1}))$ and $y_k = (y_k^i, y_k^j)$ is the observed number of goals scored by teams $i$ and $j$ in match $k$. The Brownian model is recovered in the limit $\kappa \to 0$, where the transition mean becomes $x^i_{k-1}$ and the transition variance becomes $\tau^2(t_k - t_{k-1})$.
 
 The bivariate Poisson distribution is defined as follows (see 4.6 in DPR):
 
@@ -46,7 +47,7 @@ $$
 with $\lambda_1 = \exp(\alpha + x^{\text{att}, i} - x^{\text{def}, j})$, $\lambda_2 = \exp(\alpha + x^{\text{att}, j} - x^{\text{def}, i})$ and $\lambda_3 = \exp(\beta)$.
 
 
-Overall, the static parameters of the models are $\mu_0 \in \mathbb{R}^2$, $\Sigma_0 \in \mathbb{R}^{2 \times 2}$, $\tau \in \mathbb{R}_{> 0}^2$, $\alpha \in \mathbb{R}$ and $\beta \in \mathbb{R}$.
+Overall, the static parameters of the models are $\mu_0 \in \mathbb{R}^2$, $\Sigma_0 \in \mathbb{R}^{2 \times 2}$, $\tau \in \mathbb{R}_{> 0}^2$, $\kappa \in \mathbb{R}_{\ge 0}^2$, $\alpha \in \mathbb{R}$ and $\beta \in \mathbb{R}$.
 
 
 ### Inference
@@ -72,4 +73,3 @@ The end goal will be to generate small prediction graphics prior to each match i
 - [ ] Code to download/extract future fixtures
 - [ ] Code to generate predictions for future fixtures
 - [ ] Code to generate graphics for predictions
-

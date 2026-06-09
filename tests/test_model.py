@@ -14,6 +14,7 @@ num_teams = 5
 init_mean = jnp.array([1.2, 3.2])
 init_sd = jnp.array([0.3, 1.1])
 tau = jnp.array([0.1, 0.2])
+kappa = jnp.array([0.0, 0.0])
 alpha = 1.0
 beta = -4.0
 
@@ -22,7 +23,9 @@ filter = taylor.build_filter(
     get_init_log_density=partial(
         get_init_log_density, init_mean=init_mean, init_sd=init_sd, num_teams=num_teams
     ),
-    get_dynamics_log_density=partial(get_dynamics_log_density, tau=tau),
+    get_dynamics_log_density=partial(
+        get_dynamics_log_density, tau=tau, init_mean=init_mean, kappa=kappa
+    ),
     get_observation_func=partial(get_observation_log_potential, alpha=alpha, beta=beta),
 )
 
@@ -81,7 +84,7 @@ def test_dynamics():
         away_timestamp_previous=jnp.array(1),
     )
     log_density, lin_point_prev, lin_point_curr = get_dynamics_log_density(
-        state, model_inputs, tau
+        state, model_inputs, tau, init_mean, kappa
     )
 
     mat, shift, chol_cov = linearize_log_density(
