@@ -149,8 +149,8 @@ def get_dynamics_log_density(
 def get_observation_log_potential(
     state: taylor.LinearizedKalmanFilterState,
     model_inputs: ResultData,
-    alpha: float,
-    beta: float,
+    alpha: ArrayLike,
+    beta: ArrayLike,
     max_goals: int = 8,
 ) -> tuple[taylor.LogPotential, Array]:
     """Get log p(y_t | x_t) as a function of x_t for Bivariate Poisson.
@@ -176,3 +176,28 @@ def get_observation_log_potential(
         return loglik
 
     return log_potential, state.mean
+
+
+def get_observation_log_potential_noop(
+    state: taylor.LinearizedKalmanFilterState,
+    model_inputs: ResultData,
+) -> tuple[taylor.LogPotential, Array]:
+    """Get log p(y_t | x_t) as a function of x_t for Bivariate Poisson.
+
+    Args:
+        state: The current state of the Kalman filter.
+            Only used to determine the number of factors to be processed.
+        model_inputs: The match data, used to extract the match score.
+        alpha: Scalar baseline scoring parameter.
+        beta: Scalar covariance/shared-scoring parameter.
+        max_goals: Static upper bound for the finite sum in the bivariate Poisson
+            log likelihood. Must be >= min(home_score, away_score).
+
+    Returns:
+        A tuple containing log potential function and linearization point for x_t.
+    """
+
+    def log_potential(x: Array) -> Array:
+        return jnp.array(jnp.nan)
+
+    return log_potential, jnp.full_like(state.mean, jnp.nan)
