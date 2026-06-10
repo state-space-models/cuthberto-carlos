@@ -21,6 +21,7 @@ def loglik_grid(
     alpha: float,
     beta: float,
     max_goals: int,
+    ability_scale: ArrayLike = 1.0,
 ) -> Array:
     """Returns grid G where G[a, b] = log p(Y_i=a, Y_j=b).
 
@@ -30,15 +31,18 @@ def loglik_grid(
         alpha: scalar baseline scoring parameter
         beta: scalar shared-scoring/correlation parameter
         max_goals: largest score included in the grid
+        ability_scale: Positive temperature applied to attack/defence contrasts.
+            Larger values make team-strength differences less informative.
 
     Returns:
         loglik_grid: shape (max_goals + 1, max_goals + 1)
     """
     x_i = jnp.asarray(x_i)
     x_j = jnp.asarray(x_j)
+    ability_scale = jnp.asarray(ability_scale)
 
-    log_lambda1 = alpha + x_i[0] - x_j[1]
-    log_lambda2 = alpha + x_j[0] - x_i[1]
+    log_lambda1 = alpha + (x_i[0] - x_j[1]) / ability_scale
+    log_lambda2 = alpha + (x_j[0] - x_i[1]) / ability_scale
     log_lambda3 = beta
 
     scores = jnp.arange(max_goals + 1)
@@ -79,6 +83,7 @@ def loglik(
     alpha: float,
     beta: float,
     max_goals: int,
+    ability_scale: ArrayLike = 1.0,
 ) -> Array:
     """Log likelihood for the bivariate Poisson football-score model.
 
@@ -92,6 +97,8 @@ def loglik(
         alpha: scalar baseline scoring parameter.
         beta: scalar covariance/shared-scoring parameter.
         max_goals: static upper bound for the finite sum. Must be >= min(y).
+        ability_scale: Positive temperature applied to attack/defence contrasts.
+            Larger values make team-strength differences less informative.
 
     Returns:
         Scalar log p(y | x_i, x_j, alpha, beta).
@@ -99,12 +106,13 @@ def loglik(
     x_i = jnp.asarray(x_i)
     x_j = jnp.asarray(x_j)
     y = jnp.asarray(y)
+    ability_scale = jnp.asarray(ability_scale)
     y_i = y[0]
     y_j = y[1]
 
     # Log rates
-    log_lambda1 = alpha + x_i[0] - x_j[1]
-    log_lambda2 = alpha + x_j[0] - x_i[1]
+    log_lambda1 = alpha + (x_i[0] - x_j[1]) / ability_scale
+    log_lambda2 = alpha + (x_j[0] - x_i[1]) / ability_scale
     log_lambda3 = beta
 
     lambda1 = jnp.exp(log_lambda1)

@@ -1,0 +1,27 @@
+{
+  "anisotropy_epsilon": 0.01,
+  "log_normalizing_constant": -290096.0,
+  "loss": 290096.0,
+  "max_goals": 8,
+  "message": "Maximum number of function evaluations has been exceeded.",
+  "method": "Powell",
+  "num_evaluations": 200,
+  "num_iterations": 1,
+  "num_matches": null,
+  "observation_ridge_precision": 1e-06,
+  "params": {
+    "alpha": 5.522404193878174,
+    "beta": -4.999918460845947,
+    "init_sd": 0.2514452040195465,
+    "kappa": 0.00010267931065754965,
+    "tau": 0.003993283025920391
+  },
+  "raw_params": [
+    -1.2521792004287333,
+    -5.5213952171332785,
+    -9.193636167081571,
+    5.522404030832778,
+    -4.999918287326226
+  ],
+  "success": false
+}

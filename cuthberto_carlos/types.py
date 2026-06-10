@@ -17,6 +17,7 @@ class ResultData(NamedTuple):
         timestamp: Integer number of days since the origin date for the match.
         home_timestamp_previous: Optional timestamp for the previous home team match.
         away_timestamp_previous: Optional timestamp for the previous away team match.
+        is_friendly: Optional boolean indicating whether the match was a friendly.
     """
 
     match_index: Array
@@ -28,6 +29,7 @@ class ResultData(NamedTuple):
     timestamp: Array
     home_timestamp_previous: Array | None = None
     away_timestamp_previous: Array | None = None
+    is_friendly: Array | None = None
 
 
 class DynamicsOnlyData(NamedTuple):

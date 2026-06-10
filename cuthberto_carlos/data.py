@@ -66,6 +66,12 @@ def download_data(
     data_all["home_score"] = data_all["home_score"].fillna(-1).astype(int)
     data_all["away_score"] = data_all["away_score"].fillna(-1).astype(int)
 
+    # The filter is sequential, so match updates must be applied chronologically.
+    data_all = data_all.sort_values("timestamp_days", kind="stable").reset_index(
+        drop=True
+    )
+    data_all["is_friendly"] = data_all["tournament"] == "Friendly"
+
     # Extract unique teams
     home_counts: pd.Series = data_all["home_team"].value_counts()
     away_counts: pd.Series = data_all["away_team"].value_counts()
@@ -118,6 +124,7 @@ def download_data(
         neutral=jnp.array(data_all["neutral"].values),
         home_timestamp_previous=jnp.array(data_all["home_timestamp_previous"].values),
         away_timestamp_previous=jnp.array(data_all["away_timestamp_previous"].values),
+        is_friendly=jnp.array(data_all["is_friendly"].values),
     )
 
     return data_all, jax_data, teams_id_to_name_dict, teams_name_to_id_dict

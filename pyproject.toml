@@ -6,9 +6,11 @@ readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
     "cuthbert>=0.0.12",
+    "optax>=0.2.8",
     "pandas>=2.3.3",
     "plotnine>=0.15.5",
     "pytest>=9.0.3",
+    "scipy>=1.15.3",
     "ty>=0.0.44",
 ]
 

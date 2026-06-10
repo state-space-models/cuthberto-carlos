@@ -28,14 +28,44 @@ average_goals_in_a_draw = (
     .mean()
 )
 
+# init_mean = jnp.array([0.0, 0.0])
+# init_chol_cov = jnp.array([[1.0, 0.0], [0.0, 1.0]])
+# tau = 0.01
+# kappa = 1e-4
+# alpha = jnp.log(
+#     average_goals_in_a_draw
+# )  # exp(alpha) is expected goals for an evenly matched game
+# beta = -4.0
+
+# init_mean = jnp.array([0.0, 0.0])
+# init_chol_cov = jnp.array([[0.25, 0.0], [0.0, 0.25]])
+# tau = 0.00399328
+# kappa = 0.000102679
+# # alpha = 5.5224
+# alpha = 0.5
+# beta = -4.99992
+
+
+# from https://github.com/SamDuffield/abile/blob/a10fb8c328fdb088fdbafd3f82bb537d89d67bb6/simulations/football_bivariate_poisson_test.py#L18
 init_mean = jnp.array([0.0, 0.0])
-init_sd = jnp.array([1.0, 1.0])
+init_cov = jnp.array([[0.1, 0.07], [0.07, 0.1]])
+init_chol_cov = jnp.linalg.cholesky(init_cov)
 tau = 0.01
-kappa = 1e-4
-alpha = jnp.log(
-    average_goals_in_a_draw
-)  # exp(alpha) is expected goals for an evenly matched game
-beta = -4.0
+kappa = 0.001  # DPR doesn't have kappa, \kappa \to 0 recovers DPR (Brownian dynamics) so set it small
+dynamics_std_floor = 1e-3
+alpha = 0.2
+beta = -4.4856677
+competitive_ability_scale = 1.0
+friendly_ability_scale = 2.0
+
+# # roughly from https://github.com/DanWaxman/dynestyx/blob/main/docs/deep_dives/factorial_world_cup.ipynb
+# init_mean = jnp.array([0.0, 0.0])
+# init_cov = jnp.array([[0.1, 0.02], [0.02, 0.1]])
+# init_chol_cov = jnp.linalg.cholesky(init_cov)
+# tau = 0.065
+# kappa = 0.000102679  # DPR doesn't have kappa, \kappa \to 0 recovers DPR (Brownian dynamics) so set it small
+# alpha = 0.216
+# beta = -2.598
 
 num_teams = len(teams_id_to_name_dict)
 
@@ -48,14 +78,23 @@ filter = taylor.build_filter(
     get_init_log_density=partial(
         model.get_init_log_density,
         init_mean=init_mean,
-        init_sd=init_sd,
+        init_chol_cov=init_chol_cov,
         num_teams=num_teams,
     ),
     get_dynamics_log_density=partial(
-        model.get_dynamics_log_density, tau=tau, init_mean=init_mean, kappa=kappa
+        model.get_dynamics_log_density,
+        tau=tau,
+        init_mean=init_mean,
+        kappa=kappa,
+        std_floor=dynamics_std_floor,
     ),
     get_observation_func=partial(
-        model.get_observation_log_potential, alpha=alpha, beta=beta, max_goals=max_goals
+        model.get_observation_log_potential,
+        alpha=alpha,
+        beta=beta,
+        max_goals=max_goals,
+        friendly_ability_scale=friendly_ability_scale,
+        competitive_ability_scale=competitive_ability_scale,
     ),
     rtol=1e-7,
 )
@@ -70,7 +109,7 @@ out_factorial_all = factorial_filter(
     filter, factorializer, model_inputs, output_factorial=True
 )
 out_factorial_final = jax.tree.map(lambda x: x[-1], out_factorial_all)
-
+print("Log normalizing constant:", out_factorial_final.log_normalizing_constant)
 
 ## Synchronize to the most recent timestamp for each team
 # Extract the most recent timestamp for each team
@@ -94,10 +133,14 @@ single_team_filter = taylor.build_filter(
     get_init_log_density=partial(
         model.get_init_log_density,
         init_mean=init_mean,
-        init_sd=init_sd,
+        init_chol_cov=init_chol_cov,
     ),
     get_dynamics_log_density=partial(
-        model.get_dynamics_log_density, tau=tau, init_mean=init_mean, kappa=kappa
+        model.get_dynamics_log_density,
+        tau=tau,
+        init_mean=init_mean,
+        kappa=kappa,
+        std_floor=dynamics_std_floor,
     ),
     get_observation_func=model.get_observation_log_potential_noop,
 )
