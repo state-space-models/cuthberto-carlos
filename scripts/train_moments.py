@@ -25,17 +25,26 @@ from cuthberto_carlos.data import download_data
 
 # Training configuration.
 STEPS = 200
-LEARNING_RATE = 1e-2
+LEARNING_RATE = 1e-1
 LOG_EVERY = 10
 MAX_GOALS = 8
 MAX_MATCHES = None  # Set to a small integer, e.g. 100, for quick smoke runs.
 
 # Initial parameter values on the constrained scale.
+# INITIAL_TAU = 0.01
+# INITIAL_KAPPA = 1e-4
+# INITIAL_FRIENDLY_SCALE = 1.0
+# INITIAL_ALPHA = 0.2
+# INITIAL_BETA = -2.0
+# INITIAL_INIT_SD = 1.0
+# INITIAL_INIT_CORR = 0.0
+# INIT_MEAN = jnp.array([0.0, 0.0])
+
 INITIAL_TAU = 0.01
-INITIAL_KAPPA = 1e-4
-INITIAL_FRIENDLY_SCALE = 1.0
+INITIAL_KAPPA = 1e-2
+INITIAL_FRIENDLY_SCALE = 2.0
 INITIAL_ALPHA = 0.2
-INITIAL_BETA = -2.0
+INITIAL_BETA = -4.0
 INITIAL_INIT_SD = 1.0
 INITIAL_INIT_CORR = 0.0
 INIT_MEAN = jnp.array([0.0, 0.0])

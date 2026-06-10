@@ -28,15 +28,28 @@ average_goals_in_a_draw = (
     .mean()
 )
 
+# init_mean = jnp.array([0.0, 0.0])
+# init_cov = jnp.array([[1.0, 0.2], [0.2, 1.0]])
+# tau = 0.01
+# kappa = 1e-4
+# friendly_scale = 1.0
+# alpha = jnp.log(
+#     average_goals_in_a_draw
+# )  # exp(alpha) is expected goals for an evenly matched game
+# beta = -2.0
+
 init_mean = jnp.array([0.0, 0.0])
-init_cov = jnp.array([[1.0, 0.2], [0.2, 1.0]])
-tau = 0.01
-kappa = 1e-4
-friendly_scale = 1.0
-alpha = jnp.log(
-    average_goals_in_a_draw
-)  # exp(alpha) is expected goals for an evenly matched game
-beta = -2.0
+init_cov = jnp.array(
+    [
+        [1.1433665349613875e-05, 1.1013270523108076e-05],
+        [1.1013270523108076e-05, 1.1433665349613875e-05],
+    ]
+)
+tau = 0.0046978965401649475
+kappa = 1.9071430870098993e-05
+friendly_scale = 1.0385863780975342
+alpha = 0.8146775960922241
+beta = -5.207250118255615
 
 num_teams = len(teams_id_to_name_dict)
 
