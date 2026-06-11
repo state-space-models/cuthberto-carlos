@@ -72,7 +72,7 @@ The end goal will be to generate small prediction graphics prior to each match i
 
 - [x] Code to download historical data
 - [x] Implement the model in `cuthbert` and validate it works on historical data
-- [ ] Determine suitable static parameters (fix some, sweep, more fancy parameter estimation?)
+- [x] Determine suitable static parameters (fix some, sweep, more fancy parameter estimation?)
 - [ ] Code to download/extract future fixtures
-- [ ] Code to generate predictions for future fixtures
+- [x] Code to generate predictions for future fixtures
 - [ ] Code to generate graphics for predictions
