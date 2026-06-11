@@ -83,7 +83,12 @@ The repository includes a responsive React frontend for exploring the latest dat
 prediction snapshot. It combines the model output with the CC0
 [`openfootball/worldcup.json`](https://github.com/openfootball/worldcup.json)
 schedule to provide upcoming matches, model-projected group tables, detailed score
-distributions, and the official knockout bracket.
+distributions, and completed-match comparisons. Knockout fixture metadata remains in
+the generated dataset for future frontend work, but the current UI is limited to the
+group stage.
+
+The organization deployment is published at
+[state-space-models.github.io/cuthberto-carlos](https://state-space-models.github.io/cuthberto-carlos/).
 
 Generate the latest frontend dataset and run the app locally:
 
@@ -94,8 +99,9 @@ npm install
 npm run dev
 ```
 
-The GitHub Pages workflow validates the prediction data, runs the frontend tests,
-builds with the `/cuthberto-carlos/` base path, and deploys on every push to `main`.
+The GitHub Pages workflow validates pull requests without deploying. Pushes to
+`main`, hourly schedules, and manual runs build with a base path derived from the
+repository name and deploy the validated artifact.
 
 The production build exposes the exact generated dataset at
 `/cuthberto-carlos/data/tournament.json`. The data builder validates the generated
@@ -109,3 +115,8 @@ python scripts/build_frontend_data.py
 
 The deployment workflow also compares the generated source file with the copy in
 `frontend/dist/data/tournament.json` byte-for-byte before publishing.
+
+Repository administrators must configure **Settings > Pages > Build and deployment >
+Source** to **GitHub Actions**. The organization must allow Pages publication and the
+`github-pages` environment must permit automated deployments from `main` without an
+unintended approval gate.

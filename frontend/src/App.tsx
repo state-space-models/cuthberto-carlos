@@ -55,7 +55,7 @@ function App() {
             <span className="hero__kicker">2026 World Cup · model forecast</span>
             <h1>Every group match.<br /><em>One curious caterpillar.</em></h1>
             <p>
-              Explore score distributions, result probabilities, projected group tables, and the complete path to the final.
+              Explore score distributions, result probabilities, and projected group tables for every group-stage fixture.
             </p>
             <div className="hero__actions">
               <a className="button button--primary" href="#upcoming">See upcoming matches</a>
@@ -64,7 +64,7 @@ function App() {
             <dl className="hero__stats">
               <div><dt>72</dt><dd>match forecasts</dd></div>
               <div><dt>12</dt><dd>group projections</dd></div>
-              <div><dt>32</dt><dd>finals fixtures</dd></div>
+              <div><dt>{Object.keys(data.teams).length}</dt><dd>national teams</dd></div>
             </dl>
           </div>
           <div className="hero__art" aria-hidden="true">
