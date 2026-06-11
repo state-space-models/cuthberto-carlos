@@ -3,6 +3,7 @@ import type { MatchPrediction, Team } from "../types";
 import {
   formatKickoffParts,
   formatPercent,
+  isMatchOngoing,
   mostLikelyOutcome,
 } from "../utils";
 import { TeamFlag } from "./TeamFlag";
@@ -16,26 +17,53 @@ interface MatchCardProps {
 export function MatchCard({ match, teams, onOpen }: MatchCardProps) {
   const kickoff = formatKickoffParts(match.kickoffUtc);
   const probabilities = match.prediction.probabilities;
-  const [homeScore, awayScore] = match.prediction.mostLikelyScore;
+  const [predictedHomeScore, predictedAwayScore] = match.prediction.mostLikelyScore;
+
+  // Check match status
+  const ongoing = isMatchOngoing(match);
+  const hasActualResult = !!match.actualResult;
+
+  // Use actual result if available, otherwise show prediction
+  const displayHomeScore = hasActualResult
+    ? match.actualResult!.homeScore
+    : predictedHomeScore;
+  const displayAwayScore = hasActualResult
+    ? match.actualResult!.awayScore
+    : predictedAwayScore;
 
   function handleOpen(event: MouseEvent<HTMLButtonElement>) {
     onOpen(match, event.currentTarget);
   }
 
   return (
-    <article className="match-card">
+    <article className={`match-card ${ongoing ? "match-card--ongoing" : ""}`}>
       <div className="match-card__meta">
         <span className="eyebrow">Group {match.group}</span>
         <span>{kickoff.date}</span>
-        <strong>{kickoff.time}</strong>
+        <div className="match-card__time-wrapper">
+          <strong>{kickoff.time}</strong>
+          {ongoing && (
+            <span className="match-card__live-badge">LIVE</span>
+          )}
+        </div>
       </div>
       <div className="match-card__teams">
-        <TeamFlag team={teams[match.homeTeam]} />
-        <span className="match-card__score" aria-label="Most likely score">
-          {homeScore}–{awayScore}
+        <div className="match-card__team match-card__team--home">
+          <TeamFlag team={teams[match.homeTeam]} />
+        </div>
+        <span
+          className={`match-card__score ${hasActualResult ? "match-card__score--actual" : ""}`}
+          aria-label={hasActualResult ? "Final score" : "Most likely score"}
+        >
+          {displayHomeScore}–{displayAwayScore}
         </span>
-        <TeamFlag team={teams[match.awayTeam]} />
+        <div className="match-card__team match-card__team--away">
+          <TeamFlag team={teams[match.awayTeam]} />
+        </div>
       </div>
+      {hasActualResult && !ongoing && (
+        <div className="match-card__result-badge">Final</div>
+      )}
       <p className="match-card__venue">{match.venue}</p>
       <div className="probability-strip" aria-label="Result probabilities">
         <span

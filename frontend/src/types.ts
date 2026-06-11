@@ -20,6 +20,13 @@ export interface TeamSkills {
   defence: SkillEstimate;
 }
 
+export interface ActualResult {
+  homeScore: number;
+  awayScore: number;
+  homeGoals: Array<{ name: string; minute: number; penalty?: boolean }>;
+  awayGoals: Array<{ name: string; minute: number; penalty?: boolean }>;
+}
+
 export interface MatchPrediction {
   id: string;
   date: string;
@@ -43,6 +50,7 @@ export interface MatchPrediction {
       away: TeamSkills;
     };
   };
+  actualResult?: ActualResult;
 }
 
 export interface GroupProjectionRow {

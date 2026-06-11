@@ -1,6 +1,6 @@
 import { useState } from "react";
 import type { MatchPrediction, Team } from "../types";
-import { getUpcomingMatches } from "../utils";
+import { getUpcomingMatches, getOngoingMatches } from "../utils";
 import { MatchCard } from "./MatchCard";
 import { MatchListRow } from "./MatchListRow";
 
@@ -12,7 +12,10 @@ interface UpcomingMatchesProps {
 
 export function UpcomingMatches({ matches, teams, onOpen }: UpcomingMatchesProps) {
   const upcoming = getUpcomingMatches(matches);
+  const ongoing = getOngoingMatches(matches);
   const [view, setView] = useState<"cards" | "list">("cards");
+
+  const displayMatches = [...ongoing, ...upcoming];
 
   return (
     <section className="section section--upcoming" id="upcoming" aria-labelledby="upcoming-title">
@@ -45,16 +48,16 @@ export function UpcomingMatches({ matches, teams, onOpen }: UpcomingMatchesProps
           </div>
         </div>
       </div>
-      {upcoming.length > 0 ? (
+      {displayMatches.length > 0 ? (
         view === "cards" ? (
           <div className="match-grid" data-testid="upcoming-card-view">
-            {upcoming.map((match) => (
+            {displayMatches.map((match) => (
               <MatchCard key={match.id} match={match} teams={teams} onOpen={onOpen} />
             ))}
           </div>
         ) : (
           <div className="match-list" data-testid="upcoming-list-view">
-            {upcoming.map((match) => (
+            {displayMatches.map((match) => (
               <MatchListRow key={match.id} match={match} teams={teams} onOpen={onOpen} />
             ))}
           </div>

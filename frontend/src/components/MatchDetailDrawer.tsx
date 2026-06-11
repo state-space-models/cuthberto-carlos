@@ -4,6 +4,7 @@ import {
   aggregateScoreGrid,
   formatKickoff,
   formatPercent,
+  isMatchOngoing,
 } from "../utils";
 import { TeamFlag } from "./TeamFlag";
 
@@ -124,11 +125,21 @@ export function MatchDetailDrawer({
   const skills = match.prediction.skills;
   const homeColor = home.colors[0];
   const awayColor = away.colors[0] === homeColor ? away.colors[1] : away.colors[0];
+  const ongoing = isMatchOngoing(match);
+  const hasActualResult = !!match.actualResult;
+
+  // Use actual result if available, otherwise show prediction
+  const displayHomeScore = hasActualResult
+    ? match.actualResult!.homeScore
+    : match.prediction.mostLikelyScore[0];
+  const displayAwayScore = hasActualResult
+    ? match.actualResult!.awayScore
+    : match.prediction.mostLikelyScore[1];
 
   return (
     <div className="drawer-backdrop" role="presentation" onMouseDown={onClose}>
       <section
-        className="prediction-drawer"
+        className={`prediction-drawer ${ongoing ? "prediction-drawer--ongoing" : ""}`}
         role="dialog"
         aria-modal="true"
         aria-labelledby="prediction-title"
@@ -140,15 +151,18 @@ export function MatchDetailDrawer({
         </button>
 
         <header className="drawer-header">
-          <span className="eyebrow">Group {match.group} · {formatKickoff(match.kickoffUtc)}</span>
+          <span className="eyebrow">
+            Group {match.group} · {formatKickoff(match.kickoffUtc)}
+            {ongoing && <span className="drawer-live-badge">LIVE</span>}
+          </span>
           <h2 id="prediction-title">{match.homeTeam} vs {match.awayTeam}</h2>
           <p>{match.venue}</p>
           <div className="drawer-matchup">
             <TeamFlag team={home} />
             <span className="drawer-score">
-              <small>Most likely</small>
-              {match.prediction.mostLikelyScore[0]}–{match.prediction.mostLikelyScore[1]}
-              <em>{formatPercent(match.prediction.mostLikelyScoreProbability, 1)}</em>
+              <small>{ongoing ? "Current score" : hasActualResult ? "Final score" : "Most likely"}</small>
+              {displayHomeScore}–{displayAwayScore}
+              {!ongoing && !hasActualResult && <em>{formatPercent(match.prediction.mostLikelyScoreProbability, 1)}</em>}
             </span>
             <TeamFlag team={away} />
           </div>

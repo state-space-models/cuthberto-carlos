@@ -1,6 +1,6 @@
 import type { MouseEvent } from "react";
 import type { MatchPrediction, Team } from "../types";
-import { formatKickoffParts, formatPercent, mostLikelyOutcome } from "../utils";
+import { formatKickoffParts, formatPercent, isMatchOngoing, mostLikelyOutcome } from "../utils";
 import { TeamFlag } from "./TeamFlag";
 
 interface MatchListRowProps {
@@ -12,26 +12,53 @@ interface MatchListRowProps {
 export function MatchListRow({ match, teams, onOpen }: MatchListRowProps) {
   const kickoff = formatKickoffParts(match.kickoffUtc);
   const probabilities = match.prediction.probabilities;
-  const [homeScore, awayScore] = match.prediction.mostLikelyScore;
+  const [predictedHomeScore, predictedAwayScore] = match.prediction.mostLikelyScore;
+
+  // Check match status
+  const ongoing = isMatchOngoing(match);
+  const hasActualResult = !!match.actualResult;
+
+  // Use actual result if available, otherwise show prediction
+  const displayHomeScore = hasActualResult
+    ? match.actualResult!.homeScore
+    : predictedHomeScore;
+  const displayAwayScore = hasActualResult
+    ? match.actualResult!.awayScore
+    : predictedAwayScore;
 
   function handleOpen(event: MouseEvent<HTMLButtonElement>) {
     onOpen(match, event.currentTarget);
   }
 
   return (
-    <article className="match-list-row">
+    <article className={`match-list-row ${ongoing ? "match-list-row--ongoing" : ""}`}>
       <div className="match-list-row__kickoff">
         <span className="eyebrow">Group {match.group}</span>
         <strong>{kickoff.date}</strong>
-        <span>{kickoff.time}</span>
+        <div className="match-list-row__time-wrapper">
+          <span>{kickoff.time}</span>
+          {ongoing && (
+            <span className="match-list-row__live-badge">LIVE</span>
+          )}
+        </div>
       </div>
       <div className="match-list-row__fixture">
-        <TeamFlag team={teams[match.homeTeam]} compact />
-        <strong className="match-list-row__score" aria-label="Most likely score">
-          {homeScore}–{awayScore}
+        <div className="match-list-row__team match-list-row__team--home">
+          <TeamFlag team={teams[match.homeTeam]} compact />
+        </div>
+        <strong
+          className={`match-list-row__score ${hasActualResult ? "match-list-row__score--actual" : ""}`}
+          aria-label={hasActualResult ? "Final score" : "Most likely score"}
+        >
+          {displayHomeScore}–{displayAwayScore}
         </strong>
-        <TeamFlag team={teams[match.awayTeam]} compact />
+        <div className="match-list-row__team match-list-row__team--away">
+          <TeamFlag team={teams[match.awayTeam]} compact />
+        </div>
       </div>
+      {hasActualResult && !ongoing && (
+        <div className="match-list-row__result-badge">Final</div>
+      )}
       <div className="match-list-row__prediction">
         <span>{mostLikelyOutcome(probabilities, match.homeTeam, match.awayTeam)}</span>
         <div aria-label="Result probabilities">

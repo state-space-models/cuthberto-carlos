@@ -23,7 +23,41 @@ SCHEDULE_URL = (
     "https://raw.githubusercontent.com/openfootball/worldcup.json/"
     f"{SCHEDULE_COMMIT}/2026/worldcup.json"
 )
-REPOSITORY_URL = "https://github.com/ryantjx/cuthberto-carlos"
+
+
+def get_repository_owner(root: Path = ROOT) -> str:
+    """Detect repository owner from git remote origin URL."""
+    try:
+        remote_url = subprocess.check_output(
+            ["git", "remote", "get-url", "origin"],
+            cwd=root,
+            text=True,
+        ).strip()
+        # Extract owner from URLs like:
+        # https://github.com/owner/repo.git
+        # git@github.com:owner/repo.git
+        match = re.search(r"github\.com[/:]([^/]+)/", remote_url)
+        if match:
+            return match.group(1)
+    except (OSError, subprocess.CalledProcessError):
+        pass
+    # Fallback to environment variable or default
+    return os.environ.get("GITHUB_REPOSITORY_OWNER", "state-space-models")
+
+
+def get_repository_url(root: Path = ROOT) -> str:
+    """Return the GitHub repository URL based on detected owner."""
+    owner = get_repository_owner(root)
+    return f"https://github.com/{owner}/cuthberto-carlos"
+
+
+def get_pages_url(root: Path = ROOT) -> str:
+    """Return the GitHub Pages URL based on detected owner."""
+    owner = get_repository_owner(root)
+    return f"https://{owner}.github.io/cuthberto-carlos"
+
+
+REPOSITORY_URL = get_repository_url(ROOT)
 
 TEAM_ALIASES = {
     "Bosnia & Herzegovina": "Bosnia and Herzegovina",
@@ -135,6 +169,32 @@ def fixture_key(date: str, team1: str, team2: str) -> tuple[str, tuple[str, str]
     """Build an orientation-independent fixture key."""
     teams = tuple(sorted((canonical_team(team1), canonical_team(team2))))
     return date, teams
+
+
+def extract_actual_result(fixture: dict[str, Any]) -> dict[str, Any] | None:
+    """Extract actual match result from schedule fixture if available."""
+    score = fixture.get("score")
+    if not score or "ft" not in score:
+        return None
+
+    home_score, away_score = score["ft"]
+    goals1 = fixture.get("goals1", [])
+    goals2 = fixture.get("goals2", [])
+
+    # Determine which team is home/away based on fixture orientation
+    # The fixture has team1 and team2, but our canonical home/away may differ
+    return {
+        "homeScore": home_score,
+        "awayScore": away_score,
+        "homeGoals": [
+            {"name": g["name"], "minute": g["minute"], "penalty": g.get("penalty")}
+            for g in goals1
+        ],
+        "awayGoals": [
+            {"name": g["name"], "minute": g["minute"], "penalty": g.get("penalty")}
+            for g in goals2
+        ],
+    }
 
 
 def parse_kickoff_utc(date: str, time_value: str) -> str:
@@ -381,6 +441,12 @@ def compile_dataset(
                 },
             },
         }
+
+        # Add actual result if available from schedule
+        actual_result = extract_actual_result(fixture)
+        if actual_result:
+            record["actualResult"] = actual_result
+
         match_records.append(record)
 
     if len(matched_keys) != len(fixture_index):

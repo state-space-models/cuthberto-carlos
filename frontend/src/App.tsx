@@ -2,7 +2,7 @@ import { useCallback, useRef, useState } from "react";
 import tournamentData from "./data/tournament.json";
 import { CompletedMatches } from "./components/CompletedMatches";
 import { GroupStage } from "./components/GroupStage";
-import { KnockoutBracket } from "./components/KnockoutBracket";
+// import { KnockoutBracket } from "./components/KnockoutBracket";
 import { MatchDetailDrawer } from "./components/MatchDetailDrawer";
 import { UpcomingMatches } from "./components/UpcomingMatches";
 import type { MatchPrediction, TournamentDataset } from "./types";
@@ -35,7 +35,7 @@ function App() {
           <a href="#upcoming">Upcoming</a>
           <a href="#completed">Completed</a>
           <a href="#groups">Groups</a>
-          <a href="#finals">Finals</a>
+          {/* <a href="#playoffs">Playoffs</a> */}
         </nav>
         <a className="header-github" href="https://github.com/ryantjx/cuthberto-carlos" target="_blank" rel="noreferrer">
           View model <span aria-hidden="true">↗</span>
@@ -77,7 +77,7 @@ function App() {
         <UpcomingMatches matches={data.groupMatches} teams={data.teams} onOpen={openMatch} />
         <CompletedMatches matches={data.groupMatches} teams={data.teams} onOpen={openMatch} />
         <GroupStage groups={data.groups} matches={data.groupMatches} teams={data.teams} onOpen={openMatch} />
-        <KnockoutBracket matches={data.knockoutMatches} />
+        {/* <KnockoutBracket matches={data.knockoutMatches} /> */}
       </main>
 
       <footer className="site-footer">

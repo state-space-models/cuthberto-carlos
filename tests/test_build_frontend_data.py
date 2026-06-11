@@ -62,10 +62,10 @@ class FrontendDataCompilerTests(unittest.TestCase):
             latest.mkdir()
 
             self.assertEqual(discover_latest_snapshot(root).name, "2026-06-11")
-            self.assertEqual(
-                repository_tree_url(Path("outputs/predictions/2026-06-11")),
-                "https://github.com/ryantjx/cuthberto-carlos/tree/main/outputs/predictions/2026-06-11",
-            )
+            # URL is dynamically detected from git remote, so just verify it contains the path
+            url = repository_tree_url(Path("outputs/predictions/2026-06-11"))
+            self.assertIn("/tree/main/outputs/predictions/2026-06-11", url)
+            self.assertTrue(url.startswith("https://github.com/"))
 
 
 if __name__ == "__main__":
