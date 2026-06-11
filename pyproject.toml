@@ -5,7 +5,7 @@ description = "cuthbert predicts football matches"
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
-    "cuthbert>=0.0.12",
+    "cuthbert>=0.0.13",
     "ghq>=0.0.5",
     "optax>=0.2.8",
     "pandas>=2.3.3",
