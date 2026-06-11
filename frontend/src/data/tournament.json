@@ -561,6 +561,21 @@
             }
           }
         }
+      },
+      "actualResult": {
+        "homeScore": 1,
+        "awayScore": 0,
+        "homeGoals": [
+          {
+            "name": "Julian Quiñones",
+            "minute": 9
+          },
+          {
+            "name": "Raul Jiménez",
+            "minute": 67
+          }
+        ],
+        "awayGoals": []
       }
     },
     {

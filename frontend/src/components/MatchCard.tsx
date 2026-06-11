@@ -7,14 +7,16 @@ import {
   mostLikelyOutcome,
 } from "../utils";
 import { TeamFlag } from "./TeamFlag";
+import { MatchScoreComparison } from "./MatchScoreComparison";
 
 interface MatchCardProps {
   match: MatchPrediction;
   teams: Record<string, Team>;
   onOpen: (match: MatchPrediction, trigger: HTMLElement) => void;
+  showScoreComparison?: boolean;
 }
 
-export function MatchCard({ match, teams, onOpen }: MatchCardProps) {
+export function MatchCard({ match, teams, onOpen, showScoreComparison = false }: MatchCardProps) {
   const kickoff = formatKickoffParts(match.kickoffUtc);
   const probabilities = match.prediction.probabilities;
   const [predictedHomeScore, predictedAwayScore] = match.prediction.mostLikelyScore;
@@ -51,17 +53,21 @@ export function MatchCard({ match, teams, onOpen }: MatchCardProps) {
         <div className="match-card__team match-card__team--home">
           <TeamFlag team={teams[match.homeTeam]} />
         </div>
-        <span
-          className={`match-card__score ${hasActualResult ? "match-card__score--actual" : ""}`}
-          aria-label={hasActualResult ? "Final score" : "Most likely score"}
-        >
-          {displayHomeScore}–{displayAwayScore}
-        </span>
+        {showScoreComparison ? (
+          <MatchScoreComparison match={match} variant="card" />
+        ) : (
+          <span
+            className={`match-card__score ${hasActualResult ? "match-card__score--actual" : ""}`}
+            aria-label={hasActualResult ? "Final score" : "Most likely score"}
+          >
+            {displayHomeScore}–{displayAwayScore}
+          </span>
+        )}
         <div className="match-card__team match-card__team--away">
           <TeamFlag team={teams[match.awayTeam]} />
         </div>
       </div>
-      {hasActualResult && !ongoing && (
+      {!showScoreComparison && hasActualResult && !ongoing && (
         <div className="match-card__result-badge">Final</div>
       )}
       <p className="match-card__venue">{match.venue}</p>

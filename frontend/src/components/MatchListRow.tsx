@@ -2,14 +2,16 @@ import type { MouseEvent } from "react";
 import type { MatchPrediction, Team } from "../types";
 import { formatKickoffParts, formatPercent, isMatchOngoing, mostLikelyOutcome } from "../utils";
 import { TeamFlag } from "./TeamFlag";
+import { MatchScoreComparison } from "./MatchScoreComparison";
 
 interface MatchListRowProps {
   match: MatchPrediction;
   teams: Record<string, Team>;
   onOpen: (match: MatchPrediction, trigger: HTMLElement) => void;
+  showScoreComparison?: boolean;
 }
 
-export function MatchListRow({ match, teams, onOpen }: MatchListRowProps) {
+export function MatchListRow({ match, teams, onOpen, showScoreComparison = false }: MatchListRowProps) {
   const kickoff = formatKickoffParts(match.kickoffUtc);
   const probabilities = match.prediction.probabilities;
   const [predictedHomeScore, predictedAwayScore] = match.prediction.mostLikelyScore;
@@ -46,17 +48,21 @@ export function MatchListRow({ match, teams, onOpen }: MatchListRowProps) {
         <div className="match-list-row__team match-list-row__team--home">
           <TeamFlag team={teams[match.homeTeam]} compact />
         </div>
-        <strong
-          className={`match-list-row__score ${hasActualResult ? "match-list-row__score--actual" : ""}`}
-          aria-label={hasActualResult ? "Final score" : "Most likely score"}
-        >
-          {displayHomeScore}–{displayAwayScore}
-        </strong>
+        {showScoreComparison ? (
+          <MatchScoreComparison match={match} variant="list" />
+        ) : (
+          <strong
+            className={`match-list-row__score ${hasActualResult ? "match-list-row__score--actual" : ""}`}
+            aria-label={hasActualResult ? "Final score" : "Most likely score"}
+          >
+            {displayHomeScore}–{displayAwayScore}
+          </strong>
+        )}
         <div className="match-list-row__team match-list-row__team--away">
           <TeamFlag team={teams[match.awayTeam]} compact />
         </div>
       </div>
-      {hasActualResult && !ongoing && (
+      {!showScoreComparison && hasActualResult && !ongoing && (
         <div className="match-list-row__result-badge">Final</div>
       )}
       <div className="match-list-row__prediction">

@@ -41,9 +41,9 @@ describe("App interactions", () => {
     }
   });
 
-  it("archives completed matches with their prediction and source link", () => {
+  it("archives completed matches with actual and predicted scores", () => {
     vi.useFakeTimers();
-    vi.setSystemTime(new Date("2026-06-11T22:00:00Z"));
+    vi.setSystemTime(new Date("2026-06-12T05:00:00Z"));
 
     try {
       render(<App />);
@@ -51,6 +51,10 @@ describe("App interactions", () => {
       const completed = screen.getByTestId("completed-list-view");
       expect(completed).toBeInTheDocument();
       expect(within(completed).getByText("Mexico win")).toBeInTheDocument();
+      expect(within(completed).getAllByText("Actual score")).toHaveLength(2);
+      expect(within(completed).getAllByText("Predicted score")).toHaveLength(2);
+      expect(within(completed).getAllByText("1–0")).toHaveLength(2);
+      expect(within(completed).getByText("Currently not available")).toBeInTheDocument();
       expect(
         within(completed).getByRole("link", { name: /View source data for Mexico versus South Africa/i }),
       ).toHaveAttribute("href", expect.stringContaining("/outputs/predictions/2026-06-11/"));

@@ -136,7 +136,8 @@ h2 {
 }
 
 .site-header nav a,
-.header-github {
+.header-github,
+.header-snapshot {
   font-size: 0.9rem;
   font-weight: 700;
   text-decoration: none;
@@ -164,8 +165,50 @@ h2 {
   transform: scaleX(1);
 }
 
+.header-actions {
+  display: flex;
+  align-items: center;
+  justify-self: end;
+  gap: 1rem;
+}
+
 .header-github {
   justify-self: end;
+}
+
+.header-snapshot {
+  display: grid;
+  padding-left: 1rem;
+  border-left: 1px solid rgba(23, 32, 25, 0.16);
+  grid-template-columns: auto auto;
+  column-gap: 0.55rem;
+  align-items: baseline;
+  line-height: 1.1;
+}
+
+.header-snapshot span {
+  grid-column: 1 / -1;
+  margin-bottom: 0.18rem;
+  color: var(--muted);
+  font-size: 0.62rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.header-snapshot strong {
+  font-family: Georgia, serif;
+  font-size: 1rem;
+}
+
+.header-snapshot small {
+  color: var(--muted);
+  font-size: 0.62rem;
+  font-weight: 600;
+}
+
+.header-snapshot:hover strong,
+.header-snapshot:focus-visible strong {
+  text-decoration: underline;
 }
 
 .hero {
@@ -343,44 +386,6 @@ h2 {
   transform: rotate(-22deg) scaleY(0.48);
 }
 
-.hero__snapshot {
-  position: absolute;
-  z-index: 3;
-  right: 3vw;
-  bottom: 2.5rem;
-  display: flex;
-  min-width: 210px;
-  padding: 1rem 1.15rem;
-  border: 1px solid rgba(255, 255, 255, 0.18);
-  border-radius: 14px;
-  flex-direction: column;
-  background: rgba(5, 38, 21, 0.72);
-  backdrop-filter: blur(16px);
-}
-
-.hero__snapshot span,
-.hero__snapshot small {
-  color: rgba(255, 255, 255, 0.58);
-  font-size: 0.72rem;
-}
-
-.hero__snapshot strong {
-  margin: 0.2rem 0;
-  font-family: Georgia, serif;
-  font-size: 1.45rem;
-}
-
-.hero__snapshot a {
-  width: fit-content;
-  color: white;
-  text-decoration: none;
-}
-
-.hero__snapshot a:hover,
-.hero__snapshot a:focus-visible {
-  text-decoration: underline;
-}
-
 .section {
   padding: clamp(5rem, 9vw, 9rem) clamp(1.2rem, 6vw, 7rem);
 }
@@ -555,6 +560,72 @@ h2 {
   font-size: 2rem;
   font-weight: 700;
   white-space: nowrap;
+}
+
+.score-comparison {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: stretch;
+  font-variant-numeric: tabular-nums;
+}
+
+.score-comparison__item {
+  display: flex;
+  min-width: 0;
+  padding: 0 0.7rem;
+  align-items: center;
+  flex-direction: column;
+  justify-content: center;
+  text-align: center;
+}
+
+.score-comparison__item + .score-comparison__item {
+  border-left: 1px solid var(--line);
+}
+
+.score-comparison__item span {
+  color: var(--muted);
+  font-size: 0.58rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.score-comparison__item strong {
+  margin-top: 0.18rem;
+  font-family: Georgia, serif;
+  font-size: 1.35rem;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.score-comparison__item .score-comparison__unavailable {
+  max-width: 7.5rem;
+  font-family: inherit;
+  font-size: 0.68rem;
+  line-height: 1.15;
+  white-space: normal;
+}
+
+.score-comparison--card {
+  min-width: 13rem;
+}
+
+.score-comparison--list {
+  min-width: 12rem;
+}
+
+.score-comparison--drawer {
+  min-width: min(20rem, 48vw);
+}
+
+.score-comparison--drawer .score-comparison__item strong {
+  font-size: 2.1rem;
+}
+
+.score-comparison--drawer .score-comparison__item .score-comparison__unavailable {
+  font-size: 0.78rem;
 }
 
 .match-card__venue {
@@ -1553,6 +1624,10 @@ h2 {
 }
 
 @media (max-width: 1050px) {
+  .header-github {
+    display: none;
+  }
+
   .hero {
     grid-template-columns: 1fr 0.8fr;
   }
@@ -1610,6 +1685,20 @@ h2 {
     display: none;
   }
 
+  .header-snapshot {
+    display: block;
+    padding-left: 0.75rem;
+  }
+
+  .header-snapshot span,
+  .header-snapshot small {
+    display: none;
+  }
+
+  .header-snapshot strong {
+    font-size: 0.92rem;
+  }
+
   .hero {
     grid-template-columns: 1fr;
     min-height: auto;
@@ -1635,12 +1724,6 @@ h2 {
 
   .hero__art img {
     width: min(100%, 480px);
-  }
-
-  .hero__snapshot {
-    right: 1rem;
-    bottom: 1rem;
-    min-width: 170px;
   }
 
   .hero__stats {
@@ -1692,6 +1775,10 @@ h2 {
   .match-list-row__fixture {
     grid-column: 1 / -1;
     grid-row: 2;
+  }
+
+  .score-comparison--list {
+    min-width: min(15rem, 55vw);
   }
 
   .match-list-row__prediction {
