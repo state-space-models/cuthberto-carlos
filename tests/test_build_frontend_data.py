@@ -1,14 +1,18 @@
 """Tests for the frontend data compiler."""
 
 from pathlib import Path
+import os
 import tempfile
 import unittest
+from unittest.mock import patch
 
 from scripts.build_frontend_data import (
     apply_actual_result_overrides,
     canonical_team,
     discover_latest_snapshot,
     fixture_key,
+    get_repository_slug,
+    get_repository_url,
     normalize_grid,
     parse_kickoff_utc,
     prediction_metrics,
@@ -63,10 +67,26 @@ class FrontendDataCompilerTests(unittest.TestCase):
             latest.mkdir()
 
             self.assertEqual(discover_latest_snapshot(root).name, "2026-06-11")
-            # URL is dynamically detected from git remote, so just verify it contains the path
             url = repository_tree_url(Path("outputs/predictions/2026-06-11"))
-            self.assertIn("/tree/main/outputs/predictions/2026-06-11", url)
-            self.assertTrue(url.startswith("https://github.com/"))
+            self.assertEqual(
+                url,
+                "https://github.com/state-space-models/cuthberto-carlos/"
+                "tree/main/outputs/predictions/2026-06-11",
+            )
+
+    def test_repository_uses_actions_metadata_with_canonical_fallback(self):
+        with patch.dict(os.environ, {}, clear=True):
+            self.assertEqual(
+                get_repository_slug(), "state-space-models/cuthberto-carlos"
+            )
+        with patch.dict(
+            os.environ, {"GITHUB_REPOSITORY": "example-org/example-repo"}
+        ):
+            self.assertEqual(get_repository_slug(), "example-org/example-repo")
+            self.assertEqual(
+                get_repository_url(),
+                "https://github.com/example-org/example-repo",
+            )
 
     def test_actual_result_overrides_are_merged_into_schedule_fixture(self):
         fixtures = {

@@ -2,17 +2,25 @@ import { fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import App from "../App";
+import { KnockoutBracket } from "../components/KnockoutBracket";
 import tournamentData from "../data/tournament.json";
+import type { TournamentDataset } from "../types";
+
+const data = tournamentData as unknown as TournamentDataset;
 
 describe("generated tournament data", () => {
   it("contains the complete initial tournament shape", () => {
     expect(tournamentData.schemaVersion).toBe(2);
+    expect(tournamentData.repositoryUrl).toBe("https://github.com/state-space-models/cuthberto-carlos");
     expect(tournamentData.snapshotDate).toBe("2026-06-11");
     expect(tournamentData.groupMatches).toHaveLength(72);
     expect(tournamentData.groups).toHaveLength(12);
     expect(tournamentData.groups.every((group) => group.matchIds.length === 6)).toBe(true);
     expect(tournamentData.knockoutMatches).toHaveLength(32);
     expect(tournamentData.snapshotUrl).toContain("/outputs/predictions/2026-06-11");
+    expect(tournamentData.sources.schedule.url).toBe(
+      "https://github.com/openfootball/worldcup.json/blob/master/2026/worldcup.json",
+    );
     expect(tournamentData.groupMatches.every((match) => match.sourceUrl.includes("/2026-06-11/"))).toBe(true);
   });
 });
@@ -84,16 +92,16 @@ describe("App interactions", () => {
   });
 
   it("keeps official knockout feeder labels visible", () => {
-    render(<App />);
+    render(<KnockoutBracket matches={data.knockoutMatches} />);
     expect(screen.getAllByText("2A").length).toBeGreaterThan(0);
     expect(screen.getAllByText("Runner-up Group A").length).toBeGreaterThan(0);
   });
 
   it("updates knockout details when a bracket match is selected", async () => {
     const user = userEvent.setup();
-    render(<App />);
+    render(<KnockoutBracket matches={data.knockoutMatches} />);
 
-    await user.click(screen.getByRole("button", { name: /M104 W101 Winner Match 101 W102 Winner Match 102/ }));
+    await user.click(screen.getByRole("button", { name: "Final" }));
     expect(screen.getByLabelText("Details for Match 104")).toHaveTextContent("W101 vs W102");
   });
 });

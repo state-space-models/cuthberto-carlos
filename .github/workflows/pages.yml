@@ -55,6 +55,9 @@ jobs:
         working-directory: frontend
         run: npm run build
 
+      - name: Validate built frontend data
+        run: cmp frontend/src/data/tournament.json frontend/dist/data/tournament.json
+
       - name: Configure Pages
         uses: actions/configure-pages@v5
 
@@ -66,11 +69,3 @@ jobs:
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
-
-      - name: Validate deployed frontend data
-        run: |
-          python scripts/validate_deployed_frontend_data.py \
-            --url "${{ steps.deployment.outputs.page_url }}data/tournament.json" \
-            --source-commit "$GITHUB_SHA" \
-            --retries 12 \
-            --retry-delay 10

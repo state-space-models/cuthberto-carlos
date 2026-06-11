@@ -19,46 +19,28 @@ ROOT = Path(__file__).resolve().parents[1]
 PREDICTIONS_ROOT = ROOT / "outputs" / "predictions"
 DEFAULT_OUTPUT = ROOT / "frontend" / "src" / "data" / "tournament.json"
 ACTUAL_RESULTS_PATH = ROOT / "assets" / "actual_results.json"
-SCHEDULE_COMMIT = "752a1137a20810ab37473fa9f87a9c2caf293785"
-SCHEDULE_URL = (
+DEFAULT_REPOSITORY = "state-space-models/cuthberto-carlos"
+SCHEDULE_REF = "master"
+SCHEDULE_SOURCE_URL = (
+    "https://github.com/openfootball/worldcup.json/blob/master/2026/worldcup.json"
+)
+SCHEDULE_DATA_URL = (
     "https://raw.githubusercontent.com/openfootball/worldcup.json/"
-    f"{SCHEDULE_COMMIT}/2026/worldcup.json"
+    "master/2026/worldcup.json"
 )
 
 
-def get_repository_owner(root: Path = ROOT) -> str:
-    """Detect repository owner from git remote origin URL."""
-    try:
-        remote_url = subprocess.check_output(
-            ["git", "remote", "get-url", "origin"],
-            cwd=root,
-            text=True,
-        ).strip()
-        # Extract owner from URLs like:
-        # https://github.com/owner/repo.git
-        # git@github.com:owner/repo.git
-        match = re.search(r"github\.com[/:]([^/]+)/", remote_url)
-        if match:
-            return match.group(1)
-    except (OSError, subprocess.CalledProcessError):
-        pass
-    # Fallback to environment variable or default
-    return os.environ.get("GITHUB_REPOSITORY_OWNER", "state-space-models")
+def get_repository_slug() -> str:
+    """Return the canonical owner/name, preferring GitHub Actions metadata."""
+    repository = os.environ.get("GITHUB_REPOSITORY", DEFAULT_REPOSITORY).strip()
+    if not re.fullmatch(r"[^/\s]+/[^/\s]+", repository):
+        raise ValueError(f"Invalid GITHUB_REPOSITORY value: {repository!r}")
+    return repository
 
 
-def get_repository_url(root: Path = ROOT) -> str:
-    """Return the GitHub repository URL based on detected owner."""
-    owner = get_repository_owner(root)
-    return f"https://github.com/{owner}/cuthberto-carlos"
-
-
-def get_pages_url(root: Path = ROOT) -> str:
-    """Return the GitHub Pages URL based on detected owner."""
-    owner = get_repository_owner(root)
-    return f"https://{owner}.github.io/cuthberto-carlos"
-
-
-REPOSITORY_URL = get_repository_url(ROOT)
+def get_repository_url() -> str:
+    """Return the canonical GitHub repository URL."""
+    return f"https://github.com/{get_repository_slug()}"
 
 TEAM_ALIASES = {
     "Bosnia & Herzegovina": "Bosnia and Herzegovina",
@@ -134,9 +116,10 @@ def slugify(value: str) -> str:
     return value.strip("-")
 
 
-def repository_tree_url(path: Path) -> str:
+def repository_tree_url(path: Path, repository_url: str | None = None) -> str:
     """Return a GitHub tree URL for a repository-relative source directory."""
-    return f"{REPOSITORY_URL}/tree/main/{path.as_posix()}"
+    base_url = repository_url or get_repository_url()
+    return f"{base_url}/tree/main/{path.as_posix()}"
 
 
 def discover_latest_snapshot(predictions_root: Path = PREDICTIONS_ROOT) -> Path:
@@ -159,8 +142,8 @@ def discover_latest_snapshot(predictions_root: Path = PREDICTIONS_ROOT) -> Path:
     return max(candidates, key=lambda item: item[0])[1]
 
 
-def fetch_schedule(url: str = SCHEDULE_URL) -> dict[str, Any]:
-    """Download the pinned CC0 World Cup schedule."""
+def fetch_schedule(url: str = SCHEDULE_DATA_URL) -> dict[str, Any]:
+    """Download the current CC0 World Cup schedule from openfootball master."""
     request = Request(url, headers={"User-Agent": "cuthberto-carlos-data-builder"})
     with urlopen(request, timeout=30) as response:  # noqa: S310 - pinned HTTPS URL
         return json.load(response)
@@ -375,6 +358,7 @@ def compile_dataset(
 ) -> dict[str, Any]:
     """Compile the newest prediction snapshot and schedule into frontend data."""
     snapshot = discover_latest_snapshot(root / "outputs" / "predictions")
+    repository_url = get_repository_url()
     schedule = schedule_data or fetch_schedule()
     schedule_matches = schedule.get("matches", [])
     group_schedule = [match for match in schedule_matches if match.get("group")]
@@ -444,7 +428,9 @@ def compile_dataset(
             "homeTeam": home_team,
             "awayTeam": away_team,
             "sourceUrl": (
-                repository_tree_url(prediction_path.parent.relative_to(root))
+                repository_tree_url(
+                    prediction_path.parent.relative_to(root), repository_url
+                )
             ),
             "prediction": {
                 "probabilities": {
@@ -518,9 +504,10 @@ def compile_dataset(
 
     return {
         "schemaVersion": 2,
+        "repositoryUrl": repository_url,
         "snapshotDate": snapshot.name,
         "snapshotPath": str(snapshot.relative_to(root)),
-        "snapshotUrl": repository_tree_url(snapshot.relative_to(root)),
+        "snapshotUrl": repository_tree_url(snapshot.relative_to(root), repository_url),
         "generatedAt": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
         "sourceCommit": source_commit(root),
         "model": {
@@ -531,8 +518,9 @@ def compile_dataset(
         "sources": {
             "schedule": {
                 "name": "openfootball/worldcup.json",
-                "url": SCHEDULE_URL,
-                "commit": SCHEDULE_COMMIT,
+                "url": SCHEDULE_SOURCE_URL,
+                "dataUrl": SCHEDULE_DATA_URL,
+                "ref": SCHEDULE_REF,
                 "license": "CC0-1.0",
             },
             "historicalResults": {
@@ -548,6 +536,86 @@ def compile_dataset(
     }
 
 
+def validate_dataset(dataset: dict[str, Any]) -> None:
+    """Validate generated frontend data and its source provenance."""
+    required_keys = {
+        "schemaVersion",
+        "repositoryUrl",
+        "snapshotDate",
+        "snapshotPath",
+        "snapshotUrl",
+        "generatedAt",
+        "sourceCommit",
+        "model",
+        "sources",
+        "teams",
+        "groupMatches",
+        "groups",
+        "knockoutMatches",
+    }
+    missing = required_keys - set(dataset)
+    if missing:
+        raise ValueError(f"Dataset is missing required keys: {sorted(missing)}")
+
+    if dataset["schemaVersion"] != 2:
+        raise ValueError(f"Unsupported schema version: {dataset['schemaVersion']!r}")
+    try:
+        datetime.strptime(dataset["snapshotDate"], "%Y-%m-%d")
+        datetime.fromisoformat(dataset["generatedAt"].replace("Z", "+00:00"))
+    except (AttributeError, TypeError, ValueError) as error:
+        raise ValueError("Dataset date metadata is invalid") from error
+    if not re.fullmatch(r"[0-9a-f]{12}|unknown", dataset["sourceCommit"]):
+        raise ValueError("Dataset source commit is invalid")
+
+    repository_url = dataset["repositoryUrl"]
+    if repository_url != get_repository_url():
+        raise ValueError(f"Unexpected repository URL: {repository_url}")
+    if not dataset["snapshotUrl"].startswith(f"{repository_url}/tree/main/"):
+        raise ValueError("Snapshot URL does not use the canonical repository URL")
+
+    schedule = dataset["sources"].get("schedule", {})
+    expected_schedule = {
+        "url": SCHEDULE_SOURCE_URL,
+        "dataUrl": SCHEDULE_DATA_URL,
+        "ref": SCHEDULE_REF,
+    }
+    for key, expected in expected_schedule.items():
+        if schedule.get(key) != expected:
+            raise ValueError(f"Unexpected schedule {key}: {schedule.get(key)!r}")
+
+    group_matches = dataset["groupMatches"]
+    knockout_matches = dataset["knockoutMatches"]
+    if len(group_matches) != 72:
+        raise ValueError(f"Expected 72 group matches, found {len(group_matches)}")
+    if len(knockout_matches) != 32:
+        raise ValueError(f"Expected 32 knockout matches, found {len(knockout_matches)}")
+    if len(dataset["groups"]) != 12:
+        raise ValueError(f"Expected 12 groups, found {len(dataset['groups'])}")
+    if not dataset["teams"]:
+        raise ValueError("Dataset must include team metadata")
+
+    all_ids = [match["id"] for match in group_matches + knockout_matches]
+    if len(all_ids) != len(set(all_ids)):
+        raise ValueError("Match IDs must be unique")
+
+    source_prefix = f"{repository_url}/tree/main/{dataset['snapshotPath']}/"
+    for match in group_matches:
+        if not match["sourceUrl"].startswith(source_prefix):
+            raise ValueError(
+                f"Match {match['id']} source URL does not use the canonical repository"
+            )
+        probabilities = match["prediction"]["probabilities"]
+        values = [
+            probabilities["homeWin"],
+            probabilities["draw"],
+            probabilities["awayWin"],
+        ]
+        if any(value < 0 or value > 1 for value in values):
+            raise ValueError(f"Match {match['id']} has an invalid probability")
+        if not math.isclose(sum(values), 1.0, abs_tol=1e-7):
+            raise ValueError(f"Match {match['id']} probabilities do not sum to one")
+
+
 def main() -> None:
     """Compile and write the frontend dataset."""
     parser = argparse.ArgumentParser(description=__doc__)
@@ -555,6 +623,7 @@ def main() -> None:
     args = parser.parse_args()
 
     dataset = compile_dataset()
+    validate_dataset(dataset)
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(json.dumps(dataset, indent=2, ensure_ascii=False) + "\n")
     print(

@@ -90,6 +90,7 @@ export interface KnockoutMatch {
 
 export interface TournamentDataset {
   schemaVersion: number;
+  repositoryUrl: string;
   snapshotDate: string;
   snapshotPath: string;
   snapshotUrl: string;
@@ -115,4 +116,6 @@ export interface DataSource {
   url: string;
   license: string;
   commit?: string;
+  dataUrl?: string;
+  ref?: string;
 }
