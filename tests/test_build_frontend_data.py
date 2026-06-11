@@ -67,7 +67,10 @@ class FrontendDataCompilerTests(unittest.TestCase):
             latest.mkdir()
 
             self.assertEqual(discover_latest_snapshot(root).name, "2026-06-11")
-            url = repository_tree_url(Path("outputs/predictions/2026-06-11"))
+            url = repository_tree_url(
+                Path("outputs/predictions/2026-06-11"),
+                "https://github.com/state-space-models/cuthberto-carlos",
+            )
             self.assertEqual(
                 url,
                 "https://github.com/state-space-models/cuthberto-carlos/"
