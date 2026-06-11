@@ -18,8 +18,7 @@ num_teams = 5
 init_mean = jnp.array([1.2, 3.2])
 init_cov = jnp.array([[0.09, -0.12], [-0.12, 1.21]])
 init_chol_cov = jnp.linalg.cholesky(init_cov)
-tau = jnp.array([0.1, 0.2])
-kappa = jnp.array([0.0, 0.0])
+kappa = jnp.array([0.1, 0.2])
 alpha = 1.0
 beta = -4.0
 friendly_scale = 1.5
@@ -33,7 +32,10 @@ filter = moments.build_filter(
         num_teams=num_teams,
     ),
     get_dynamics_params=partial(
-        get_dynamics_params, tau=tau, init_mean=init_mean, kappa=kappa
+        get_dynamics_params,
+        init_mean=init_mean,
+        init_chol_cov=init_chol_cov,
+        kappa=kappa,
     ),
     get_observation_params=partial(
         get_observation_params,
@@ -89,13 +91,11 @@ def test_dynamics_params():
     state = filter.init_prepare(None)
     model_inputs = _result_data()
     mean_func, lin_point = get_dynamics_params(
-        state, model_inputs, tau, init_mean, kappa
+        state, model_inputs, init_mean, init_chol_cov, kappa
     )
 
     mat, shift, chol_cov = linearize_moments(mean_func, lin_point)
 
-    assert jnp.allclose(jnp.eye(4), mat)
-    assert jnp.array_equal(jnp.zeros(4), shift)
     assert model_inputs.home_timestamp_previous is not None
     assert model_inputs.away_timestamp_previous is not None
     time_diffs = model_inputs.timestamp - jnp.array(
@@ -105,9 +105,47 @@ def test_dynamics_params():
         ]
     )
     time_diffs_repeated = jnp.repeat(time_diffs, 2)
-    tau_repeated = jnp.tile(tau, 2)
-    desired_cov = jnp.diag((tau_repeated**2) * time_diffs_repeated)
-    assert jnp.allclose(desired_cov, chol_cov @ chol_cov.T)
+    kappa_repeated = jnp.tile(kappa, 2)
+    phi = jnp.exp(-kappa_repeated * time_diffs_repeated)
+    init_mean_repeated = jnp.tile(init_mean, 2)
+    stationary_cov = jnp.kron(jnp.eye(2), init_cov)
+    desired_cov = stationary_cov * (1.0 - phi[:, None] * phi[None, :])
+
+    assert jnp.allclose(jnp.diag(phi), mat)
+    assert jnp.allclose(init_mean_repeated * (1.0 - phi), shift)
+    assert jnp.allclose(
+        desired_cov,
+        chol_cov @ chol_cov.T,
+        atol=1e-6,
+    )
+
+
+def test_dynamics_stationary_covariance_is_init_cov():
+    state = filter.init_prepare(None)
+    model_inputs = _result_data()
+    mean_func, _ = get_dynamics_params(
+        state, model_inputs, init_mean, init_chol_cov, kappa
+    )
+
+    assert model_inputs.home_timestamp_previous is not None
+    assert model_inputs.away_timestamp_previous is not None
+    time_diffs = model_inputs.timestamp - jnp.array(
+        [
+            model_inputs.home_timestamp_previous,
+            model_inputs.away_timestamp_previous,
+        ]
+    )
+    time_diffs_repeated = jnp.repeat(time_diffs, 2)
+    phi = jnp.exp(-jnp.tile(kappa, 2) * time_diffs_repeated)
+    stationary_cov = jnp.kron(jnp.eye(2), init_cov)
+    transition_mean, transition_chol_cov = mean_func(jnp.tile(init_mean, 2))
+    propagated_cov = (
+        jnp.diag(phi) @ stationary_cov @ jnp.diag(phi)
+        + transition_chol_cov @ transition_chol_cov.T
+    )
+
+    assert jnp.allclose(jnp.tile(init_mean, 2), transition_mean)
+    assert jnp.allclose(stationary_cov, propagated_cov, atol=1e-6)
 
 
 def test_observation_params_match_bivariate_poisson_moments():
@@ -148,7 +186,10 @@ def test_noop_observation_leaves_dynamics_only_update_at_prediction():
             num_teams=None,
         ),
         get_dynamics_params=partial(
-            get_dynamics_params, tau=tau, init_mean=init_mean, kappa=kappa
+            get_dynamics_params,
+            init_mean=init_mean,
+            init_chol_cov=init_chol_cov,
+            kappa=kappa,
         ),
         get_observation_params=get_observation_params_noop,
     )
@@ -162,10 +203,10 @@ def test_noop_observation_leaves_dynamics_only_update_at_prediction():
     prep_state = single_team_filter.filter_prepare(model_inputs)
     update_state = single_team_filter.filter_combine(init_state, prep_state)
 
-    desired_cov = init_cov + jnp.diag((tau**2) * 10)
     assert jnp.allclose(init_mean, update_state.mean)
     assert jnp.allclose(
-        desired_cov,
+        init_cov,
         update_state.chol_cov @ update_state.chol_cov.T,
+        atol=1e-6,
     )
     assert jnp.allclose(0.0, update_state.log_normalizing_constant)

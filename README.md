@@ -30,13 +30,19 @@ p(x^i_0) &= \mathrm{N}(x^i_0 \mid \mu_0, \Sigma_0),
 \\
 p(x^i_k \mid x^i_{k-1}) &= \mathrm{N}\left(x^i_k \mid
 \mu_0 + \phi_k (x^i_{k-1} - \mu_0),
-\frac{\tau^2(1 - \phi_k^2)}{2\kappa}\right),
+Q_k\right),
 \\
 p(y_k \mid x^i_k, x^j_k) &= \mathrm{BivariatePoisson}(y_k \mid x^i_k, x^j_k, \alpha, \beta).
 \end{aligned}
 $$
 
-where $\phi_k = \exp(-\kappa(t_k - t_{k-1}))$ and $y_k = (y_k^i, y_k^j)$ is the observed number of goals scored by teams $i$ and $j$ in match $k$. The Brownian model is recovered in the limit $\kappa \to 0$, where the transition mean becomes $x^i_{k-1}$ and the transition variance becomes $\tau^2(t_k - t_{k-1})$.
+where $\phi_k = \exp(-\kappa(t_k - t_{k-1}))$ and $y_k = (y_k^i, y_k^j)$ is the observed number of goals scored by teams $i$ and $j$ in match $k$. In the moment-based Gaussian implementation, $Q_k$ is chosen so that the long-run marginal distribution is $\mathrm{N}(\mu_0, \Sigma_0)$. For diagonal mean-reversion rates $\kappa = (\kappa_{\text{att}}, \kappa_{\text{def}})$, writing $\Phi_k = \mathrm{diag}(\phi_k)$ gives
+
+$$
+Q_k = \Sigma_0 - \Phi_k \Sigma_0 \Phi_k.
+$$
+
+This allows the attack and defence components to revert jointly to the initial covariance, including any attack-defence correlation encoded in $\Sigma_0$.
 
 The bivariate Poisson distribution is defined as follows (see 4.6 in DPR):
 
@@ -47,7 +53,7 @@ $$
 with $\lambda_1 = \exp(\alpha + x^{\text{att}, i} - x^{\text{def}, j})$, $\lambda_2 = \exp(\alpha + x^{\text{att}, j} - x^{\text{def}, i})$ and $\lambda_3 = \exp(\beta)$.
 
 
-Overall, the static parameters of the models are $\mu_0 \in \mathbb{R}^2$, $\Sigma_0 \in \mathbb{R}^{2 \times 2}$, $\tau \in \mathbb{R}\_{> 0}^2$, $\kappa \in \mathbb{R}\_{\ge 0}^2$, $\alpha \in \mathbb{R}$ and $\beta \in \mathbb{R}$.
+Overall, the static parameters of the models are $\mu_0 \in \mathbb{R}^2$, $\Sigma_0 \in \mathbb{R}^{2 \times 2}$, $\kappa \in \mathbb{R}\_{\ge 0}^2$, $\alpha \in \mathbb{R}$ and $\beta \in \mathbb{R}$.
 
 
 ### Inference

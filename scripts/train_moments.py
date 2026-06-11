@@ -1,7 +1,5 @@
 """Train the moment-based Gaussian filter parameters."""
 
-from __future__ import annotations
-
 from functools import partial
 import json
 from pathlib import Path
@@ -31,7 +29,6 @@ MAX_GOALS = 8
 MAX_MATCHES = None  # Set to a small integer, e.g. 100, for quick smoke runs.
 
 # Initial parameter values on the constrained scale.
-# INITIAL_TAU = 0.01
 # INITIAL_KAPPA = 1e-4
 # INITIAL_FRIENDLY_SCALE = 1.0
 # INITIAL_ALPHA = 0.2
@@ -40,7 +37,6 @@ MAX_MATCHES = None  # Set to a small integer, e.g. 100, for quick smoke runs.
 # INITIAL_INIT_CORR = 0.0
 # INIT_MEAN = jnp.array([0.0, 0.0])
 
-INITIAL_TAU = 0.01
 INITIAL_KAPPA = 1e-2
 INITIAL_FRIENDLY_SCALE = 2.0
 INITIAL_ALPHA = 0.2
@@ -75,7 +71,6 @@ def constrain_params(raw_params: dict[str, jax.Array]) -> dict[str, jax.Array]:
         ]
     )
     return {
-        "tau": positive(raw_params["tau"]),
         "kappa": positive(raw_params["kappa"]),
         "friendly_scale": positive(raw_params["friendly_scale"]),
         "alpha": raw_params["alpha"],
@@ -90,7 +85,6 @@ def constrain_params(raw_params: dict[str, jax.Array]) -> dict[str, jax.Array]:
 def params_to_jsonable(params: dict[str, jax.Array]) -> dict[str, float | list]:
     """Convert constrained JAX params to JSON-serializable values."""
     return {
-        "tau": float(params["tau"]),
         "kappa": float(params["kappa"]),
         "friendly_scale": float(params["friendly_scale"]),
         "alpha": float(params["alpha"]),
@@ -105,7 +99,6 @@ def params_to_jsonable(params: dict[str, jax.Array]) -> dict[str, float | list]:
 def format_params(params: dict[str, jax.Array]) -> str:
     """Format constrained scalar parameters for logging."""
     return (
-        f"tau={float(params['tau']):.6g}, "
         f"kappa={float(params['kappa']):.6g}, "
         f"friendly_scale={float(params['friendly_scale']):.6g}, "
         f"alpha={float(params['alpha']):.6g}, "
@@ -137,7 +130,6 @@ num_teams = len(teams_id_to_name_dict)
 
 
 raw_params = {
-    "tau": inverse_positive(INITIAL_TAU),
     "kappa": inverse_positive(INITIAL_KAPPA),
     "friendly_scale": inverse_positive(INITIAL_FRIENDLY_SCALE),
     "alpha": jnp.asarray(INITIAL_ALPHA),
@@ -163,8 +155,8 @@ def log_normalizing_constant(raw_params: dict[str, jax.Array]) -> jax.Array:
         ),
         get_dynamics_params=partial(
             model_moments.get_dynamics_params,
-            tau=params["tau"],
             init_mean=INIT_MEAN,
+            init_chol_cov=params["init_chol_cov"],
             kappa=params["kappa"],
         ),
         get_observation_params=partial(

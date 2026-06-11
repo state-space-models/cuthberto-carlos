@@ -1,10 +1,11 @@
-"""Run taylor filtering on the data, for arbitrary (not learnt) static parameters."""
+"""Run moments filtering on the data, for arbitrary (not learnt) static parameters."""
 
 from functools import partial
 from jax import numpy as jnp
 import jax
 import pandas as pd
 import plotnine as pn
+import json
 from cuthbert.gaussian import moments
 from cuthbert.factorial.gaussian import build_factorializer
 from cuthbert.factorial import filter as factorial_filter
@@ -20,7 +21,7 @@ pd_data, jax_data, teams_id_to_name_dict, teams_name_to_id_dict = download_data(
     max_goals=max_goals
 )
 
-average_goals_in_a_draw = (
+average_goals_per_team_in_a_draw = (
     pd_data[pd_data["home_score"] == pd_data["away_score"]][
         ["home_score", "away_score"]
     ]
@@ -28,32 +29,27 @@ average_goals_in_a_draw = (
     .mean()
 )
 
-# init_mean = jnp.array([0.0, 0.0])
+init_mean = jnp.array([0.0, 0.0])
+
 # init_cov = jnp.array([[1.0, 0.2], [0.2, 1.0]])
-# tau = 0.01
 # kappa = 1e-4
 # friendly_scale = 1.0
-# alpha = jnp.log(
-#     average_goals_in_a_draw
-# )  # exp(alpha) is expected goals for an evenly matched game
+alpha = jnp.log(
+    average_goals_per_team_in_a_draw
+)  # exp(alpha) is expected goals for an evenly matched game
 # beta = -2.0
 
-init_mean = jnp.array([0.0, 0.0])
-init_cov = jnp.array(
-    [
-        [1.1433665349613875e-05, 1.1013270523108076e-05],
-        [1.1013270523108076e-05, 1.1433665349613875e-05],
-    ]
-)
-tau = 0.0046978965401649475
-kappa = 1.9071430870098993e-05
-friendly_scale = 1.0385863780975342
-alpha = 0.8146775960922241
-beta = -5.207250118255615
+
+params_file = "outputs/moments_params.json"
+with open(params_file, "r") as f:
+    params = json.load(f)["params"]
+
+params = {k: jnp.asarray(v) for k, v in params.items()}
+
 
 num_teams = len(teams_id_to_name_dict)
 
-init_chol_cov = jnp.linalg.cholesky(init_cov)
+init_chol_cov = jnp.linalg.cholesky(params["init_cov"])
 
 # Add dummy element at index 0 for each leaf
 model_inputs = jax.tree.map(
@@ -68,13 +64,16 @@ filter = moments.build_filter(
         num_teams=num_teams,
     ),
     get_dynamics_params=partial(
-        model_moments.get_dynamics_params, tau=tau, init_mean=init_mean, kappa=kappa
+        model_moments.get_dynamics_params,
+        init_mean=init_mean,
+        init_chol_cov=init_chol_cov,
+        kappa=params["kappa"],
     ),
     get_observation_params=partial(
         model_moments.get_observation_params,
-        alpha=alpha,
-        beta=beta,
-        friendly_scale=friendly_scale,
+        alpha=params["alpha"],
+        beta=params["beta"],
+        friendly_scale=params["friendly_scale"],
     ),
 )
 factorializer = build_factorializer(
@@ -117,7 +116,10 @@ single_team_filter = moments.build_filter(
         init_chol_cov=init_chol_cov,
     ),
     get_dynamics_params=partial(
-        model_moments.get_dynamics_params, tau=tau, init_mean=init_mean, kappa=kappa
+        model_moments.get_dynamics_params,
+        init_mean=init_mean,
+        init_chol_cov=init_chol_cov,
+        kappa=params["kappa"],
     ),
     get_observation_params=model_moments.get_observation_params_noop,
 )
@@ -181,5 +183,4 @@ team_strength_plot = (
     + pn.theme_minimal()
     + pn.theme(figure_size=(10, 7))
 )
-# team_strength_plot.save("taylor_filtering_team_strengths.png", dpi=300, verbose=False)
-team_strength_plot.show()
+team_strength_plot.save("outputs/team_strength_plot.png", dpi=300, verbose=False)

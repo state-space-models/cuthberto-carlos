@@ -67,28 +67,26 @@ def _process_timestamp(t: ArrayLike, num_joined_factors: int) -> Array:
 def get_dynamics_params(
     state: LinearizedKalmanFilterState,
     model_inputs: ResultData | DynamicsOnlyData,
-    tau: ArrayLike,
     init_mean: ArrayLike,
+    init_chol_cov: ArrayLike,
     kappa: ArrayLike,
 ) -> tuple[MeanAndCholCovFunc, Array]:
     """Get conditional moments for the OU state dynamics.
 
     We have Ornstein-Uhlenbeck dynamics:
-    x_t | x_{t-1} ~ N(mu + phi * (x_{t-1} - mu),
-    tau^2 * (1 - phi^2) / (2 * kappa)),
-    where phi = exp(-kappa * (timestamp_t - timestamp_{t-1})).
-    When kappa = 0, this recovers Brownian dynamics with variance
-    tau^2 * (timestamp_t - timestamp_{t-1}).
+    x_t | x_{t-1} ~ N(mu + phi * (x_{t-1} - mu), Q_t),
+    where phi = exp(-kappa * (timestamp_t - timestamp_{t-1})) and Q_t is chosen
+    so that the long-term marginal distribution is N(init_mean, init_cov).
 
     Args:
         state: The current state of the Kalman filter.
             Only used to determine the number of joined factors.
         model_inputs: The match data, used to determine the time between matches.
-        tau: Diffusion standard deviation per sqrt day.
-            Shape (,), (1,) or (2,) for attack and defence.
         init_mean: Long-run mean of the OU dynamics.
             Shape (2,) for attack and defence.
-        kappa: Mean-reversion rate per day. kappa = 0 gives Brownian dynamics.
+        init_chol_cov: Cholesky factor of the long-run covariance of the OU dynamics.
+            Shape (2, 2) for attack and defence.
+        kappa: Mean-reversion rate per day.
             Shape (,), (1,) or (2,) for attack and defence.
 
     Returns:
@@ -96,11 +94,10 @@ def get_dynamics_params(
         Cholesky covariance of x_t, and a linearization point for x_{t-1}.
     """
     num_joined_factors = state.mean.shape[0] // 2  # Can be 1
-    tau = jnp.broadcast_to(tau, (2,))
     init_mean = jnp.broadcast_to(init_mean, (2,))
+    init_chol_cov = jnp.asarray(init_chol_cov)
     kappa = jnp.broadcast_to(kappa, (2,))
 
-    tau_repeated = jnp.tile(tau, num_joined_factors)
     init_mean_repeated = jnp.tile(init_mean, num_joined_factors)
     kappa_repeated = jnp.tile(kappa, num_joined_factors)
 
@@ -126,15 +123,13 @@ def get_dynamics_params(
 
     elapsed_days = jnp.maximum(timestamp - timestamp_previous, 0)
     phi = jnp.exp(-kappa_repeated * elapsed_days)
-    safe_kappa = jnp.where(kappa_repeated > 0, kappa_repeated, 1.0)
-    one_minus_phi_squared = -jnp.expm1(-2.0 * kappa_repeated * elapsed_days)
-    ou_variance = tau_repeated**2 * one_minus_phi_squared / (2.0 * safe_kappa)
-    brownian_variance = tau_repeated**2 * elapsed_days
-    variance = jnp.where(kappa_repeated > 0, ou_variance, brownian_variance)
-    std_floor = 1e-3
-    variance = jnp.where(variance > std_floor**2, variance, std_floor**2)
-    std_devs = jnp.sqrt(variance)
-    chol_cov = jnp.diag(std_devs)
+    init_cov = init_chol_cov @ init_chol_cov.T
+    stationary_cov = jnp.kron(jnp.eye(num_joined_factors), init_cov)
+    transition_cov = stationary_cov * (1.0 - phi[:, None] * phi[None, :])
+    jitter = 1e-8
+    chol_cov = jnp.linalg.cholesky(
+        transition_cov + jitter * jnp.eye(transition_cov.shape[0])
+    )
 
     def dynamics_mean_and_chol_cov(x_prev: ArrayLike) -> tuple[Array, Array]:
         x_prev = jnp.asarray(x_prev)
