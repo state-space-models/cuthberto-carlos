@@ -166,13 +166,13 @@ def log_normalizing_constant(raw_params: dict[str, jax.Array]) -> jax.Array:
             friendly_scale=params["friendly_scale"],
         ),
     )
-    states = factorial_filter(
+    final_factorial_state = factorial_filter(
         filter_obj,
         factorializer,
         model_inputs,
-        output_factorial=True,
-    )
-    return jax.tree.map(lambda x: x[-1], states).log_normalizing_constant
+        output_factorial=False,
+    )[-1]
+    return final_factorial_state.log_normalizing_constant
 
 
 def loss(raw_params: dict[str, jax.Array]) -> jax.Array:

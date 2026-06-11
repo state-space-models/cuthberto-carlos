@@ -1,6 +1,7 @@
 """Run moments filtering on the data, for arbitrary (not learnt) static parameters."""
 
 from functools import partial
+
 from jax import numpy as jnp
 import jax
 import pandas as pd
@@ -12,10 +13,12 @@ from cuthbert.factorial import filter as factorial_filter
 
 from cuthberto_carlos.data import download_data
 from cuthberto_carlos.data_types import DynamicsOnlyData
+from cuthberto_carlos.json_io import save_arraytree
 from cuthberto_carlos import model_moments
 
 
 max_goals = 8
+
 
 pd_data, jax_data, teams_id_to_name_dict, teams_name_to_id_dict = download_data(
     max_goals=max_goals
@@ -84,10 +87,9 @@ factorializer = build_factorializer(
 #     filter, factorializer, model_inputs
 # )
 
-out_factorial_all = factorial_filter(
-    filter, factorializer, model_inputs, output_factorial=True
+_, _, out_factorial_final = factorial_filter(
+    filter, factorializer, model_inputs, output_factorial=False
 )
-out_factorial_final = jax.tree.map(lambda x: x[-1], out_factorial_all)
 
 
 ## Synchronize to the most recent timestamp for each team
@@ -129,6 +131,18 @@ state_prep = jax.vmap(single_team_filter.filter_prepare)(sync_data)
 sync_factorial_final = jax.vmap(single_team_filter.filter_combine)(
     out_factorial_final, state_prep
 )
+
+# Save as json sync_factorial_final and current timestamp to be used later
+save_data = {
+    "sync_factorial_final": sync_factorial_final,
+    "timestamp": current_time,
+}
+save_arraytree(save_data, "outputs/sync_factorial_final.json")
+
+# # Commented code to reload later
+# load_data = load_arraytree("outputs/sync_factorial_final.json")
+# sync_factorial_final = load_data["sync_factorial_final"]
+# current_time = load_data["timestamp"]
 
 ### Plot best teams
 
