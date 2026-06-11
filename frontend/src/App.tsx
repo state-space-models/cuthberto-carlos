@@ -43,7 +43,7 @@ function App() {
             <strong>{data.snapshotDate}</strong>
             <small>Commit {data.sourceCommit}</small>
           </a>
-          <a className="header-github" href="https://github.com/ryantjx/cuthberto-carlos" target="_blank" rel="noreferrer">
+          <a className="header-github" href={data.repositoryUrl} target="_blank" rel="noreferrer">
             View model <span aria-hidden="true">↗</span>
           </a>
         </div>
@@ -87,7 +87,7 @@ function App() {
         </div>
         <div className="site-footer__sources">
           <span>Open data:</span>
-          <a href="https://github.com/openfootball/worldcup.json" target="_blank" rel="noreferrer">openfootball schedule (CC0)</a>
+          <a href={data.sources.schedule.url} target="_blank" rel="noreferrer">openfootball schedule (CC0)</a>
           <a href={data.sources.historicalResults.url} target="_blank" rel="noreferrer">international results (CC0)</a>
           <a href="https://github.com/lipis/flag-icons" target="_blank" rel="noreferrer">flag-icons (MIT)</a>
         </div>

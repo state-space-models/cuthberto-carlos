@@ -98,12 +98,14 @@ The GitHub Pages workflow validates the prediction data, runs the frontend tests
 builds with the `/cuthberto-carlos/` base path, and deploys on every push to `main`.
 
 The production build exposes the exact generated dataset at
-`/cuthberto-carlos/data/tournament.json`. Validate that the deployed data matches
-the latest prediction outputs and `assets/team_colors.json` with:
+`/cuthberto-carlos/data/tournament.json`. The data builder validates the generated
+schema, match counts, probabilities, source provenance, and canonical repository
+URLs before writing the file:
 
 ```bash
-python scripts/validate_deployed_frontend_data.py
+python -m unittest discover -s tests -p 'test_*frontend_data.py'
+python scripts/build_frontend_data.py
 ```
 
-The deployment workflow runs this validation after publishing and fails if the
-snapshot, predictions, schedule, team metadata, or source commit differ.
+The deployment workflow also compares the generated source file with the copy in
+`frontend/dist/data/tournament.json` byte-for-byte before publishing.
