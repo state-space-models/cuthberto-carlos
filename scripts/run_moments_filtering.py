@@ -1,7 +1,6 @@
 """Run moments filtering on the data, for arbitrary (not learnt) static parameters."""
 
 from functools import partial
-
 from jax import numpy as jnp
 import jax
 import pandas as pd

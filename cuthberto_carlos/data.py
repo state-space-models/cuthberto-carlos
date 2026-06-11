@@ -67,15 +67,15 @@ def download_data(
             data_all["home_score"].notna() & data_all["away_score"].notna()
         ]
 
-    # Remove matches with too many goals
-    data_all = data_all[
-        (data_all["home_score"] <= max_goals) & (data_all["away_score"] <= max_goals)
-    ]
-
     # home_score and away_score are floats because of the NaNs,
     # but we want them to be ints. Fill NaNs with -1 if they exist (int doesn't support NaN)
     data_all["home_score"] = data_all["home_score"].fillna(-1).astype(int)
     data_all["away_score"] = data_all["away_score"].fillna(-1).astype(int)
+
+    # Remove matches with too many goals
+    data_all = data_all[
+        (data_all["home_score"] <= max_goals) & (data_all["away_score"] <= max_goals)
+    ]
 
     # Extract unique teams
     home_counts: pd.Series = data_all["home_team"].value_counts()
@@ -119,7 +119,13 @@ def download_data(
     data_all["home_timestamp_previous"] = previous_timestamps[is_home_team]
     data_all["away_timestamp_previous"] = previous_timestamps[~is_home_team]
 
-    jax_data = ResultData(
+    jax_data = to_jax_data(data_all)
+    return data_all, jax_data, teams_id_to_name_dict, teams_name_to_id_dict
+
+
+def to_jax_data(data_all: pd.DataFrame) -> ResultData:
+    """Convert the pandas DataFrame to a ResultData NamedTuple with JAX arrays."""
+    return ResultData(
         match_index=jnp.array(data_all.index.values),
         home_team_id=jnp.array(data_all["home_team_id"].values),
         away_team_id=jnp.array(data_all["away_team_id"].values),
@@ -131,8 +137,6 @@ def download_data(
         home_timestamp_previous=jnp.array(data_all["home_timestamp_previous"].values),
         away_timestamp_previous=jnp.array(data_all["away_timestamp_previous"].values),
     )
-
-    return data_all, jax_data, teams_id_to_name_dict, teams_name_to_id_dict
 
 
 if __name__ == "__main__":
