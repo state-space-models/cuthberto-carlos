@@ -4,6 +4,9 @@ import { getPagesBase, getRepositoryName } from "../../pages";
 import App from "../App";
 import tournamentData from "../data/tournament.json";
 
+const repositorySlug = process.env.GITHUB_REPOSITORY ?? "state-space-models/cuthberto-carlos";
+const repositoryUrl = `https://github.com/${repositorySlug}`;
+
 describe("GitHub Pages configuration", () => {
   it("derives the project base path from the repository slug", () => {
     expect(getRepositoryName("state-space-models/cuthberto-carlos")).toBe("cuthberto-carlos");
@@ -12,16 +15,12 @@ describe("GitHub Pages configuration", () => {
     expect(() => getPagesBase("invalid-repository")).toThrow("Invalid GitHub repository slug");
   });
 
-  it("contains no legacy fork URLs and links to the organization repository", () => {
-    expect(tournamentData.repositoryUrl).toBe("https://github.com/state-space-models/cuthberto-carlos");
-    expect(tournamentData.snapshotUrl).toMatch(
-      /^https:\/\/github\.com\/state-space-models\/cuthberto-carlos\/tree\/main\//,
-    );
+  it("uses the active repository for generated and rendered links", () => {
+    expect(tournamentData.repositoryUrl).toBe(repositoryUrl);
+    expect(tournamentData.snapshotUrl).toMatch(new RegExp(`^${repositoryUrl}/tree/main/`));
     expect(
       tournamentData.groupMatches.every((match) =>
-        match.sourceUrl.startsWith(
-          "https://github.com/state-space-models/cuthberto-carlos/tree/main/",
-        ),
+        match.sourceUrl.startsWith(`${repositoryUrl}/tree/main/`),
       ),
     ).toBe(true);
 
@@ -29,11 +28,11 @@ describe("GitHub Pages configuration", () => {
 
     expect(screen.getByRole("link", { name: /View model/i })).toHaveAttribute(
       "href",
-      "https://github.com/state-space-models/cuthberto-carlos",
+      repositoryUrl,
     );
     expect(screen.getByRole("link", { name: /Latest model snapshot/i })).toHaveAttribute(
       "href",
-      expect.stringContaining("https://github.com/state-space-models/cuthberto-carlos/tree/main/"),
+      expect.stringContaining(`${repositoryUrl}/tree/main/`),
     );
     expect(screen.queryByRole("link", { name: "Finals" })).not.toBeInTheDocument();
     expect(screen.queryByText(/complete path to the final/i)).not.toBeInTheDocument();

@@ -7,11 +7,12 @@ import tournamentData from "../data/tournament.json";
 import type { TournamentDataset } from "../types";
 
 const data = tournamentData as unknown as TournamentDataset;
+const repositoryUrl = `https://github.com/${process.env.GITHUB_REPOSITORY ?? "state-space-models/cuthberto-carlos"}`;
 
 describe("generated tournament data", () => {
   it("contains the complete initial tournament shape", () => {
     expect(tournamentData.schemaVersion).toBe(2);
-    expect(tournamentData.repositoryUrl).toBe("https://github.com/state-space-models/cuthberto-carlos");
+    expect(tournamentData.repositoryUrl).toBe(repositoryUrl);
     expect(tournamentData.snapshotDate).toBe("2026-06-11");
     expect(tournamentData.groupMatches).toHaveLength(72);
     expect(tournamentData.groups).toHaveLength(12);
@@ -61,8 +62,8 @@ describe("App interactions", () => {
       expect(within(completed).getByText("Mexico win")).toBeInTheDocument();
       expect(within(completed).getAllByText("Actual score")).toHaveLength(2);
       expect(within(completed).getAllByText("Predicted score")).toHaveLength(2);
-      expect(within(completed).getAllByText("1–0")).toHaveLength(2);
-      expect(within(completed).getByText("Currently not available")).toBeInTheDocument();
+      expect(within(completed).getAllByText("Currently Not Available")).toHaveLength(2);
+      expect(within(completed).getByText("1–0")).toBeInTheDocument();
       expect(
         within(completed).getByRole("link", { name: /View source data for Mexico versus South Africa/i }),
       ).toHaveAttribute("href", expect.stringContaining("/outputs/predictions/2026-06-11/"));

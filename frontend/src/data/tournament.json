@@ -4,8 +4,8 @@
   "snapshotDate": "2026-06-11",
   "snapshotPath": "outputs/predictions/2026-06-11",
   "snapshotUrl": "https://github.com/state-space-models/cuthberto-carlos/tree/main/outputs/predictions/2026-06-11",
-  "generatedAt": "2026-06-11T21:45:22.301325Z",
-  "sourceCommit": "d38de1216e51",
+  "generatedAt": "2026-06-11T21:58:33.888235Z",
+  "sourceCommit": "770bf18172b1",
   "model": {
     "name": "Cuthberto Carlos bivariate Poisson model",
     "resultProbabilityOrder": [
@@ -563,23 +563,6 @@
             }
           }
         }
-      },
-      "actualResult": {
-        "homeScore": 1,
-        "awayScore": 0,
-        "homeGoals": [
-          {
-            "name": "Julian Quiñones",
-            "minute": 9,
-            "penalty": null
-          },
-          {
-            "name": "Raul Jiménez",
-            "minute": 67,
-            "penalty": null
-          }
-        ],
-        "awayGoals": []
       }
     },
     {

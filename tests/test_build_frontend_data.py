@@ -7,7 +7,6 @@ import unittest
 from unittest.mock import patch
 
 from scripts.build_frontend_data import (
-    apply_actual_result_overrides,
     canonical_team,
     discover_latest_snapshot,
     fixture_key,
@@ -90,26 +89,6 @@ class FrontendDataCompilerTests(unittest.TestCase):
                 get_repository_url(),
                 "https://github.com/example-org/example-repo",
             )
-
-    def test_actual_result_overrides_are_merged_into_schedule_fixture(self):
-        fixtures = {
-            fixture_key("2026-06-11", "Mexico", "South Africa"): {
-                "date": "2026-06-11",
-                "team1": "Mexico",
-                "team2": "South Africa",
-            }
-        }
-        with tempfile.TemporaryDirectory() as temporary_directory:
-            overrides_path = Path(temporary_directory) / "actual_results.json"
-            overrides_path.write_text(
-                '{"matches":[{"date":"2026-06-11","team1":"Mexico",'
-                '"team2":"South Africa","score":{"ft":[1,0]}}]}'
-            )
-            apply_actual_result_overrides(fixtures, overrides_path)
-
-        fixture = fixtures[fixture_key("2026-06-11", "Mexico", "South Africa")]
-        self.assertEqual(fixture["score"]["ft"], [1, 0])
-
 
 if __name__ == "__main__":
     unittest.main()

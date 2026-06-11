@@ -8,7 +8,7 @@ interface MatchScoreComparisonProps {
 export function MatchScoreComparison({ match, variant }: MatchScoreComparisonProps) {
   const actualScore = match.actualResult
     ? `${match.actualResult.homeScore}–${match.actualResult.awayScore}`
-    : "Currently not available";
+    : "Currently Not Available";
   const [predictedHomeScore, predictedAwayScore] = match.prediction.mostLikelyScore;
 
   return (
