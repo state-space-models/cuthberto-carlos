@@ -3,6 +3,9 @@ uv.lock
 .vscode/
 *fontlist*.json
 *.DS_Store
+node_modules/
+frontend/dist/
+frontend/.vite/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

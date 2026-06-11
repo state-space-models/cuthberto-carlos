@@ -1,0 +1,101 @@
+name: Deploy World Cup frontend to Pages
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+  schedule:
+    - cron: '0 * * * *'  # Run hourly at the top of every hour
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pages-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - name: Validate and compile prediction data
+        run: |
+          python -m unittest discover -s tests -p 'test_*frontend_data.py'
+          python scripts/build_frontend_data.py
+
+      - name: Set up Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Test frontend
+        working-directory: frontend
+        run: npm test
+
+      - name: Build frontend
+        working-directory: frontend
+        run: npm run build
+
+      - name: Validate built frontend data
+        run: cmp frontend/src/data/tournament.json frontend/dist/data/tournament.json
+
+      - name: Validate Pages paths and repository links
+        shell: bash
+        run: |
+          repository_name="${GITHUB_REPOSITORY#*/}"
+          grep -F "/${repository_name}/assets/" frontend/dist/index.html
+          grep -F "/${repository_name}/cuthberto-carlos_favicon.png" frontend/dist/index.html
+          test -f frontend/dist/data/tournament.json
+
+          if rg -n 'github\.com/[^/[:space:]]+/cuthberto-carlos|[A-Za-z0-9-]+\.github\.io/cuthberto-carlos' \
+            --glob '!node_modules/**' --glob '!frontend/dist/**' . | \
+            rg -v 'github\.com/state-space-models/cuthberto-carlos|state-space-models\.github\.io/cuthberto-carlos'; then
+            echo "Legacy fork reference found in repository source"
+            exit 1
+          fi
+
+          if [[ "$GITHUB_REPOSITORY" == "state-space-models/cuthberto-carlos" ]] && \
+            rg -n 'github\.com/[^/[:space:]]+/cuthberto-carlos|[A-Za-z0-9-]+\.github\.io/cuthberto-carlos' frontend/dist | \
+            rg -v 'github\.com/state-space-models/cuthberto-carlos|state-space-models\.github\.io/cuthberto-carlos'; then
+            echo "Legacy fork reference found in the organization Pages artifact"
+            exit 1
+          fi
+
+      - name: Upload validated Pages artifact
+        if: github.event_name != 'pull_request'
+        uses: actions/upload-pages-artifact@v5
+        with:
+          path: frontend/dist
+
+  deploy:
+    if: github.event_name != 'pull_request'
+    needs: validate
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Configure Pages
+        uses: actions/configure-pages@v6
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v5
