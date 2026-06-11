@@ -18,6 +18,7 @@ from urllib.request import Request, urlopen
 ROOT = Path(__file__).resolve().parents[1]
 PREDICTIONS_ROOT = ROOT / "outputs" / "predictions"
 DEFAULT_OUTPUT = ROOT / "frontend" / "src" / "data" / "tournament.json"
+ACTUAL_RESULTS_PATH = ROOT / "assets" / "actual_results.json"
 SCHEDULE_COMMIT = "752a1137a20810ab37473fa9f87a9c2caf293785"
 SCHEDULE_URL = (
     "https://raw.githubusercontent.com/openfootball/worldcup.json/"
@@ -197,6 +198,22 @@ def extract_actual_result(fixture: dict[str, Any]) -> dict[str, Any] | None:
     }
 
 
+def apply_actual_result_overrides(
+    fixtures: dict[tuple[str, tuple[str, str]], dict[str, Any]],
+    overrides_path: Path,
+) -> None:
+    """Merge locally recorded results into the pinned schedule fixtures."""
+    if not overrides_path.exists():
+        return
+
+    overrides = json.loads(overrides_path.read_text()).get("matches", [])
+    for override in overrides:
+        key = fixture_key(override["date"], override["team1"], override["team2"])
+        if key not in fixtures:
+            raise ValueError(f"Actual result does not match a group fixture: {key}")
+        fixtures[key] = {**fixtures[key], **override}
+
+
 def parse_kickoff_utc(date: str, time_value: str) -> str:
     """Convert an openfootball local timestamp with UTC offset to UTC ISO format."""
     match = re.fullmatch(r"(\d{2}):(\d{2}) UTC([+-]\d{1,2})", time_value)
@@ -374,6 +391,11 @@ def compile_dataset(
         if key in fixture_index:
             raise ValueError(f"Duplicate group fixture in schedule: {key}")
         fixture_index[key] = fixture
+
+    apply_actual_result_overrides(
+        fixture_index,
+        root / ACTUAL_RESULTS_PATH.relative_to(ROOT),
+    )
 
     team_colors = json.loads((root / "assets" / "team_colors.json").read_text())
     match_records: list[dict[str, Any]] = []

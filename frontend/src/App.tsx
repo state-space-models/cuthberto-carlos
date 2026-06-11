@@ -37,9 +37,16 @@ function App() {
           <a href="#groups">Groups</a>
           {/* <a href="#playoffs">Playoffs</a> */}
         </nav>
-        <a className="header-github" href="https://github.com/ryantjx/cuthberto-carlos" target="_blank" rel="noreferrer">
-          View model <span aria-hidden="true">↗</span>
-        </a>
+        <div className="header-actions">
+          <a className="header-snapshot" href={data.snapshotUrl} target="_blank" rel="noreferrer">
+            <span>Latest model snapshot</span>
+            <strong>{data.snapshotDate}</strong>
+            <small>Commit {data.sourceCommit}</small>
+          </a>
+          <a className="header-github" href="https://github.com/ryantjx/cuthberto-carlos" target="_blank" rel="noreferrer">
+            View model <span aria-hidden="true">↗</span>
+          </a>
+        </div>
       </header>
 
       <main id="main-content">
@@ -64,13 +71,6 @@ function App() {
             <span className="hero__orbit hero__orbit--one" />
             <span className="hero__orbit hero__orbit--two" />
             <img src={`${import.meta.env.BASE_URL}cuthberto-carlos.png`} alt="" />
-          </div>
-          <div className="hero__snapshot">
-            <span>Latest model snapshot</span>
-            <a href={data.snapshotUrl} target="_blank" rel="noreferrer">
-              <strong>{data.snapshotDate}</strong>
-            </a>
-            <small>Commit {data.sourceCommit}</small>
           </div>
         </section>
 

@@ -4,8 +4,10 @@ import {
   aggregateScoreGrid,
   formatKickoff,
   formatPercent,
+  isMatchCompleted,
   isMatchOngoing,
 } from "../utils";
+import { MatchScoreComparison } from "./MatchScoreComparison";
 import { TeamFlag } from "./TeamFlag";
 
 interface MatchDetailDrawerProps {
@@ -126,6 +128,7 @@ export function MatchDetailDrawer({
   const homeColor = home.colors[0];
   const awayColor = away.colors[0] === homeColor ? away.colors[1] : away.colors[0];
   const ongoing = isMatchOngoing(match);
+  const completed = isMatchCompleted(match);
   const hasActualResult = !!match.actualResult;
 
   // Use actual result if available, otherwise show prediction
@@ -159,11 +162,15 @@ export function MatchDetailDrawer({
           <p>{match.venue}</p>
           <div className="drawer-matchup">
             <TeamFlag team={home} />
-            <span className="drawer-score">
-              <small>{ongoing ? "Current score" : hasActualResult ? "Final score" : "Most likely"}</small>
-              {displayHomeScore}–{displayAwayScore}
-              {!ongoing && !hasActualResult && <em>{formatPercent(match.prediction.mostLikelyScoreProbability, 1)}</em>}
-            </span>
+            {completed ? (
+              <MatchScoreComparison match={match} variant="drawer" />
+            ) : (
+              <span className="drawer-score">
+                <small>{ongoing ? "Current score" : hasActualResult ? "Final score" : "Most likely"}</small>
+                {displayHomeScore}–{displayAwayScore}
+                {!ongoing && !hasActualResult && <em>{formatPercent(match.prediction.mostLikelyScoreProbability, 1)}</em>}
+              </span>
+            )}
             <TeamFlag team={away} />
           </div>
         </header>
