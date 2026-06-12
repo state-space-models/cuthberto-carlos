@@ -3,6 +3,7 @@ import type { MatchPrediction } from "../types";
 import {
   aggregateScoreGrid,
   describeBracketSlot,
+  getActualGroupStats,
   getCompletedMatches,
   getUpcomingMatches,
 } from "../utils";
@@ -52,10 +53,48 @@ describe("getCompletedMatches", () => {
     ];
 
     expect(
-      getCompletedMatches(matches, new Date("2026-06-11T18:00:00Z")).map(
-        (item) => item.id,
-      ),
+      getCompletedMatches(matches, new Date("2026-06-11T18:00:00Z")).map((item) => item.id),
     ).toEqual(["newer", "older"]);
+  });
+});
+
+describe("getActualGroupStats", () => {
+  it("counts home and away wins, draws, losses, and games", () => {
+    const homeWin = match("home-win", "2026-06-11T12:00:00Z");
+    homeWin.actualResult = { homeScore: 2, awayScore: 0, homeGoals: [], awayGoals: [] };
+
+    const awayWin = match("away-win", "2026-06-12T12:00:00Z");
+    awayWin.homeTeam = "South Africa";
+    awayWin.awayTeam = "Mexico";
+    awayWin.actualResult = { homeScore: 1, awayScore: 3, homeGoals: [], awayGoals: [] };
+
+    const draw = match("draw", "2026-06-13T12:00:00Z");
+    draw.homeTeam = "Mexico";
+    draw.awayTeam = "Czech Republic";
+    draw.actualResult = { homeScore: 1, awayScore: 1, homeGoals: [], awayGoals: [] };
+
+    const future = match("future", "2026-06-14T12:00:00Z");
+    future.homeTeam = "South Korea";
+    future.awayTeam = "Czech Republic";
+
+    expect(getActualGroupStats([homeWin, awayWin, draw, future])).toEqual({
+      Mexico: {
+        games: 3, wins: 2, draws: 1, losses: 0,
+        points: 7, goalDifference: 4, goalsScored: 6,
+      },
+      "South Africa": {
+        games: 2, wins: 0, draws: 0, losses: 2,
+        points: 0, goalDifference: -4, goalsScored: 1,
+      },
+      "Czech Republic": {
+        games: 1, wins: 0, draws: 1, losses: 0,
+        points: 1, goalDifference: 0, goalsScored: 1,
+      },
+      "South Korea": {
+        games: 0, wins: 0, draws: 0, losses: 0,
+        points: 0, goalDifference: 0, goalsScored: 0,
+      },
+    });
   });
 });
 
