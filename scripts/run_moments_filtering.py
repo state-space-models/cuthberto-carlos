@@ -130,17 +130,23 @@ state_prep = jax.vmap(single_team_filter.filter_prepare)(sync_data)
 sync_factorial_final = jax.vmap(single_team_filter.filter_combine)(
     out_factorial_final, state_prep
 )
+#### sync_factorial_final.elem.ell is shape (num_teams,) but needs to be (,)
+### This is a hack, should think about to handle it properly in cuthbert
+sync_factorial_final = sync_factorial_final._replace(
+    elem=sync_factorial_final.elem._replace(ell=sync_factorial_final.elem.ell[0])
+)
 
 # Save as json sync_factorial_final and current timestamp to be used later
 save_data = {
-    "sync_factorial_final": sync_factorial_final,
+    "factorial_state": sync_factorial_final,
+    "match_index_final": model_inputs.match_index[-1],
     "timestamp": current_time,
 }
-save_arraytree(save_data, "outputs/sync_factorial_final.json")
+save_arraytree(save_data, "outputs/live_factorial.json")
 
 # # Commented code to reload later
-# load_data = load_arraytree("outputs/sync_factorial_final.json")
-# sync_factorial_final = load_data["sync_factorial_final"]
+# load_data = load_arraytree("outputs/live_factorial.json")
+# sync_factorial_final = load_data["factorial_state"]
 # current_time = load_data["timestamp"]
 
 ### Plot best teams
