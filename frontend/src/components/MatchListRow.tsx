@@ -9,9 +9,16 @@ interface MatchListRowProps {
   teams: Record<string, Team>;
   onOpen: (match: MatchPrediction, trigger: HTMLElement) => void;
   showScoreComparison?: boolean;
+  hidePredictionDetails?: boolean;
 }
 
-export function MatchListRow({ match, teams, onOpen, showScoreComparison = false }: MatchListRowProps) {
+export function MatchListRow({
+  match,
+  teams,
+  onOpen,
+  showScoreComparison = false,
+  hidePredictionDetails = false,
+}: MatchListRowProps) {
   const kickoff = formatKickoffParts(match.kickoffUtc);
   const probabilities = match.prediction.probabilities;
   const [predictedHomeScore, predictedAwayScore] = match.prediction.mostLikelyScore;
@@ -33,7 +40,7 @@ export function MatchListRow({ match, teams, onOpen, showScoreComparison = false
   }
 
   return (
-    <article className={`match-list-row ${ongoing ? "match-list-row--ongoing" : ""}`}>
+    <article className={`match-list-row ${showScoreComparison ? "match-list-row--comparison" : ""} ${hidePredictionDetails ? "match-list-row--without-prediction" : ""} ${ongoing ? "match-list-row--ongoing" : ""}`}>
       <div className="match-list-row__kickoff">
         <span className="eyebrow">Group {match.group}</span>
         <strong>{kickoff.date}</strong>
@@ -49,7 +56,7 @@ export function MatchListRow({ match, teams, onOpen, showScoreComparison = false
           <TeamFlag team={teams[match.homeTeam]} compact />
         </div>
         {showScoreComparison ? (
-          <MatchScoreComparison match={match} variant="list" />
+          <MatchScoreComparison match={match} teams={teams} variant="list" showScorers />
         ) : (
           <strong
             className={`match-list-row__score ${hasActualResult ? "match-list-row__score--actual" : ""}`}
@@ -65,14 +72,16 @@ export function MatchListRow({ match, teams, onOpen, showScoreComparison = false
       {!showScoreComparison && hasActualResult && !ongoing && (
         <div className="match-list-row__result-badge">Final</div>
       )}
-      <div className="match-list-row__prediction">
-        <span>{mostLikelyOutcome(probabilities, match.homeTeam, match.awayTeam)}</span>
-        <div aria-label="Result probabilities">
-          <span>H {formatPercent(probabilities.homeWin)}</span>
-          <span>D {formatPercent(probabilities.draw)}</span>
-          <span>A {formatPercent(probabilities.awayWin)}</span>
+      {!hidePredictionDetails && (
+        <div className="match-list-row__prediction">
+          <span>{mostLikelyOutcome(probabilities, match.homeTeam, match.awayTeam)}</span>
+          <div aria-label="Result probabilities">
+            <span>H {formatPercent(probabilities.homeWin)}</span>
+            <span>D {formatPercent(probabilities.draw)}</span>
+            <span>A {formatPercent(probabilities.awayWin)}</span>
+          </div>
         </div>
-      </div>
+      )}
       <span className="match-list-row__venue">{match.venue}</span>
       <span className="match-list-row__actions">
         <button
