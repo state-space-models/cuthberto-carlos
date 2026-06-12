@@ -14,9 +14,16 @@ interface MatchCardProps {
   teams: Record<string, Team>;
   onOpen: (match: MatchPrediction, trigger: HTMLElement) => void;
   showScoreComparison?: boolean;
+  hidePredictionDetails?: boolean;
 }
 
-export function MatchCard({ match, teams, onOpen, showScoreComparison = false }: MatchCardProps) {
+export function MatchCard({
+  match,
+  teams,
+  onOpen,
+  showScoreComparison = false,
+  hidePredictionDetails = false,
+}: MatchCardProps) {
   const kickoff = formatKickoffParts(match.kickoffUtc);
   const probabilities = match.prediction.probabilities;
   const [predictedHomeScore, predictedAwayScore] = match.prediction.mostLikelyScore;
@@ -54,14 +61,21 @@ export function MatchCard({ match, teams, onOpen, showScoreComparison = false }:
           <TeamFlag team={teams[match.homeTeam]} />
         </div>
         {showScoreComparison ? (
-          <MatchScoreComparison match={match} variant="card" />
+          <MatchScoreComparison match={match} teams={teams} variant="card" showScorers />
         ) : (
-          <span
-            className={`match-card__score ${hasActualResult ? "match-card__score--actual" : ""}`}
-            aria-label={hasActualResult ? "Final score" : "Most likely score"}
-          >
-            {displayHomeScore}–{displayAwayScore}
-          </span>
+          <div className="match-card__score-block">
+            {!hidePredictionDetails && (
+              <span className="match-card__outcome">
+                {mostLikelyOutcome(probabilities, match.homeTeam, match.awayTeam)}
+              </span>
+            )}
+            <span
+              className={`match-card__score ${hasActualResult ? "match-card__score--actual" : ""}`}
+              aria-label={hasActualResult ? "Final score" : "Most likely score"}
+            >
+              {displayHomeScore}–{displayAwayScore}
+            </span>
+          </div>
         )}
         <div className="match-card__team match-card__team--away">
           <TeamFlag team={teams[match.awayTeam]} />
@@ -71,30 +85,33 @@ export function MatchCard({ match, teams, onOpen, showScoreComparison = false }:
         <div className="match-card__result-badge">Final</div>
       )}
       <p className="match-card__venue">{match.venue}</p>
-      <div className="probability-strip" aria-label="Result probabilities">
-        <span
-          className="probability-strip__home"
-          style={{ width: `${probabilities.homeWin * 100}%` }}
-          title={`${match.homeTeam} ${formatPercent(probabilities.homeWin, 1)}`}
-        />
-        <span
-          className="probability-strip__draw"
-          style={{ width: `${probabilities.draw * 100}%` }}
-          title={`Draw ${formatPercent(probabilities.draw, 1)}`}
-        />
-        <span
-          className="probability-strip__away"
-          style={{ width: `${probabilities.awayWin * 100}%` }}
-          title={`${match.awayTeam} ${formatPercent(probabilities.awayWin, 1)}`}
-        />
-      </div>
-      <div className="match-card__probabilities" aria-hidden="true">
-        <span>H {formatPercent(probabilities.homeWin)}</span>
-        <span>D {formatPercent(probabilities.draw)}</span>
-        <span>A {formatPercent(probabilities.awayWin)}</span>
-      </div>
-      <div className="match-card__footer">
-        <span>{mostLikelyOutcome(probabilities, match.homeTeam, match.awayTeam)}</span>
+      {!hidePredictionDetails && (
+        <>
+          <div className="probability-strip" aria-label="Result probabilities">
+            <span
+              className="probability-strip__home"
+              style={{ width: `${probabilities.homeWin * 100}%` }}
+              title={`${match.homeTeam} ${formatPercent(probabilities.homeWin, 1)}`}
+            />
+            <span
+              className="probability-strip__draw"
+              style={{ width: `${probabilities.draw * 100}%` }}
+              title={`Draw ${formatPercent(probabilities.draw, 1)}`}
+            />
+            <span
+              className="probability-strip__away"
+              style={{ width: `${probabilities.awayWin * 100}%` }}
+              title={`${match.awayTeam} ${formatPercent(probabilities.awayWin, 1)}`}
+            />
+          </div>
+          <div className="match-card__probabilities" aria-hidden="true">
+            <span>H {formatPercent(probabilities.homeWin)}</span>
+            <span>D {formatPercent(probabilities.draw)}</span>
+            <span>A {formatPercent(probabilities.awayWin)}</span>
+          </div>
+        </>
+      )}
+      <div className="match-card__footer match-card__footer--actions-only">
         <span className="match-card__actions">
           <button className="text-button" type="button" onClick={handleOpen}>
             Explore prediction

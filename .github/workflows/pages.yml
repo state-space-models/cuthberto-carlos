@@ -32,6 +32,28 @@ jobs:
           python -m unittest discover -s tests -p 'test_*frontend_data.py'
           python scripts/build_frontend_data.py
 
+      - name: Verify refreshed OpenFootball data
+        shell: bash
+        run: |
+          read -r result_count squad_count player_count <<< "$(python - <<'PY'
+          import json
+          from pathlib import Path
+
+          dataset = json.loads(Path("frontend/src/data/tournament.json").read_text())
+          print(
+              sum("actualResult" in match for match in dataset["groupMatches"]),
+              len(dataset["teams"]),
+              sum(len(team["players"]) for team in dataset["teams"].values()),
+          )
+          PY
+          )"
+          echo "Imported ${result_count} completed group results from OpenFootball"
+          echo "Imported ${squad_count} squads with ${player_count} players from OpenFootball"
+          echo "### OpenFootball refresh" >> "$GITHUB_STEP_SUMMARY"
+          echo "Imported **${result_count}** completed group results from worldcup.json." >> "$GITHUB_STEP_SUMMARY"
+          echo "Imported **${squad_count}** squads with **${player_count}** players from worldcup.squads.json." >> "$GITHUB_STEP_SUMMARY"
+          git diff --stat -- frontend/src/data/tournament.json || true
+
       - name: Set up Node
         uses: actions/setup-node@v6
         with:

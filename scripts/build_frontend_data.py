@@ -12,6 +12,8 @@ from pathlib import Path
 import re
 import subprocess
 from typing import Any
+import unicodedata
+from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 from urllib.request import Request, urlopen
 
 
@@ -26,6 +28,14 @@ SCHEDULE_SOURCE_URL = (
 SCHEDULE_DATA_URL = (
     "https://raw.githubusercontent.com/openfootball/worldcup.json/"
     "master/2026/worldcup.json"
+)
+SQUADS_SOURCE_URL = (
+    "https://github.com/openfootball/worldcup.json/blob/master/2026/"
+    "worldcup.squads.json"
+)
+SQUADS_DATA_URL = (
+    "https://raw.githubusercontent.com/openfootball/worldcup.json/"
+    "master/2026/worldcup.squads.json"
 )
 
 
@@ -141,11 +151,34 @@ def discover_latest_snapshot(predictions_root: Path = PREDICTIONS_ROOT) -> Path:
     return max(candidates, key=lambda item: item[0])[1]
 
 
-def fetch_schedule(url: str = SCHEDULE_DATA_URL) -> dict[str, Any]:
-    """Download the current CC0 World Cup schedule from openfootball master."""
-    request = Request(url, headers={"User-Agent": "cuthberto-carlos-data-builder"})
+def _fetch_openfootball_json(url: str) -> Any:
+    """Download current OpenFootball JSON while bypassing intermediary caches."""
+    parts = urlsplit(url)
+    query = dict(parse_qsl(parts.query, keep_blank_values=True))
+    query["refresh"] = str(int(datetime.now(timezone.utc).timestamp()))
+    refresh_url = urlunsplit(
+        (parts.scheme, parts.netloc, parts.path, urlencode(query), parts.fragment)
+    )
+    request = Request(
+        refresh_url,
+        headers={
+            "User-Agent": "cuthberto-carlos-data-builder",
+            "Cache-Control": "no-cache",
+            "Pragma": "no-cache",
+        },
+    )
     with urlopen(request, timeout=30) as response:  # noqa: S310 - pinned HTTPS URL
         return json.load(response)
+
+
+def fetch_schedule(url: str = SCHEDULE_DATA_URL) -> dict[str, Any]:
+    """Download the current CC0 World Cup schedule from openfootball master."""
+    return _fetch_openfootball_json(url)
+
+
+def fetch_squads(url: str = SQUADS_DATA_URL) -> list[dict[str, Any]]:
+    """Download the current CC0 World Cup squads from openfootball master."""
+    return _fetch_openfootball_json(url)
 
 
 def fixture_key(date: str, team1: str, team2: str) -> tuple[str, tuple[str, str]]:
@@ -154,29 +187,74 @@ def fixture_key(date: str, team1: str, team2: str) -> tuple[str, tuple[str, str]
     return date, teams
 
 
-def extract_actual_result(fixture: dict[str, Any]) -> dict[str, Any] | None:
+def normalize_player_name(name: str) -> str:
+    """Normalize player names for case- and accent-insensitive comparisons."""
+    decomposed = unicodedata.normalize("NFKD", name)
+    without_accents = "".join(
+        character for character in decomposed if not unicodedata.combining(character)
+    )
+    return " ".join(without_accents.casefold().split())
+
+
+def canonical_scorer_name(name: str, players: list[dict[str, Any]]) -> str:
+    """Use the squad spelling when a scorer has exactly one normalized match."""
+    normalized = normalize_player_name(name)
+    matches = [
+        player["name"]
+        for player in players
+        if normalize_player_name(player["name"]) == normalized
+    ]
+    return matches[0] if len(matches) == 1 else name
+
+
+def _goal_records(
+    goals: list[dict[str, Any]], players: list[dict[str, Any]]
+) -> list[dict[str, Any]]:
+    return [
+        {
+            "name": canonical_scorer_name(goal["name"], players),
+            "minute": str(goal["minute"]),
+            "penalty": goal.get("penalty"),
+        }
+        for goal in goals
+    ]
+
+
+def extract_actual_result(
+    fixture: dict[str, Any],
+    home_team: str,
+    away_team: str,
+    squad_players: dict[str, list[dict[str, Any]]] | None = None,
+) -> dict[str, Any] | None:
     """Extract actual match result from schedule fixture if available."""
     score = fixture.get("score")
     if not score or "ft" not in score:
         return None
 
-    home_score, away_score = score["ft"]
-    goals1 = fixture.get("goals1", [])
-    goals2 = fixture.get("goals2", [])
+    team1 = canonical_team(fixture["team1"])
+    team2 = canonical_team(fixture["team2"])
+    team1_score, team2_score = score["ft"]
+    team1_goals = fixture.get("goals1", [])
+    team2_goals = fixture.get("goals2", [])
 
-    # Determine which team is home/away based on fixture orientation
-    # The fixture has team1 and team2, but our canonical home/away may differ
+    if (team1 == home_team and team2 == away_team):
+        home_score, away_score = team1_score, team2_score
+        home_goals, away_goals = team1_goals, team2_goals
+    elif team1 == away_team and team2 == home_team:
+        home_score, away_score = team2_score, team1_score
+        home_goals, away_goals = team2_goals, team1_goals
+    else:
+        raise ValueError(
+            f"Schedule result teams do not match prediction: "
+            f"{team1} vs {team2}; expected {home_team} vs {away_team}"
+        )
+
+    players = squad_players or {}
     return {
         "homeScore": home_score,
         "awayScore": away_score,
-        "homeGoals": [
-            {"name": g["name"], "minute": g["minute"], "penalty": g.get("penalty")}
-            for g in goals1
-        ],
-        "awayGoals": [
-            {"name": g["name"], "minute": g["minute"], "penalty": g.get("penalty")}
-            for g in goals2
-        ],
+        "homeGoals": _goal_records(home_goals, players.get(home_team, [])),
+        "awayGoals": _goal_records(away_goals, players.get(away_team, [])),
     }
 
 
@@ -249,13 +327,55 @@ def source_commit(root: Path = ROOT) -> str:
         return "unknown"
 
 
+def _squad_index(squads: list[dict[str, Any]]) -> dict[str, dict[str, Any]]:
+    """Validate and index squad records by the project's canonical team name."""
+    indexed: dict[str, dict[str, Any]] = {}
+    for squad in squads:
+        name = canonical_team(squad["name"])
+        if name in indexed:
+            raise ValueError(f"Duplicate squad for {name}")
+        players = squad.get("players", [])
+        if not players:
+            raise ValueError(f"Squad for {name} has no players")
+        numbers = [player.get("number") for player in players]
+        if len(numbers) != len(set(numbers)):
+            raise ValueError(f"Squad for {name} has duplicate shirt numbers")
+        indexed[name] = {
+            "name": name,
+            "fifaCode": squad["fifa_code"],
+            "group": squad["group"],
+            "players": sorted(
+                [
+                    {
+                        "number": player["number"],
+                        "position": player["pos"],
+                        "name": player["name"],
+                        "dateOfBirth": player["date_of_birth"],
+                    }
+                    for player in players
+                ],
+                key=lambda player: player["number"],
+            ),
+        }
+    return indexed
+
+
 def _team_record(
-    name: str, team_colors: dict[str, list[str]]
-) -> dict[str, str | list[str]]:
+    name: str,
+    team_colors: dict[str, list[str]],
+    squad: dict[str, Any],
+) -> dict[str, Any]:
     if name not in FLAG_CODES:
         raise ValueError(f"Missing flag mapping for {name}")
     colors = team_colors.get(name, ["#777777", "#dddddd"])
-    return {"name": name, "flagCode": FLAG_CODES[name], "colors": colors}
+    return {
+        "name": name,
+        "flagCode": FLAG_CODES[name],
+        "colors": colors,
+        "fifaCode": squad["fifaCode"],
+        "group": squad["group"],
+        "players": squad["players"],
+    }
 
 
 def _skill_record(
@@ -338,11 +458,17 @@ def _group_projection(
 def compile_dataset(
     root: Path = ROOT,
     schedule_data: dict[str, Any] | None = None,
+    squads_data: list[dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
     """Compile the newest prediction snapshot and schedule into frontend data."""
     snapshot = discover_latest_snapshot(root / "outputs" / "predictions")
     repository_url = get_repository_url()
-    schedule = schedule_data or fetch_schedule()
+    schedule = schedule_data if schedule_data is not None else fetch_schedule()
+    squads = squads_data if squads_data is not None else fetch_squads()
+    squad_index = _squad_index(squads)
+    squad_players = {
+        name: squad["players"] for name, squad in squad_index.items()
+    }
     schedule_matches = schedule.get("matches", [])
     group_schedule = [match for match in schedule_matches if match.get("group")]
     knockout_schedule = [match for match in schedule_matches if not match.get("group")]
@@ -429,7 +555,9 @@ def compile_dataset(
         }
 
         # Add actual result if available from schedule
-        actual_result = extract_actual_result(fixture)
+        actual_result = extract_actual_result(
+            fixture, home_team, away_team, squad_players
+        )
         if actual_result:
             record["actualResult"] = actual_result
 
@@ -444,7 +572,17 @@ def compile_dataset(
         {match["homeTeam"] for match in match_records}
         | {match["awayTeam"] for match in match_records}
     )
-    teams = {name: _team_record(name, team_colors) for name in team_names}
+    missing_squads = sorted(set(team_names) - set(squad_index))
+    extra_squads = sorted(set(squad_index) - set(team_names))
+    if missing_squads or extra_squads:
+        raise ValueError(
+            f"Squad teams do not match tournament teams; "
+            f"missing={missing_squads}, extra={extra_squads}"
+        )
+    teams = {
+        name: _team_record(name, team_colors, squad_index[name])
+        for name in team_names
+    }
 
     groups = []
     for group_id in "ABCDEFGHIJKL":
@@ -481,7 +619,7 @@ def compile_dataset(
     knockout_matches.sort(key=lambda match: match["matchNumber"])
 
     return {
-        "schemaVersion": 2,
+        "schemaVersion": 3,
         "repositoryUrl": repository_url,
         "snapshotDate": snapshot.name,
         "snapshotPath": str(snapshot.relative_to(root)),
@@ -498,6 +636,13 @@ def compile_dataset(
                 "name": "openfootball/worldcup.json",
                 "url": SCHEDULE_SOURCE_URL,
                 "dataUrl": SCHEDULE_DATA_URL,
+                "ref": SCHEDULE_REF,
+                "license": "CC0-1.0",
+            },
+            "squads": {
+                "name": "openfootball/worldcup.squads.json",
+                "url": SQUADS_SOURCE_URL,
+                "dataUrl": SQUADS_DATA_URL,
                 "ref": SCHEDULE_REF,
                 "license": "CC0-1.0",
             },
@@ -535,7 +680,7 @@ def validate_dataset(dataset: dict[str, Any]) -> None:
     if missing:
         raise ValueError(f"Dataset is missing required keys: {sorted(missing)}")
 
-    if dataset["schemaVersion"] != 2:
+    if dataset["schemaVersion"] != 3:
         raise ValueError(f"Unsupported schema version: {dataset['schemaVersion']!r}")
     try:
         datetime.strptime(dataset["snapshotDate"], "%Y-%m-%d")
@@ -561,6 +706,16 @@ def validate_dataset(dataset: dict[str, Any]) -> None:
         if schedule.get(key) != expected:
             raise ValueError(f"Unexpected schedule {key}: {schedule.get(key)!r}")
 
+    squads = dataset["sources"].get("squads", {})
+    expected_squads = {
+        "url": SQUADS_SOURCE_URL,
+        "dataUrl": SQUADS_DATA_URL,
+        "ref": SCHEDULE_REF,
+    }
+    for key, expected in expected_squads.items():
+        if squads.get(key) != expected:
+            raise ValueError(f"Unexpected squads {key}: {squads.get(key)!r}")
+
     group_matches = dataset["groupMatches"]
     knockout_matches = dataset["knockoutMatches"]
     if len(group_matches) != 72:
@@ -571,6 +726,33 @@ def validate_dataset(dataset: dict[str, Any]) -> None:
         raise ValueError(f"Expected 12 groups, found {len(dataset['groups'])}")
     if not dataset["teams"]:
         raise ValueError("Dataset must include team metadata")
+    if len(dataset["teams"]) != 48:
+        raise ValueError(f"Expected 48 squad teams, found {len(dataset['teams'])}")
+
+    for team_name, team in dataset["teams"].items():
+        if team.get("name") != team_name:
+            raise ValueError(f"Team key and name do not match for {team_name}")
+        if not re.fullmatch(r"[A-Z]{3}", team.get("fifaCode", "")):
+            raise ValueError(f"Team {team_name} has an invalid FIFA code")
+        if team.get("group") not in "ABCDEFGHIJKL":
+            raise ValueError(f"Team {team_name} has an invalid group")
+        players = team.get("players", [])
+        if not players:
+            raise ValueError(f"Team {team_name} has no players")
+        numbers = [player.get("number") for player in players]
+        if any(not isinstance(number, int) or number <= 0 for number in numbers):
+            raise ValueError(f"Team {team_name} has an invalid shirt number")
+        if len(numbers) != len(set(numbers)):
+            raise ValueError(f"Team {team_name} has duplicate shirt numbers")
+        for player in players:
+            if player.get("position") not in {"GK", "DF", "MF", "FW"}:
+                raise ValueError(f"Team {team_name} has an invalid player position")
+            try:
+                datetime.strptime(player["dateOfBirth"], "%Y-%m-%d")
+            except (KeyError, TypeError, ValueError) as error:
+                raise ValueError(
+                    f"Team {team_name} has an invalid player birth date"
+                ) from error
 
     all_ids = [match["id"] for match in group_matches + knockout_matches]
     if len(all_ids) != len(set(all_ids)):
@@ -592,6 +774,15 @@ def validate_dataset(dataset: dict[str, Any]) -> None:
             raise ValueError(f"Match {match['id']} has an invalid probability")
         if not math.isclose(sum(values), 1.0, abs_tol=1e-7):
             raise ValueError(f"Match {match['id']} probabilities do not sum to one")
+        if "actualResult" in match:
+            for goal in (
+                match["actualResult"]["homeGoals"]
+                + match["actualResult"]["awayGoals"]
+            ):
+                if not isinstance(goal.get("minute"), str) or not re.fullmatch(
+                    r"\d+(?:\+\d+)?", goal["minute"]
+                ):
+                    raise ValueError(f"Match {match['id']} has an invalid goal minute")
 
 
 def main() -> None:
@@ -606,7 +797,10 @@ def main() -> None:
     args.output.write_text(json.dumps(dataset, indent=2, ensure_ascii=False) + "\n")
     print(
         f"Wrote {len(dataset['groupMatches'])} group predictions and "
-        f"{len(dataset['knockoutMatches'])} knockout fixtures to {args.output}"
+        f"{len(dataset['knockoutMatches'])} knockout fixtures to {args.output}; "
+        f"imported {len(dataset['teams'])} squads and "
+        f"{sum('actualResult' in match for match in dataset['groupMatches'])} "
+        "completed group results from OpenFootball"
     )
 
 

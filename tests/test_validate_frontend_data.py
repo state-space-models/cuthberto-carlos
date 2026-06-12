@@ -12,6 +12,8 @@ from scripts.build_frontend_data import (
     SCHEDULE_DATA_URL,
     SCHEDULE_REF,
     SCHEDULE_SOURCE_URL,
+    SQUADS_DATA_URL,
+    SQUADS_SOURCE_URL,
     validate_dataset,
 )
 
@@ -51,6 +53,32 @@ class FrontendDataValidationTests(unittest.TestCase):
         self.assertEqual(schedule["url"], SCHEDULE_SOURCE_URL)
         self.assertEqual(schedule["dataUrl"], SCHEDULE_DATA_URL)
         self.assertEqual(schedule["ref"], SCHEDULE_REF)
+        squads = self.dataset["sources"]["squads"]
+        self.assertEqual(squads["url"], SQUADS_SOURCE_URL)
+        self.assertEqual(squads["dataUrl"], SQUADS_DATA_URL)
+        self.assertEqual(squads["ref"], SCHEDULE_REF)
+
+    def test_dataset_has_complete_valid_squads(self):
+        self.assertEqual(self.dataset["schemaVersion"], 3)
+        self.assertEqual(len(self.dataset["teams"]), 48)
+        for name, team in self.dataset["teams"].items():
+            self.assertEqual(team["name"], name)
+            self.assertTrue(team["players"])
+            numbers = [player["number"] for player in team["players"]]
+            self.assertEqual(numbers, sorted(numbers))
+            self.assertEqual(len(numbers), len(set(numbers)))
+
+    def test_goal_minutes_are_strings(self):
+        goals = [
+            goal
+            for match in self.dataset["groupMatches"]
+            for goal in (
+                match.get("actualResult", {}).get("homeGoals", [])
+                + match.get("actualResult", {}).get("awayGoals", [])
+            )
+        ]
+        self.assertTrue(goals)
+        self.assertTrue(all(isinstance(goal["minute"], str) for goal in goals))
 
     def test_project_urls_use_canonical_repository(self):
         self.assertEqual(self.dataset["repositoryUrl"], self.repository_url)
