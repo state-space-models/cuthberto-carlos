@@ -10,7 +10,6 @@ from cuthberto_carlos.json_io import load_arraytree, save_arraytree
 from cuthberto_carlos import model_moments
 from cuthberto_carlos.graphics import plot_team_strengths
 
-
 FACTORIAL_STATE_FILE = "outputs/live_factorial.json"
 TEAM_STRENGTH_PLOT_FILE = "outputs/team_strength_plot.png"
 
