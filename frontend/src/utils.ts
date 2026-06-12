@@ -1,4 +1,5 @@
 import type {
+  GroupActualStats,
   KnockoutRound,
   MatchPrediction,
   ResultProbabilities,
@@ -112,14 +113,61 @@ export function getCompletedMatches(
   now = new Date(),
 ): MatchPrediction[] {
   return [...matches]
-    .filter(
-      (match) => isMatchCompleted(match, now),
-    )
+    .filter((match) => isMatchCompleted(match, now))
     .sort(
       (left, right) =>
         new Date(right.kickoffUtc).getTime() -
         new Date(left.kickoffUtc).getTime(),
     );
+}
+
+export function getActualGroupStats(
+  matches: MatchPrediction[],
+): Record<string, GroupActualStats> {
+  const stats: Record<string, GroupActualStats> = {};
+  const emptyStats = (): GroupActualStats => ({
+    games: 0,
+    wins: 0,
+    draws: 0,
+    losses: 0,
+    points: 0,
+    goalDifference: 0,
+    goalsScored: 0,
+  });
+
+  for (const match of matches) {
+    stats[match.homeTeam] ??= emptyStats();
+    stats[match.awayTeam] ??= emptyStats();
+
+    if (!match.actualResult) continue;
+
+    const home = stats[match.homeTeam];
+    const away = stats[match.awayTeam];
+    const { homeScore, awayScore } = match.actualResult;
+    home.games += 1;
+    away.games += 1;
+    home.goalsScored += homeScore;
+    away.goalsScored += awayScore;
+    home.goalDifference += homeScore - awayScore;
+    away.goalDifference += awayScore - homeScore;
+
+    if (homeScore > awayScore) {
+      home.wins += 1;
+      home.points += 3;
+      away.losses += 1;
+    } else if (homeScore < awayScore) {
+      away.wins += 1;
+      away.points += 3;
+      home.losses += 1;
+    } else {
+      home.draws += 1;
+      away.draws += 1;
+      home.points += 1;
+      away.points += 1;
+    }
+  }
+
+  return stats;
 }
 
 export function aggregateScoreGrid(grid: number[][]): number[][] {

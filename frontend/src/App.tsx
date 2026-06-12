@@ -1,6 +1,7 @@
 import { useCallback, useRef, useState } from "react";
 import tournamentData from "./data/tournament.json";
 import { CompletedMatches } from "./components/CompletedMatches";
+import { Countries } from "./components/Countries";
 import { GroupStage } from "./components/GroupStage";
 // import { KnockoutBracket } from "./components/KnockoutBracket";
 import { MatchDetailDrawer } from "./components/MatchDetailDrawer";
@@ -35,6 +36,7 @@ function App() {
           <a href="#upcoming">Upcoming</a>
           <a href="#completed">Completed</a>
           <a href="#groups">Groups</a>
+          <a href="#countries">Countries</a>
           {/* <a href="#playoffs">Playoffs</a> */}
         </nav>
         <div className="header-actions">
@@ -77,6 +79,7 @@ function App() {
         <UpcomingMatches matches={data.groupMatches} teams={data.teams} onOpen={openMatch} />
         <CompletedMatches matches={data.groupMatches} teams={data.teams} onOpen={openMatch} />
         <GroupStage groups={data.groups} matches={data.groupMatches} teams={data.teams} onOpen={openMatch} />
+        <Countries teams={data.teams} />
         {/* <KnockoutBracket matches={data.knockoutMatches} /> */}
       </main>
 
@@ -88,6 +91,7 @@ function App() {
         <div className="site-footer__sources">
           <span>Open data:</span>
           <a href={data.sources.schedule.url} target="_blank" rel="noreferrer">openfootball schedule (CC0)</a>
+          <a href={data.sources.squads.url} target="_blank" rel="noreferrer">openfootball squads (CC0)</a>
           <a href={data.sources.historicalResults.url} target="_blank" rel="noreferrer">international results (CC0)</a>
           <a href="https://github.com/lipis/flag-icons" target="_blank" rel="noreferrer">flag-icons (MIT)</a>
         </div>

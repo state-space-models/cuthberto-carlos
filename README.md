@@ -84,7 +84,11 @@ The repository includes a responsive React frontend for exploring the latest dat
 prediction snapshot. It combines the model output with the CC0
 [`openfootball/worldcup.json`](https://github.com/openfootball/worldcup.json)
 schedule to provide upcoming matches, model-projected group tables, detailed score
-distributions, and completed-match comparisons. Knockout fixture metadata remains in
+distributions, completed-match scorer details, and an interactive country squad
+browser sourced from
+[`openfootball/worldcup.squads.json`](https://github.com/openfootball/worldcup.json/blob/master/2026/worldcup.squads.json).
+Player names expose accessible squad profiles on hover, keyboard focus, and touch.
+Knockout fixture metadata remains in
 the generated dataset for future frontend work, but the current UI is limited to the
 group stage.
 
@@ -102,7 +106,11 @@ npm run dev
 
 The GitHub Pages workflow validates pull requests without deploying. Pushes to
 `main`, hourly schedules, and manual runs build with a base path derived from the
-repository name and deploy the validated artifact.
+repository name and deploy the validated artifact. Every scheduled run fetches the
+current OpenFootball schedule and squad files with cache bypass headers, replaces
+the generated tournament dataset in the workflow workspace, reports squad and
+completed-result counts, and publishes that refreshed copy to Pages. The workflow
+does not create an hourly commit on `main`.
 
 The production build exposes the exact generated dataset at
 `/cuthberto-carlos/data/tournament.json`. The data builder validates the generated

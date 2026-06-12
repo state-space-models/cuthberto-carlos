@@ -5,14 +5,20 @@ import os
 import tempfile
 import unittest
 from unittest.mock import patch
+from urllib.request import Request
 
 from scripts.build_frontend_data import (
+    canonical_scorer_name,
     canonical_team,
     discover_latest_snapshot,
+    extract_actual_result,
+    fetch_schedule,
+    fetch_squads,
     fixture_key,
     get_repository_slug,
     get_repository_url,
     normalize_grid,
+    normalize_player_name,
     parse_kickoff_utc,
     prediction_metrics,
     repository_tree_url,
@@ -56,6 +62,73 @@ class FrontendDataCompilerTests(unittest.TestCase):
         self.assertEqual(metrics["mostLikelyScore"], [0, 0])
         self.assertAlmostEqual(metrics["expectedGoals"]["home"], 0.25)
         self.assertAlmostEqual(metrics["expectedGoals"]["away"], 0.25)
+
+    def test_actual_result_follows_prediction_home_away_orientation(self):
+        fixture = {
+            "team1": "South Africa",
+            "team2": "Mexico",
+            "score": {"ft": [1, 2]},
+            "goals1": [{"name": "Away scorer", "minute": "45+2"}],
+            "goals2": [{"name": "Home Scórer", "minute": 10}],
+        }
+        squad_players = {
+            "Mexico": [{"name": "Home scorer"}],
+            "South Africa": [{"name": "Away scorer"}],
+        }
+
+        result = extract_actual_result(
+            fixture, "Mexico", "South Africa", squad_players
+        )
+
+        self.assertEqual(result["homeScore"], 2)
+        self.assertEqual(result["awayScore"], 1)
+        self.assertEqual(result["homeGoals"][0]["name"], "Home scorer")
+        self.assertEqual(result["awayGoals"][0]["name"], "Away scorer")
+        self.assertEqual(result["homeGoals"][0]["minute"], "10")
+        self.assertEqual(result["awayGoals"][0]["minute"], "45+2")
+
+    def test_player_names_match_case_and_accents_but_require_uniqueness(self):
+        players = [{"name": "Ladislav Krejčí"}]
+        self.assertEqual(normalize_player_name("Ladislav KrejcÍ"), "ladislav krejci")
+        self.assertEqual(
+            canonical_scorer_name("Ladislav Krejcí", players),
+            "Ladislav Krejčí",
+        )
+        self.assertEqual(
+            canonical_scorer_name("Unknown Player", players), "Unknown Player"
+        )
+        self.assertEqual(
+            canonical_scorer_name(
+                "ALEX SMITH", [{"name": "Álex Smith"}, {"name": "Alex Smith"}]
+            ),
+            "ALEX SMITH",
+        )
+
+    @patch("scripts.build_frontend_data.urlopen")
+    def test_schedule_fetch_bypasses_caches(self, mocked_urlopen):
+        response = mocked_urlopen.return_value.__enter__.return_value
+        response.read.return_value = b'{"matches": []}'
+
+        self.assertEqual(fetch_schedule(), {"matches": []})
+
+        request = mocked_urlopen.call_args.args[0]
+        self.assertIsInstance(request, Request)
+        self.assertIn("refresh=", request.full_url)
+        self.assertEqual(request.get_header("Cache-control"), "no-cache")
+        self.assertEqual(request.get_header("Pragma"), "no-cache")
+
+    @patch("scripts.build_frontend_data.urlopen")
+    def test_squad_fetch_bypasses_caches(self, mocked_urlopen):
+        response = mocked_urlopen.return_value.__enter__.return_value
+        response.read.return_value = b'[{"name": "Mexico"}]'
+
+        self.assertEqual(fetch_squads(), [{"name": "Mexico"}])
+
+        request = mocked_urlopen.call_args.args[0]
+        self.assertIsInstance(request, Request)
+        self.assertIn("worldcup.squads.json", request.full_url)
+        self.assertIn("refresh=", request.full_url)
+        self.assertEqual(request.get_header("Cache-control"), "no-cache")
 
     def test_latest_snapshot_source_url_uses_selected_iso_directory(self):
         with tempfile.TemporaryDirectory() as temporary_directory:

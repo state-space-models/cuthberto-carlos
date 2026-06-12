@@ -1,7 +1,17 @@
+export interface Player {
+  number: number;
+  position: "GK" | "DF" | "MF" | "FW";
+  name: string;
+  dateOfBirth: string;
+}
+
 export interface Team {
   name: string;
   flagCode: string;
   colors: string[];
+  fifaCode: string;
+  group: string;
+  players: Player[];
 }
 
 export interface ResultProbabilities {
@@ -23,8 +33,14 @@ export interface TeamSkills {
 export interface ActualResult {
   homeScore: number;
   awayScore: number;
-  homeGoals: Array<{ name: string; minute: number; penalty?: boolean }>;
-  awayGoals: Array<{ name: string; minute: number; penalty?: boolean }>;
+  homeGoals: ActualGoal[];
+  awayGoals: ActualGoal[];
+}
+
+export interface ActualGoal {
+  name: string;
+  minute: string;
+  penalty?: boolean | null;
 }
 
 export interface MatchPrediction {
@@ -60,6 +76,16 @@ export interface GroupProjectionRow {
   expectedGoalsFor: number;
   expectedGoalsAgainst: number;
   expectedGoalDifference: number;
+}
+
+export interface GroupActualStats {
+  games: number;
+  wins: number;
+  draws: number;
+  losses: number;
+  points: number;
+  goalDifference: number;
+  goalsScored: number;
 }
 
 export interface GroupProjection {
@@ -103,6 +129,7 @@ export interface TournamentDataset {
   };
   sources: {
     schedule: DataSource;
+    squads: DataSource;
     historicalResults: DataSource;
   };
   teams: Record<string, Team>;

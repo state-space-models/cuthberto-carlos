@@ -1,6 +1,7 @@
 import { useMemo, useState, type MouseEvent } from "react";
 import type { GroupProjection, MatchPrediction, Team } from "../types";
-import { formatKickoffParts, formatPercent, mostLikelyOutcome } from "../utils";
+import { formatKickoffParts, getActualGroupStats, isMatchCompleted, isMatchOngoing } from "../utils";
+import { MatchScoreComparison } from "./MatchScoreComparison";
 import { TeamFlag } from "./TeamFlag";
 
 interface GroupStageProps {
@@ -22,6 +23,7 @@ function GroupCard({
   onOpen: (match: MatchPrediction, trigger: HTMLElement) => void;
 }) {
   const groupMatches = group.matchIds.map((id) => matchMap.get(id)).filter(Boolean) as MatchPrediction[];
+  const actualStats = getActualGroupStats(groupMatches);
 
   function handleOpen(match: MatchPrediction, event: MouseEvent<HTMLButtonElement>) {
     onOpen(match, event.currentTarget);
@@ -40,27 +42,59 @@ function GroupCard({
       <div className="table-scroll">
         <table className="standings-table">
           <caption>Model-projected {group.name} standings</caption>
+          <colgroup>
+            <col className="standings-table__rank-column" />
+            <col className="standings-table__team-column" />
+            {Array.from({ length: 10 }, (_, index) => (
+              <col className="standings-table__stat-column" key={index} />
+            ))}
+          </colgroup>
           <thead>
             <tr>
               <th scope="col">#</th>
               <th scope="col">Team</th>
-              <th scope="col" title="Expected points">xPts</th>
+              <th scope="col" title="Games played">G</th>
+              <th scope="col" title="Wins">W</th>
+              <th scope="col" title="Draws">D</th>
+              <th scope="col" title="Losses">L</th>
+              <th scope="col" title="Points">PTS</th>
+              <th scope="col" title="Goal difference">GD</th>
+              <th scope="col" title="Goals scored">GS</th>
+              <th className="standings-table__projection-start" scope="col" title="Expected points">xPts</th>
               <th scope="col" title="Expected goal difference">xGD</th>
               <th scope="col" title="Expected goals for">xGF</th>
             </tr>
           </thead>
           <tbody>
-            {group.projection.map((row) => (
-              <tr key={row.team}>
-                <td>
-                  <span className={`rank-marker rank-marker--${row.rank}`}>{row.rank}</span>
-                </td>
-                <th scope="row"><TeamFlag team={teams[row.team]} compact /></th>
-                <td>{row.expectedPoints.toFixed(1)}</td>
-                <td>{row.expectedGoalDifference > 0 ? "+" : ""}{row.expectedGoalDifference.toFixed(1)}</td>
-                <td>{row.expectedGoalsFor.toFixed(1)}</td>
-              </tr>
-            ))}
+            {group.projection.map((row) => {
+              const stats = actualStats[row.team] ?? {
+                games: 0,
+                wins: 0,
+                draws: 0,
+                losses: 0,
+                points: 0,
+                goalDifference: 0,
+                goalsScored: 0,
+              };
+              return (
+                <tr key={row.team}>
+                  <td>
+                    <span className={`rank-marker rank-marker--${row.rank}`}>{row.rank}</span>
+                  </td>
+                  <th scope="row"><TeamFlag team={teams[row.team]} compact /></th>
+                  <td>{stats.games}</td>
+                  <td>{stats.wins}</td>
+                  <td>{stats.draws}</td>
+                  <td>{stats.losses}</td>
+                  <td>{stats.points}</td>
+                  <td>{stats.goalDifference > 0 ? "+" : ""}{stats.goalDifference}</td>
+                  <td>{stats.goalsScored}</td>
+                  <td className="standings-table__projection-start">{row.expectedPoints.toFixed(1)}</td>
+                  <td>{row.expectedGoalDifference > 0 ? "+" : ""}{row.expectedGoalDifference.toFixed(1)}</td>
+                  <td>{row.expectedGoalsFor.toFixed(1)}</td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>
@@ -68,28 +102,35 @@ function GroupCard({
       <div className="group-fixtures">
         {groupMatches.map((match) => {
           const kickoff = formatKickoffParts(match.kickoffUtc);
-          const probabilities = match.prediction.probabilities;
+          const completed = isMatchCompleted(match);
+          const ongoing = isMatchOngoing(match);
           return (
-            <button
+            <div
               className="fixture-row"
-              type="button"
               key={match.id}
-              onClick={(event) => handleOpen(match, event)}
-              aria-label={`Open prediction for ${match.homeTeam} versus ${match.awayTeam}`}
             >
-              <span className="fixture-row__date">{kickoff.date}<small>{kickoff.time}</small></span>
               <span className="fixture-row__teams">
                 <TeamFlag team={teams[match.homeTeam]} compact />
-                <strong>{match.prediction.mostLikelyScore[0]}–{match.prediction.mostLikelyScore[1]}</strong>
+                <span className="fixture-row__score-area">
+                  <span className="fixture-row__date">
+                    {kickoff.date}
+                    <small>{kickoff.time}</small>
+                    {completed && <strong className="fixture-row__status">Played</strong>}
+                    {ongoing && <strong className="fixture-row__status fixture-row__status--live">Live</strong>}
+                  </span>
+                  <MatchScoreComparison match={match} teams={teams} variant="group" showScorers />
+                </span>
                 <TeamFlag team={teams[match.awayTeam]} compact />
               </span>
-              <span className="fixture-row__pick">
-                {mostLikelyOutcome(probabilities, match.homeTeam, match.awayTeam)}
-                <small>
-                  {formatPercent(Math.max(probabilities.homeWin, probabilities.draw, probabilities.awayWin), 1)}
-                </small>
-              </span>
-            </button>
+              <button
+                className="fixture-row__prediction"
+                type="button"
+                onClick={(event) => handleOpen(match, event)}
+              >
+                <span className="sr-only">Open prediction for {match.homeTeam} versus {match.awayTeam}</span>
+                <span aria-hidden="true">→</span>
+              </button>
+            </div>
           );
         })}
       </div>
@@ -112,7 +153,7 @@ export function GroupStage({ groups, matches, teams, onOpen }: GroupStageProps) 
           <h2 id="groups-title">Group stage</h2>
         </div>
         <p>
-          Tables use expected points and goals from every scoreline distribution. They are model projections, not official standings. The top two in each group and eight best third-place teams advance.
+          G, W, D, L, PTS, GD, and GS reflect results available from the OpenFootball schedule. PTS awards three points for a win and one for a draw, GD is goal difference, and GS is goals scored. xPTS means expected points, xGD expected goal difference, and xGF expected goals scored. Rankings remain model projections, not official standings. The top two in each group and eight best third-place teams advance.
         </p>
       </div>
 

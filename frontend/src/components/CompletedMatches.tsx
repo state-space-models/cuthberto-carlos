@@ -51,13 +51,27 @@ export function CompletedMatches({ matches, teams, onOpen }: CompletedMatchesPro
         view === "cards" ? (
           <div className="match-grid" data-testid="completed-card-view">
             {completed.map((match) => (
-              <MatchCard key={match.id} match={match} teams={teams} onOpen={onOpen} showScoreComparison />
+              <MatchCard
+                key={match.id}
+                match={match}
+                teams={teams}
+                onOpen={onOpen}
+                showScoreComparison
+                hidePredictionDetails
+              />
             ))}
           </div>
         ) : (
           <div className="match-list" data-testid="completed-list-view">
             {completed.map((match) => (
-              <MatchListRow key={match.id} match={match} teams={teams} onOpen={onOpen} showScoreComparison />
+              <MatchListRow
+                key={match.id}
+                match={match}
+                teams={teams}
+                onOpen={onOpen}
+                showScoreComparison
+                hidePredictionDetails
+              />
             ))}
           </div>
         )
