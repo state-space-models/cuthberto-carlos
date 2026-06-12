@@ -1,14 +1,17 @@
 """Moment-based Gaussian approximation for football match scores."""
 
 from typing import Any
+from functools import partial
 
 from jax import Array
-from jax import numpy as jnp
+from jax import numpy as jnp, vmap
 from jax.typing import ArrayLike
 import ghq
 
 from cuthbert.gaussian.types import LinearizedKalmanFilterState
 from cuthbertlib.linearize.moments import MeanAndCholCovFunc
+from cuthbert.gaussian import moments
+from cuthbert.factorial.gaussian import build_factorializer
 
 from cuthberto_carlos.data_types import DynamicsOnlyData, ResultData
 from cuthberto_carlos.bivariate_poisson import _loglik_grid_loglambdas
@@ -215,6 +218,94 @@ def get_observation_params_noop(
         return jnp.zeros(1, dtype=dtype), jnp.ones((1, 1), dtype=dtype)
 
     return observation_mean_and_chol_cov, state.mean, jnp.array([jnp.nan])
+
+
+def build(init_mean, init_chol_cov, alpha, beta, friendly_scale, kappa):
+    """Build the moments filters and factorializer for the football model.
+
+    Args:
+        init_mean: The mean of the initial distribution for each state dimension.
+        init_chol_cov: The Cholesky covariance matrix of the initial distribution.
+            Shape (2, 2), allowing correlation between attack and defence.
+        alpha: Scalar baseline scoring parameter.
+        beta: Scalar covariance/shared-scoring parameter.
+        friendly_scale: Scalar parameter that controls the influence of the team strength
+            parameters on the expected score for friendly matches. Larger values correspond
+            to less influence (and thus higher variance in the observation model).
+        kappa: Mean-reversion rate per day for the OU dynamics.
+
+    Returns:
+        A tuple containing the moments filter for match updates, the factorializer, and
+        the moments filter for single team dynamics-only updates.
+    """
+    filter_obj = moments.build_filter(
+        get_init_params=partial(
+            get_init_params,
+            init_mean=init_mean,
+            init_chol_cov=init_chol_cov,
+        ),
+        get_dynamics_params=partial(
+            get_dynamics_params,
+            init_mean=init_mean,
+            init_chol_cov=init_chol_cov,
+            kappa=kappa,
+        ),
+        get_observation_params=partial(
+            get_observation_params,
+            alpha=alpha,
+            beta=beta,
+            friendly_scale=friendly_scale,
+        ),
+    )
+    factorializer = build_factorializer(get_factorial_indices=get_factorial_inds)
+    single_team_filter = moments.build_filter(
+        get_init_params=partial(
+            get_init_params,
+            init_mean=init_mean,
+            init_chol_cov=init_chol_cov,
+        ),
+        get_dynamics_params=partial(
+            get_dynamics_params,
+            init_mean=init_mean,
+            init_chol_cov=init_chol_cov,
+            kappa=kappa,
+        ),
+        get_observation_params=get_observation_params_noop,
+    )
+    return filter_obj, factorializer, single_team_filter
+
+
+def synchronize(
+    factorial_state: LinearizedKalmanFilterState,
+    factorializer,
+    single_team_filter,
+    model_inputs: DynamicsOnlyData,
+):
+    """Synchronize the factorial state to the most recent timestamp for each team.
+
+    Args:
+        factorial_state: The current factorial state, which may apply to different
+            timestamps for different factors/teams.
+        factorializer: The factorializer object used to extract individual team states.
+        single_team_filter: The filter object used for single team dynamics-only updates.
+        model_inputs: The dynamics-only data for each team. Each attribute should have
+            a leading factorial axis of length equal to the number of teams in
+            the factorial state.
+    """
+    num_teams = factorial_state.mean.shape[0]
+    out_factorial_final = vmap(factorializer.extract, in_axes=(None, 0))(
+        factorial_state, jnp.arange(num_teams)
+    )
+    state_prep = vmap(single_team_filter.filter_prepare)(model_inputs)
+    sync_factorial_final = vmap(single_team_filter.filter_combine)(
+        out_factorial_final, state_prep
+    )
+    #### sync_factorial_final.elem.ell is shape (num_teams,) but needs to be (,)
+    ### This is a hack, should think about to handle it properly in cuthbert
+    sync_factorial_final = sync_factorial_final._replace(
+        elem=sync_factorial_final.elem._replace(ell=sync_factorial_final.elem.ell[0])
+    )
+    return sync_factorial_final
 
 
 def predict_match(

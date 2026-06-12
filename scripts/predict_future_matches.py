@@ -1,13 +1,10 @@
 """Predict the scores and results of future matches using the model trained on past data."""
 
-from functools import partial
 from jax import numpy as jnp
 import jax
 import pandas as pd
 import os
 import json
-from cuthbert.gaussian import moments
-from cuthbert.factorial.gaussian import build_factorializer
 
 from cuthberto_carlos.data import download_data, to_jax_data
 from cuthberto_carlos.data_types import ResultData, DynamicsOnlyData
@@ -16,7 +13,7 @@ from cuthberto_carlos.json_io import save_arraytree, load_arraytree
 from cuthberto_carlos import model_moments
 
 
-FACTORIAL_STATE_PATH = "outputs/sync_factorial_final.json"
+FACTORIAL_STATE_PATH = "outputs/live_factorial.json"
 PARAMS_FILE = "outputs/moments_params.json"
 GAUSS_HERMITE_DEGREE = 32
 COLORS_FILE = "assets/team_colors.json"
@@ -50,24 +47,7 @@ factorial_state_and_timestamp = load_arraytree(FACTORIAL_STATE_PATH)
 factorial_state = factorial_state_and_timestamp["sync_factorial_final"]
 factorial_timestamp = factorial_state_and_timestamp["timestamp"]
 
-
-factorializer = build_factorializer(
-    get_factorial_indices=model_moments.get_factorial_inds
-)
-single_team_filter = moments.build_filter(
-    get_init_params=partial(
-        model_moments.get_init_params,
-        init_mean=init_mean,
-        init_chol_cov=init_chol_cov,
-    ),
-    get_dynamics_params=partial(
-        model_moments.get_dynamics_params,
-        init_mean=init_mean,
-        init_chol_cov=init_chol_cov,
-        kappa=params["kappa"],
-    ),
-    get_observation_params=model_moments.get_observation_params_noop,
-)
+_, factorializer, single_team_filter = model_moments.build(init_mean, **params)
 
 
 def propagate_and_predict(
