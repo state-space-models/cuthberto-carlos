@@ -102,3 +102,5 @@ save_arraytree(save_data, FACTORIAL_STATE_FILE)
 plot_team_strengths(
     live_factorial_state, teams_id_to_name_dict, TEAM_STRENGTH_PLOT_FILE
 )
+
+# TODO: predict but only for the teams involved in the new data
