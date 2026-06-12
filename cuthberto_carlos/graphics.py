@@ -3,7 +3,7 @@
 import os
 import tempfile
 
-from jax import numpy as jnp
+from jax import numpy as jnp, vmap
 import pandas as pd
 import plotnine as pn
 from PIL import Image
@@ -311,3 +311,70 @@ def make_graphic(
         canvas.paste(score_img, (right_x, top_y))
 
         canvas.save(save_path)
+
+
+def plot_team_strengths(
+    factorial_state, teams_id_to_name_dict: dict[int, str], save_path: str
+) -> None:
+    """Plot the team strengths from the factorial state.
+
+    Args:
+        factorial_state: The factorial state containing the team strengths.
+        teams_id_to_name_dict: Mapping from team IDs to team names.
+        save_path: The path to save the plot to.
+    """
+    num_teams = len(teams_id_to_name_dict)
+
+    # Sorted by total strength (attack + defence), strongest at the top. Only plot top 20 teams
+    means = factorial_state.mean
+    covs = factorial_state.chol_cov @ factorial_state.chol_cov.transpose(0, 2, 1)
+    stds = vmap(lambda cov: jnp.sqrt(jnp.diag(cov)))(covs)
+    names = [teams_id_to_name_dict[i] for i in range(num_teams)]
+
+    top_team_ids = jnp.argsort(means.sum(axis=1))[-20:][::-1]
+    top_team_ids_list = [int(team_id) for team_id in top_team_ids]
+    team_order = [names[team_id] for team_id in reversed(top_team_ids_list)]
+    metrics = ("attack", "defence")
+    plot_data = pd.DataFrame(
+        [
+            {
+                "team": names[team_id],
+                "metric": metric,
+                "mean": float(means[team_id, metric_id]),
+                "std": float(stds[team_id, metric_id]),
+            }
+            for team_id in top_team_ids_list
+            for metric_id, metric in enumerate(metrics)
+        ]
+    )
+    plot_data["team"] = pd.Categorical(
+        plot_data["team"], categories=team_order, ordered=True
+    )
+    plot_data["metric"] = pd.Categorical(
+        plot_data["metric"], categories=("attack", "defence"), ordered=True
+    )
+    plot_data["metric_order"] = pd.Categorical(
+        plot_data["metric"], categories=("defence", "attack"), ordered=True
+    )
+
+    team_strength_plot = (
+        pn.ggplot(
+            plot_data, pn.aes("team", "mean", fill="metric", group="metric_order")
+        )
+        + pn.geom_col(position=pn.position_dodge(width=0.8), width=0.7)
+        + pn.geom_errorbar(
+            pn.aes(ymin="mean - std", ymax="mean + std"),
+            position=pn.position_dodge(width=0.8),
+            width=0.25,
+        )
+        + pn.coord_flip()
+        + pn.labs(
+            x="Team",
+            y="Mean strength",
+            fill="Metric",
+            title="Top 20 Teams by Total Strength",
+        )
+        + pn.theme_minimal()
+        + pn.theme(figure_size=(10, 7))
+    )
+    team_strength_plot.save(save_path, dpi=300, verbose=False)

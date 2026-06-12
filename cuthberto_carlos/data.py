@@ -2,7 +2,7 @@
 
 import pandas as pd
 import numpy as np
-from jax import numpy as jnp
+from jax import numpy as jnp, Array
 
 from cuthberto_carlos.data_types import ResultData
 
@@ -137,6 +137,33 @@ def to_jax_data(data_all: pd.DataFrame) -> ResultData:
         home_timestamp_previous=jnp.array(data_all["home_timestamp_previous"].values),
         away_timestamp_previous=jnp.array(data_all["away_timestamp_previous"].values),
     )
+
+
+def most_recent_timestamp_by_team(
+    data_all: pd.DataFrame, num_teams: int, default: float = 0.0
+) -> Array:
+    """Extract the most recent timestamp for each team.
+
+    Args:
+        data_all: The DataFrame containing the match data.
+            Requires columns "home_team_id", "away_team_id", and "timestamp_days".
+        num_teams: The total number of teams.
+        default: The default timestamp to use for teams without matches in the dataframe.
+            Defaults to 0.0.
+
+    Returns:
+        A JAX array of shape (num_teams,) containing the most recent timestamp for each
+        team.
+    """
+    timestamps = jnp.array(data_all["timestamp_days"].to_numpy())
+    most_recent_timestamp_by_team = jnp.full(num_teams, default, dtype=timestamps.dtype)
+    most_recent_timestamp_by_team = most_recent_timestamp_by_team.at[
+        jnp.array(data_all["home_team_id"].to_numpy())
+    ].max(timestamps)
+    most_recent_timestamp_by_team = most_recent_timestamp_by_team.at[
+        jnp.array(data_all["away_team_id"].to_numpy())
+    ].max(timestamps)
+    return most_recent_timestamp_by_team
 
 
 if __name__ == "__main__":

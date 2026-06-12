@@ -1,34 +1,30 @@
 """Update moments factorial state."""
 
-from functools import partial
 from jax import numpy as jnp
 import jax
 import json
-from cuthbert.gaussian import moments
-from cuthbert.factorial.gaussian import build_factorializer
 
-from cuthberto_carlos.data import download_data
-from cuthberto_carlos.json_io import load_arraytree
+from cuthberto_carlos.data_types import DynamicsOnlyData
+from cuthberto_carlos.data import download_data, most_recent_timestamp_by_team
+from cuthberto_carlos.json_io import load_arraytree, save_arraytree
 from cuthberto_carlos import model_moments
+from cuthberto_carlos.graphics import plot_team_strengths
 
+
+FACTORIAL_STATE_FILE = "outputs/live_factorial.json"
+TEAM_STRENGTH_PLOT_FILE = "outputs/team_strength_plot.png"
 
 max_goals = 8
-
 pd_data, jax_data, teams_id_to_name_dict, teams_name_to_id_dict = download_data(
     max_goals=max_goals
 )
-
+num_teams = len(teams_id_to_name_dict)
 init_mean = jnp.array([0.0, 0.0])
-
 params_file = "outputs/moments_params.json"
 with open(params_file, "r") as f:
     params = json.load(f)["params"]
 
 params = {k: jnp.asarray(v) for k, v in params.items()}
-
-num_teams = len(teams_id_to_name_dict)
-init_chol_cov = jnp.linalg.cholesky(params["init_cov"])
-
 
 # Load previously save factorial state
 load_data = load_arraytree("outputs/live_factorial.json")
@@ -42,30 +38,8 @@ new_jax_data = jax.tree.map(
     lambda x: x[jax_data.match_index > previous_match_index], jax_data
 )
 
-
-filter_obj = moments.build_filter(
-    get_init_params=partial(
-        model_moments.get_init_params,
-        init_mean=init_mean,
-        init_chol_cov=init_chol_cov,
-        num_teams=num_teams,
-    ),
-    get_dynamics_params=partial(
-        model_moments.get_dynamics_params,
-        init_mean=init_mean,
-        init_chol_cov=init_chol_cov,
-        kappa=params["kappa"],
-    ),
-    get_observation_params=partial(
-        model_moments.get_observation_params,
-        alpha=params["alpha"],
-        beta=params["beta"],
-        friendly_scale=params["friendly_scale"],
-    ),
-)
-factorializer = build_factorializer(
-    get_factorial_indices=model_moments.get_factorial_inds
-)
+# Load filter(s) and factorializer
+filter_obj, factorializer, single_team_filter = model_moments.build(init_mean, **params)
 
 
 # From https://github.com/state-space-models/cuthbert/blob/89bf19036ba8879ed63c91e88059f9be89cf3af2/cuthbert/factorial/filtering.py#L72
@@ -94,16 +68,38 @@ def update_factorial(prev_factorial_state, model_inputs):
     return factorial_state  # , local_factorial_filtered_state
 
 
+# Update the factorial state with the new matches
 live_factorial_state = previous_factorial_state
-
 
 for i in range(len(new_jax_data.match_index)):
     model_inputs = jax.tree.map(lambda x: x[i], new_jax_data)
     live_factorial_state = update_factorial(live_factorial_state, model_inputs)
 
 
-# TODO: synchronize to the most recent timestamp for each team
-# TODO: save the factorial state
-# TODO: plot team_strength_plot
+# Synchronize other teams to the most recent timestamp
+most_recent_timestamp = most_recent_timestamp_by_team(
+    pd_data, num_teams, default=previous_time
+)
+current_time = most_recent_timestamp.max()
 
-# This should reuse modularised code from run_moments_filtering.py
+sync_data = DynamicsOnlyData(
+    team_id=jnp.arange(num_teams),
+    timestamp=jnp.broadcast_to(current_time, (num_teams,)),
+    timestamp_previous=most_recent_timestamp,
+)
+live_factorial_state = model_moments.synchronize(
+    live_factorial_state, factorializer, single_team_filter, sync_data
+)
+
+# Save the factorial state
+save_data = {
+    "factorial_state": live_factorial_state,
+    "match_index_final": model_inputs.match_index[-1],
+    "timestamp": current_time,
+}
+save_arraytree(save_data, FACTORIAL_STATE_FILE)
+
+# Plot the team strengths
+plot_team_strengths(
+    live_factorial_state, teams_id_to_name_dict, TEAM_STRENGTH_PLOT_FILE
+)
