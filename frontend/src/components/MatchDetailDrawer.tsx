@@ -65,7 +65,7 @@ function ScoreHeatmap({ match }: { match: MatchPrediction }) {
         </caption>
         <thead>
           <tr>
-            <th scope="col">Away ↓ / Home →</th>
+            <th scope="col">{match.awayTeam} ↓ / {match.homeTeam} →</th>
             {labels.map((label) => (
               <th scope="col" key={label}>{label}</th>
             ))}

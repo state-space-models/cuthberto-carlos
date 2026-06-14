@@ -559,6 +559,30 @@ h2 {
   text-align: right;
 }
 
+.match-card__team {
+  display: flex;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.match-card__team--home {
+  justify-content: flex-end;
+}
+
+.match-card__team--away {
+  justify-content: flex-start;
+}
+
+.match-card__team .team-identity {
+  width: 100%;
+  max-width: 100%;
+}
+
+.match-card__team .team-identity > span:last-child {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
 .match-card__score {
   font-family: Georgia, serif;
   font-size: 2rem;
@@ -572,13 +596,6 @@ h2 {
   flex-direction: column;
   gap: 0.2rem;
   text-align: center;
-}
-
-.match-card__outcome {
-  color: var(--muted);
-  font-size: 0.72rem;
-  font-weight: 750;
-  white-space: nowrap;
 }
 
 .score-comparison {

@@ -4,7 +4,6 @@ import {
   formatKickoffParts,
   formatPercent,
   isMatchOngoing,
-  mostLikelyOutcome,
 } from "../utils";
 import { TeamFlag } from "./TeamFlag";
 import { MatchScoreComparison } from "./MatchScoreComparison";
@@ -64,11 +63,6 @@ export function MatchCard({
           <MatchScoreComparison match={match} teams={teams} variant="card" showScorers />
         ) : (
           <div className="match-card__score-block">
-            {!hidePredictionDetails && (
-              <span className="match-card__outcome">
-                {mostLikelyOutcome(probabilities, match.homeTeam, match.awayTeam)}
-              </span>
-            )}
             <span
               className={`match-card__score ${hasActualResult ? "match-card__score--actual" : ""}`}
               aria-label={hasActualResult ? "Final score" : "Most likely score"}

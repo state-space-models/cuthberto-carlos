@@ -193,6 +193,7 @@ describe("App interactions", () => {
     await user.click(screen.getByRole("button", { name: /Open prediction for Canada versus Bosnia and Herzegovina/i }));
     expect(screen.getByRole("dialog", { name: /Canada vs Bosnia and Herzegovina/i })).toBeInTheDocument();
     expect(screen.getByRole("table", { name: /Score probability/i })).toBeInTheDocument();
+    expect(screen.getByRole("columnheader", { name: "Bosnia and Herzegovina ↓ / Canada →" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /Snapshot 2026-06-11 source data/i })).toHaveAttribute(
       "href",
       expect.stringContaining("/outputs/predictions/2026-06-11/"),
@@ -200,6 +201,13 @@ describe("App interactions", () => {
 
     await user.click(screen.getByRole("button", { name: "Close prediction details" }));
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  });
+
+  it("does not show a predicted winner above card scorelines", () => {
+    render(<App />);
+
+    const upcoming = screen.getByTestId("upcoming-card-view");
+    expect(within(upcoming).queryByText(/Japan win/i)).not.toBeInTheDocument();
   });
 
   it("filters countries, selects a squad, and exposes accessible player profiles", async () => {
