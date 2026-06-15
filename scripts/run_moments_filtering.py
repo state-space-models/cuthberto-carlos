@@ -19,7 +19,6 @@ pd_data, jax_data, teams_id_to_name_dict, teams_name_to_id_dict = download_data(
     max_goals=max_goals
 )
 
-init_mean = jnp.array([0.0, 0.0])
 params_file = "outputs/moments_params.json"
 with open(params_file, "r") as f:
     params = json.load(f)["params"]
@@ -35,7 +34,7 @@ model_inputs = jax.tree.map(
     lambda x: jnp.concatenate([jnp.zeros_like(x[:1]), x], axis=0), jax_data
 )
 
-filter_obj, factorializer, single_team_filter = model_moments.build(init_mean, **params)
+filter_obj, factorializer, single_team_filter = model_moments.build(**params)
 
 _, _, out_factorial_final = factorial_filter(
     filter_obj, factorializer, model_inputs, output_factorial=False

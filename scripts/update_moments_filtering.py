@@ -1,4 +1,7 @@
-"""Update moments factorial state."""
+"""Update moments factorial state to the latest match data.
+
+Modifies and overwrites outputs/live_factorial.json and outputs/team_strength_plot.png.
+"""
 
 from jax import numpy as jnp
 import jax
@@ -18,7 +21,6 @@ pd_data, jax_data, teams_id_to_name_dict, teams_name_to_id_dict = download_data(
     max_goals=max_goals
 )
 num_teams = len(teams_id_to_name_dict)
-init_mean = jnp.array([0.0, 0.0])
 params_file = "outputs/moments_params.json"
 with open(params_file, "r") as f:
     params = json.load(f)["params"]
@@ -38,7 +40,7 @@ new_jax_data = jax.tree.map(
 )
 
 # Load filter(s) and factorializer
-filter_obj, factorializer, single_team_filter = model_moments.build(init_mean, **params)
+filter_obj, factorializer, single_team_filter = model_moments.build(**params)
 
 
 # From https://github.com/state-space-models/cuthbert/blob/89bf19036ba8879ed63c91e88059f9be89cf3af2/cuthbert/factorial/filtering.py#L72
@@ -93,7 +95,7 @@ live_factorial_state = model_moments.synchronize(
 # Save the factorial state
 save_data = {
     "factorial_state": live_factorial_state,
-    "match_index_final": model_inputs.match_index[-1],
+    "match_index_final": new_jax_data.match_index[-1],
     "timestamp": current_time,
 }
 save_arraytree(save_data, FACTORIAL_STATE_FILE)

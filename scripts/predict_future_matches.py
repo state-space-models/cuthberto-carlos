@@ -32,7 +32,6 @@ params = {k: jnp.asarray(v) for k, v in params.items()}
 with open(COLORS_FILE, "r") as f:
     team_name_to_colors = json.load(f)
 
-init_mean = jnp.array([0.0, 0.0])
 init_chol_cov = jnp.array(params["init_chol_cov"])
 max_goals = 8
 
@@ -44,10 +43,10 @@ pd_data_future = pd_data[pd_data["home_score"] == -1].copy()
 jax_data_future = to_jax_data(pd_data_future)
 
 factorial_state_and_timestamp = load_arraytree(FACTORIAL_STATE_PATH)
-factorial_state = factorial_state_and_timestamp["sync_factorial_final"]
+factorial_state = factorial_state_and_timestamp["factorial_state"]
 factorial_timestamp = factorial_state_and_timestamp["timestamp"]
 
-_, factorializer, single_team_filter = model_moments.build(init_mean, **params)
+_, factorializer, single_team_filter = model_moments.build(**params)
 
 
 def propagate_and_predict(

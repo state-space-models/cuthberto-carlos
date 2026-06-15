@@ -89,10 +89,8 @@ def params_to_jsonable(params: dict[str, jax.Array]) -> dict[str, float | list]:
         "friendly_scale": float(params["friendly_scale"]),
         "alpha": float(params["alpha"]),
         "beta": float(params["beta"]),
-        "init_sd": float(params["init_sd"]),
-        "init_corr": float(params["init_corr"]),
-        "init_cov": jnp.asarray(params["init_cov"]).tolist(),
         "init_chol_cov": jnp.asarray(params["init_chol_cov"]).tolist(),
+        "init_mean": jnp.asarray(INIT_MEAN).tolist(),
     }
 
 
