@@ -1,0 +1,80 @@
+name: Daily moments update and match predictions
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 9 * * *'  # Run daily at 09:00 UTC
+
+# Allow the job to commit and push generated outputs back to main
+permissions:
+  contents: write
+
+# Avoid overlapping runs racing to push to main
+concurrency:
+  group: daily-predictions
+  cancel-in-progress: false
+
+jobs:
+  # GitHub cron always fires; it can't be date-gated at the trigger. This guard job
+  # decides whether the real job should run, so after the deadline the main job is
+  # skipped as a whole rather than running with every step skipped.
+  guard:
+    runs-on: ubuntu-latest
+    outputs:
+      run: ${{ steps.deadline.outputs.run }}
+    steps:
+      - name: Check 2026-07-20 deadline
+        id: deadline
+        shell: bash
+        run: |
+          today="$(date -u +%Y-%m-%d)"
+          # ISO dates compare correctly as strings
+          if [[ "$github_event" == "schedule" && "$today" > "2026-07-20" ]]; then
+            echo "Past 2026-07-20 deadline ($today); skipping scheduled run."
+            echo "run=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "run=true" >> "$GITHUB_OUTPUT"
+          fi
+        env:
+          github_event: ${{ github.event_name }}
+
+  update-and-predict:
+    needs: guard
+    if: needs.guard.outputs.run == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+
+      - name: Install dependencies
+        run: uv sync --locked
+
+      - name: Update moments filtering
+        run: uv run python scripts/update_moments_filtering.py
+
+      - name: Predict future matches
+        run: uv run python scripts/predict_future_matches.py
+
+      - name: Commit and push outputs
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          git add outputs/live_factorial.json outputs/team_strength_plot.png outputs/predictions
+
+          if git diff --cached --quiet; then
+            echo "No output changes to commit."
+            exit 0
+          fi
+
+          git commit -m "Daily moments update and predictions ($(date -u +%Y-%m-%d))"
+
+          # Rebase on the latest main in case it moved during the run, then push
+          git pull --rebase origin main
+          git push origin HEAD:main
