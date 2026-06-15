@@ -17,7 +17,9 @@ function match(id: string, kickoffUtc: string): MatchPrediction {
     venue: "Test venue",
     homeTeam: "Mexico",
     awayTeam: "South Africa",
+    predictionDate: "2026-06-11",
     sourceUrl: "https://example.test/source",
+    predictionHistory: [],
     prediction: {
       probabilities: { homeWin: 0.5, draw: 0.3, awayWin: 0.2 },
       scoreGrid: [[1]],

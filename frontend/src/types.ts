@@ -51,22 +51,32 @@ export interface MatchPrediction {
   venue: string;
   homeTeam: string;
   awayTeam: string;
+  predictionDate: string;
   sourceUrl: string;
-  prediction: {
-    probabilities: ResultProbabilities;
-    scoreGrid: number[][];
-    mostLikelyScore: [number, number];
-    mostLikelyScoreProbability: number;
-    expectedGoals: {
-      home: number;
-      away: number;
-    };
-    skills: {
-      home: TeamSkills;
-      away: TeamSkills;
-    };
-  };
+  predictionHistory: PredictionHistoryEntry[];
+  prediction: PredictionDetails;
   actualResult?: ActualResult;
+}
+
+export interface PredictionHistoryEntry {
+  predictionDate: string;
+  sourceUrl: string;
+  prediction: PredictionDetails;
+}
+
+export interface PredictionDetails {
+  probabilities: ResultProbabilities;
+  scoreGrid: number[][];
+  mostLikelyScore: [number, number];
+  mostLikelyScoreProbability: number;
+  expectedGoals: {
+    home: number;
+    away: number;
+  };
+  skills: {
+    home: TeamSkills;
+    away: TeamSkills;
+  };
 }
 
 export interface GroupProjectionRow {

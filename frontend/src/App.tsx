@@ -7,20 +7,40 @@ import { GroupStage } from "./components/GroupStage";
 import { MatchDetailDrawer } from "./components/MatchDetailDrawer";
 import { UpcomingMatches } from "./components/UpcomingMatches";
 import type { MatchPrediction, TournamentDataset } from "./types";
+import { useLiveResults } from "./useLiveResults";
 
 const data = tournamentData as unknown as TournamentDataset;
 
+const predictionDates = Array.from(
+  new Set(
+    data.groupMatches.flatMap((match) => [
+      match.predictionDate,
+      ...match.predictionHistory.map((prediction) => prediction.predictionDate),
+    ]),
+  ),
+).sort((left, right) => right.localeCompare(left));
+
+const snapshotBaseUrl = data.snapshotUrl.slice(0, -data.snapshotDate.length);
+
 function App() {
-  const [selectedMatch, setSelectedMatch] = useState<MatchPrediction | null>(null);
+  const { matches, status, lastCheckedAt } = useLiveResults(
+    data.groupMatches,
+    data.sources.schedule.dataUrl,
+    data.teams,
+  );
+  const [selectedMatchId, setSelectedMatchId] = useState<string | null>(null);
   const lastTrigger = useRef<HTMLElement | null>(null);
+  const selectedMatch = selectedMatchId
+    ? matches.find((match) => match.id === selectedMatchId) ?? null
+    : null;
 
   const openMatch = useCallback((match: MatchPrediction, trigger: HTMLElement) => {
     lastTrigger.current = trigger;
-    setSelectedMatch(match);
+    setSelectedMatchId(match.id);
   }, []);
 
   const closeMatch = useCallback(() => {
-    setSelectedMatch(null);
+    setSelectedMatchId(null);
     window.requestAnimationFrame(() => lastTrigger.current?.focus());
   }, []);
 
@@ -40,11 +60,31 @@ function App() {
           {/* <a href="#playoffs">Playoffs</a> */}
         </nav>
         <div className="header-actions">
-          <a className="header-snapshot" href={data.snapshotUrl} target="_blank" rel="noreferrer">
-            <span>Latest model snapshot</span>
-            <strong>{data.snapshotDate}</strong>
-            <small>Commit {data.sourceCommit}</small>
-          </a>
+          <div className="header-snapshot">
+            <a className="header-snapshot__latest" href={data.snapshotUrl} target="_blank" rel="noreferrer">
+              <span>Latest model snapshot</span>
+              <strong>{data.snapshotDate}</strong>
+              <small>Commit {data.sourceCommit}</small>
+            </a>
+            {predictionDates.length > 1 && (
+              <details className="header-snapshot__picker">
+                <summary aria-label="Browse previous predictions">⌄</summary>
+                <div className="header-snapshot__menu">
+                  <strong>Previous predictions</strong>
+                  {predictionDates.slice(1).map((predictionDate) => (
+                    <a
+                      key={predictionDate}
+                      href={`${snapshotBaseUrl}${predictionDate}`}
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      {predictionDate} <span aria-hidden="true">↗</span>
+                    </a>
+                  ))}
+                </div>
+              </details>
+            )}
+          </div>
           <a className="header-github" href={data.repositoryUrl} target="_blank" rel="noreferrer">
             View model <span aria-hidden="true">↗</span>
           </a>
@@ -76,9 +116,9 @@ function App() {
           </div>
         </section>
 
-        <UpcomingMatches matches={data.groupMatches} teams={data.teams} onOpen={openMatch} />
-        <CompletedMatches matches={data.groupMatches} teams={data.teams} onOpen={openMatch} />
-        <GroupStage groups={data.groups} matches={data.groupMatches} teams={data.teams} onOpen={openMatch} />
+        <UpcomingMatches matches={matches} teams={data.teams} onOpen={openMatch} />
+        <CompletedMatches matches={matches} teams={data.teams} onOpen={openMatch} />
+        <GroupStage groups={data.groups} matches={matches} teams={data.teams} onOpen={openMatch} />
         <Countries teams={data.teams} />
         {/* <KnockoutBracket matches={data.knockoutMatches} /> */}
       </main>
@@ -96,12 +136,16 @@ function App() {
           <a href="https://github.com/lipis/flag-icons" target="_blank" rel="noreferrer">flag-icons (MIT)</a>
         </div>
         <p>Probabilities are model estimates, not betting advice or official FIFA data.</p>
+        <p className="site-footer__results-status" role="status">
+          {status === "loading" && "Checking OpenFootball for current results…"}
+          {status === "current" && `Results checked ${new Date(lastCheckedAt!).toLocaleTimeString()}.`}
+          {status === "fallback" && "Showing deployment-time results; the live source is unavailable."}
+        </p>
       </footer>
 
       <MatchDetailDrawer
         match={selectedMatch}
         teams={data.teams}
-        snapshotDate={data.snapshotDate}
         modelName={data.model.name}
         onClose={closeMatch}
       />

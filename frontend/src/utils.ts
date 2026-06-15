@@ -64,17 +64,17 @@ export function formatKickoffParts(kickoffUtc: string): {
 export function getUpcomingMatches(
   matches: MatchPrediction[],
   now = new Date(),
-  limit = 6,
+  limit?: number,
 ): MatchPrediction[] {
   const nowTime = now.getTime();
-  return [...matches]
+  const upcoming = [...matches]
     .filter((match) => new Date(match.kickoffUtc).getTime() > nowTime)
     .sort(
       (left, right) =>
         new Date(left.kickoffUtc).getTime() -
         new Date(right.kickoffUtc).getTime(),
-    )
-    .slice(0, limit);
+    );
+  return limit === undefined ? upcoming : upcoming.slice(0, limit);
 }
 
 const ASSUMED_MATCH_DURATION_MS = 2 * 60 * 60 * 1000;

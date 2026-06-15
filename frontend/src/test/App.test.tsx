@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, within } from "@testing-library/react";
+import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import App from "../App";
@@ -14,14 +14,14 @@ const repositoryUrl = `https://github.com/${process.env.GITHUB_REPOSITORY ?? "st
 
 describe("generated tournament data", () => {
   it("contains the complete initial tournament shape", () => {
-    expect(tournamentData.schemaVersion).toBe(3);
+    expect(tournamentData.schemaVersion).toBe(5);
     expect(tournamentData.repositoryUrl).toBe(repositoryUrl);
-    expect(tournamentData.snapshotDate).toBe("2026-06-11");
+    expect(tournamentData.snapshotDate).toBe("2026-06-15");
     expect(tournamentData.groupMatches).toHaveLength(72);
     expect(tournamentData.groups).toHaveLength(12);
     expect(tournamentData.groups.every((group) => group.matchIds.length === 6)).toBe(true);
     expect(tournamentData.knockoutMatches).toHaveLength(32);
-    expect(tournamentData.snapshotUrl).toContain("/outputs/predictions/2026-06-11");
+    expect(tournamentData.snapshotUrl).toContain("/outputs/predictions/2026-06-15");
     expect(tournamentData.sources.schedule.url).toBe(
       "https://github.com/openfootball/worldcup.json/blob/master/2026/worldcup.json",
     );
@@ -30,29 +30,64 @@ describe("generated tournament data", () => {
     );
     expect(Object.keys(tournamentData.teams)).toHaveLength(48);
     expect(tournamentData.teams.Mexico.players).toHaveLength(26);
-    expect(tournamentData.groupMatches.every((match) => match.sourceUrl.includes("/2026-06-11/"))).toBe(true);
+    const mexicoSouthKorea = tournamentData.groupMatches.find(
+      (match) => match.homeTeam === "Mexico" && match.awayTeam === "South Korea",
+    );
+    expect(mexicoSouthKorea?.predictionDate).toBe("2026-06-15");
+    expect(mexicoSouthKorea?.predictionHistory).toEqual([
+      expect.objectContaining({
+        predictionDate: "2026-06-11",
+        prediction: expect.objectContaining({
+          probabilities: expect.objectContaining({ homeWin: expect.any(Number) }),
+          skills: expect.any(Object),
+        }),
+      }),
+    ]);
+
+    const mexicoSouthAfrica = tournamentData.groupMatches.find(
+      (match) => match.homeTeam === "Mexico" && match.awayTeam === "South Africa",
+    );
+    expect(mexicoSouthAfrica?.predictionDate).toBe("2026-06-11");
+    expect(mexicoSouthAfrica?.predictionHistory).toEqual([]);
   });
 });
 
 describe("App interactions", () => {
-  it("toggles upcoming matches between card and list views", async () => {
+  it("shows every upcoming match in scrollable card and list views", () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-06-11T12:00:00Z"));
 
     try {
       render(<App />);
 
+      const expectedMatches = data.groupMatches.filter(
+        (match) => new Date(match.kickoffUtc).getTime() > Date.now(),
+      );
       const viewToggle = screen.getByRole("group", { name: "Upcoming matches view" });
-      expect(screen.getByTestId("upcoming-card-view")).toBeInTheDocument();
+      const cardView = screen.getByRole("region", { name: "All upcoming matches in card view" });
+      expect(cardView).toHaveClass("upcoming-matches-scroll");
+      expect(cardView).toHaveAttribute("tabindex", "0");
+      expect(within(cardView).getAllByRole("article")).toHaveLength(expectedMatches.length);
+      const firstCard = within(cardView).getAllByRole("article")[0];
+      expect(within(firstCard).getByText(new RegExp(`^${expectedMatches[0].homeTeam} \\d+%$`))).toBeInTheDocument();
+      expect(within(firstCard).getByText(/^Draw \d+%$/)).toBeInTheDocument();
+      expect(within(firstCard).getByText(new RegExp(`^${expectedMatches[0].awayTeam} \\d+%$`))).toBeInTheDocument();
+      expect(within(firstCard).queryByText(/^H \d+%$/)).not.toBeInTheDocument();
+      expect(within(firstCard).queryByText(/^A \d+%$/)).not.toBeInTheDocument();
       expect(within(viewToggle).getByRole("button", { name: "Cards" })).toHaveAttribute("aria-pressed", "true");
 
       fireEvent.click(within(viewToggle).getByRole("button", { name: "List" }));
-      expect(screen.queryByTestId("upcoming-card-view")).not.toBeInTheDocument();
-      expect(screen.getByTestId("upcoming-list-view")).toBeInTheDocument();
+      const listView = screen.getByRole("region", { name: "All upcoming matches in list view" });
+      expect(listView).toHaveClass("upcoming-matches-scroll");
+      expect(within(listView).getAllByRole("article")).toHaveLength(expectedMatches.length);
+      const firstListRow = within(listView).getAllByRole("article")[0];
+      expect(within(firstListRow).getByText(new RegExp(`^${expectedMatches[0].homeTeam} \\d+%$`))).toBeInTheDocument();
+      expect(within(firstListRow).getByText(/^Draw \d+%$/)).toBeInTheDocument();
+      expect(within(firstListRow).getByText(new RegExp(`^${expectedMatches[0].awayTeam} \\d+%$`))).toBeInTheDocument();
       expect(within(viewToggle).getByRole("button", { name: "List" })).toHaveAttribute("aria-pressed", "true");
 
-      fireEvent.click(screen.getByRole("button", { name: /Explore prediction for Mexico versus South Africa/i }));
-      expect(screen.getByRole("dialog", { name: /Mexico vs South Africa/i })).toBeInTheDocument();
+      fireEvent.click(within(listView).getByRole("button", { name: /Explore prediction for Mexico versus South Korea/i }));
+      expect(screen.getByRole("dialog", { name: /Mexico vs South Korea/i })).toBeInTheDocument();
     } finally {
       vi.useRealTimers();
     }
@@ -114,6 +149,48 @@ describe("App interactions", () => {
     }
   });
 
+  it("updates an open match drawer when live results arrive", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-06-12T05:00:00Z"));
+    let resolveFetch!: (response: unknown) => void;
+    vi.stubGlobal("fetch", vi.fn().mockReturnValue(new Promise((resolve) => {
+      resolveFetch = resolve;
+    })));
+
+    try {
+      render(<App />);
+      const completed = screen.getByTestId("completed-list-view");
+      fireEvent.click(
+        within(completed).getByRole("button", {
+          name: /Explore prediction for Mexico versus South Africa/i,
+        }),
+      );
+      const drawer = screen.getByRole("dialog", { name: /Mexico vs South Africa/i });
+      expect(within(drawer).getByText("2–0")).toBeInTheDocument();
+
+      await act(async () => {
+        resolveFetch({
+          ok: true,
+          json: async () => ({
+            matches: [{
+              date: "2026-06-11",
+              team1: "Mexico",
+              team2: "South Africa",
+              score: { ft: [9, 8] },
+              goals1: [],
+              goals2: [],
+            }],
+          }),
+        });
+        await Promise.resolve();
+      });
+
+      expect(within(drawer).getByText("9–8")).toBeInTheDocument();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it("shows actual group stats and compares completed fixture scores", () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-06-12T05:00:00Z"));
@@ -147,6 +224,7 @@ describe("App interactions", () => {
     expect(screen.getByTitle("Draws")).toHaveTextContent("D");
     expect(screen.getByTitle("Losses")).toHaveTextContent("L");
     expect(screen.getByTitle("Points")).toHaveTextContent("PTS");
+    expect(screen.getByRole("columnheader", { name: "Seed" })).toBeInTheDocument();
     expect(screen.getByTitle("Goal difference")).toHaveTextContent("GD");
     expect(screen.getByTitle("Goals scored")).toHaveTextContent("GS");
     expect(screen.getByText(/xPTS means expected points/i)).toBeInTheDocument();
@@ -155,6 +233,7 @@ describe("App interactions", () => {
     const mexicoCells = within(mexicoRow).getAllByRole("cell");
     expect(mexicoCells.slice(1, 5).map((cell) => cell.textContent)).toEqual(["1", "1", "0", "0"]);
     expect(mexicoCells.slice(5, 8).map((cell) => cell.textContent)).toEqual(["3", "+2", "2"]);
+    expect(screen.getAllByRole("row")[1]).toHaveAccessibleName(/Mexico/);
 
       expect(screen.getAllByText("Played")).toHaveLength(2);
       expect(screen.getAllByText("Actual score")).toHaveLength(6);
@@ -174,7 +253,7 @@ describe("App interactions", () => {
 
     try {
       render(<App />);
-      const upcoming = screen.getByTestId("upcoming-card-view");
+      const upcoming = screen.getByRole("region", { name: "All upcoming matches in card view" });
       expect(within(upcoming).getByText("LIVE")).toBeInTheDocument();
     } finally {
       vi.useRealTimers();
@@ -190,10 +269,46 @@ describe("App interactions", () => {
     expect(screen.getByRole("heading", { name: "Group B" })).toBeInTheDocument();
     expect(screen.queryByRole("heading", { name: "Group A" })).not.toBeInTheDocument();
 
-    await user.click(screen.getByRole("button", { name: /Open prediction for Canada versus Bosnia and Herzegovina/i }));
-    expect(screen.getByRole("dialog", { name: /Canada vs Bosnia and Herzegovina/i })).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: /Open prediction for Canada versus Switzerland/i }));
+    expect(screen.getByRole("dialog", { name: /Canada vs Switzerland/i })).toBeInTheDocument();
     expect(screen.getByRole("table", { name: /Score probability/i })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: /Snapshot 2026-06-11 source data/i })).toHaveAttribute(
+    expect(screen.getByRole("columnheader", { name: "Switzerland ↓ / Canada →" })).toBeInTheDocument();
+    const dateSelector = screen.getByRole("group", { name: "Prediction date" });
+    expect(within(dateSelector).getByRole("button", { name: /2026-06-15 Latest/i })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+    expect(screen.getByText("44.2%")).toBeInTheDocument();
+    const probabilityBars = document.querySelectorAll<HTMLElement>(".probability-row__track > span");
+    expect(probabilityBars[0]).toHaveStyle({ background: "#15803d" });
+    expect(probabilityBars[1]).toHaveStyle({ background: "#777b76" });
+    expect(probabilityBars[2]).toHaveStyle({ background: "#dc2626" });
+    expect(
+      screen.getByRole("img", { name: "Team strength history for Canada and Switzerland" }),
+    ).toBeInTheDocument();
+    expect(screen.getByLabelText("Team strength chart legend")).toHaveTextContent(
+      "CanadaSwitzerlandAttackDefence",
+    );
+    expect(screen.getByRole("link", { name: /Prediction generated 2026-06-15/i })).toHaveAttribute(
+      "href",
+      expect.stringContaining("/outputs/predictions/2026-06-15/"),
+    );
+    expect(screen.getAllByText("Previous predictions")).toHaveLength(2);
+    const historicalMatchLink = screen
+      .getAllByRole("link", { name: /^2026-06-11/ })
+      .find((link) => link.getAttribute("href")?.includes("/2026-06-11/"));
+    expect(historicalMatchLink).toHaveAttribute(
+      "href",
+      expect.stringContaining("/outputs/predictions/2026-06-11/"),
+    );
+
+    await user.click(within(dateSelector).getByRole("button", { name: "2026-06-11" }));
+    expect(within(dateSelector).getByRole("button", { name: "2026-06-11" })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+    expect(screen.getByText("45.4%")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /Prediction generated 2026-06-11/i })).toHaveAttribute(
       "href",
       expect.stringContaining("/outputs/predictions/2026-06-11/"),
     );

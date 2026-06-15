@@ -1,5 +1,10 @@
-import { useEffect } from "react";
-import type { MatchPrediction, SkillEstimate, Team } from "../types";
+import { useEffect, useState } from "react";
+import type {
+  MatchPrediction,
+  PredictionDetails,
+  PredictionHistoryEntry,
+  Team,
+} from "../types";
 import {
   aggregateScoreGrid,
   formatKickoff,
@@ -13,22 +18,15 @@ import { TeamFlag } from "./TeamFlag";
 interface MatchDetailDrawerProps {
   match: MatchPrediction | null;
   teams: Record<string, Team>;
-  snapshotDate: string;
   modelName: string;
   onClose: () => void;
 }
 
-function SkillLine({ estimate }: { estimate: SkillEstimate }) {
-  const lower = Math.max(0, Math.min(100, ((estimate.mean - estimate.sd + 1.5) / 3) * 100));
-  const upper = Math.max(0, Math.min(100, ((estimate.mean + estimate.sd + 1.5) / 3) * 100));
-  const point = Math.max(0, Math.min(100, ((estimate.mean + 1.5) / 3) * 100));
-  return (
-    <span className="skill-line" aria-hidden="true">
-      <span className="skill-line__range" style={{ left: `${lower}%`, width: `${upper - lower}%` }} />
-      <span className="skill-line__point" style={{ left: `${point}%` }} />
-    </span>
-  );
-}
+type PredictionVersion = PredictionHistoryEntry;
+
+const FIRST_TEAM_COLOR = "#15803d";
+const SECOND_TEAM_COLOR = "#dc2626";
+const DRAW_COLOR = "#777b76";
 
 function ProbabilityRow({
   label,
@@ -52,8 +50,16 @@ function ProbabilityRow({
   );
 }
 
-function ScoreHeatmap({ match }: { match: MatchPrediction }) {
-  const grid = aggregateScoreGrid(match.prediction.scoreGrid);
+function ScoreHeatmap({
+  prediction,
+  homeTeam,
+  awayTeam,
+}: {
+  prediction: PredictionDetails;
+  homeTeam: string;
+  awayTeam: string;
+}) {
+  const grid = aggregateScoreGrid(prediction.scoreGrid);
   const maximum = Math.max(...grid.flat());
   const labels = ["0", "1", "2", "3", "4", "5+"];
 
@@ -61,11 +67,11 @@ function ScoreHeatmap({ match }: { match: MatchPrediction }) {
     <div className="heatmap-wrap">
       <table className="heatmap">
         <caption>
-          Score probability: columns are {match.homeTeam} goals, rows are {match.awayTeam} goals
+          Score probability: columns are {homeTeam} goals, rows are {awayTeam} goals
         </caption>
         <thead>
           <tr>
-            <th scope="col">Away ↓ / Home →</th>
+            <th scope="col">{awayTeam} ↓ / {homeTeam} →</th>
             {labels.map((label) => (
               <th scope="col" key={label}>{label}</th>
             ))}
@@ -98,13 +104,151 @@ function ScoreHeatmap({ match }: { match: MatchPrediction }) {
   );
 }
 
+function StrengthHistory({
+  match,
+  versions,
+  selectedDate,
+}: {
+  match: MatchPrediction;
+  versions: PredictionVersion[];
+  selectedDate: string;
+}) {
+  const width = 560;
+  const height = 220;
+  const horizontalPadding = 24;
+  const verticalPadding = 20;
+  const x = (index: number) =>
+    versions.length === 1
+      ? width / 2
+      : horizontalPadding +
+        (index * (width - horizontalPadding * 2)) / (versions.length - 1);
+  const y = (value: number) =>
+    height - verticalPadding - ((Math.max(-1.5, Math.min(1.5, value)) + 1.5) / 3) *
+      (height - verticalPadding * 2);
+  const selected = versions.find((version) => version.predictionDate === selectedDate)!;
+  const series = [
+    {
+      key: "home-attack",
+      label: `${match.homeTeam} Attack`,
+      team: match.homeTeam,
+      metric: "Attack",
+      color: "first",
+      getEstimate: (prediction: PredictionDetails) => prediction.skills.home.attack,
+    },
+    {
+      key: "home-defence",
+      label: `${match.homeTeam} Defence`,
+      team: match.homeTeam,
+      metric: "Defence",
+      color: "first",
+      getEstimate: (prediction: PredictionDetails) => prediction.skills.home.defence,
+    },
+    {
+      key: "away-attack",
+      label: `${match.awayTeam} Attack`,
+      team: match.awayTeam,
+      metric: "Attack",
+      color: "second",
+      getEstimate: (prediction: PredictionDetails) => prediction.skills.away.attack,
+    },
+    {
+      key: "away-defence",
+      label: `${match.awayTeam} Defence`,
+      team: match.awayTeam,
+      metric: "Defence",
+      color: "second",
+      getEstimate: (prediction: PredictionDetails) => prediction.skills.away.defence,
+    },
+  ] as const;
+
+  return (
+    <div className="strength-history">
+      <div className="strength-history__legend" aria-label="Team strength chart legend">
+        <span className="strength-history__team strength-history__team--first">{match.homeTeam}</span>
+        <span className="strength-history__team strength-history__team--second">{match.awayTeam}</span>
+        <span className="strength-history__metric"><i />Attack</span>
+        <span className="strength-history__metric strength-history__metric--defence"><i />Defence</span>
+      </div>
+      <svg
+        className="strength-history__chart"
+        viewBox={`0 0 ${width} ${height}`}
+        role="img"
+        aria-label={`Team strength history for ${match.homeTeam} and ${match.awayTeam}`}
+      >
+        {[-1, 0, 1].map((tick) => (
+          <g key={tick}>
+            <line className="strength-history__grid" x1="0" y1={y(tick)} x2={width} y2={y(tick)} />
+            <text className="strength-history__axis-label" x="2" y={y(tick) - 4}>{tick.toFixed(0)}</text>
+          </g>
+        ))}
+        {series.map((item) => {
+          const points = versions
+            .map((version, index) => `${x(index)},${y(item.getEstimate(version.prediction).mean)}`)
+            .join(" ");
+          return (
+            <g
+              className={`strength-series strength-series--${item.color} ${item.metric === "Defence" ? "strength-series--defence" : ""}`}
+              key={item.key}
+            >
+              {versions.length > 1 && <polyline className="strength-series__line" points={points} />}
+              {versions.map((version, index) => {
+                const estimate = item.getEstimate(version.prediction);
+                const selectedPoint = version.predictionDate === selectedDate;
+                return (
+                  <g key={version.predictionDate}>
+                    <line
+                      className="strength-series__uncertainty"
+                      x1={x(index)}
+                      y1={y(estimate.mean - estimate.sd)}
+                      x2={x(index)}
+                      y2={y(estimate.mean + estimate.sd)}
+                    />
+                    <circle
+                      className={selectedPoint ? "strength-series__point strength-series__point--selected" : "strength-series__point"}
+                      cx={x(index)}
+                      cy={y(estimate.mean)}
+                      r={selectedPoint ? 5 : 3.5}
+                    />
+                  </g>
+                );
+              })}
+            </g>
+          );
+        })}
+      </svg>
+      <div className="strength-history__dates" aria-label="Prediction dates">
+        {versions.map((version) => (
+          <span className={version.predictionDate === selectedDate ? "strength-history__date--selected" : ""} key={version.predictionDate}>
+            {version.predictionDate}
+          </span>
+        ))}
+      </div>
+      <div className="strength-history__values">
+        {series.map((item) => {
+          const estimate = item.getEstimate(selected.prediction);
+          return (
+            <span className={`strength-history__value strength-history__value--${item.color}`} key={item.key}>
+              <strong>{item.team}</strong> {item.metric} {estimate.mean.toFixed(2)} ± {estimate.sd.toFixed(2)}
+            </span>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 export function MatchDetailDrawer({
   match,
   teams,
-  snapshotDate,
   modelName,
   onClose,
 }: MatchDetailDrawerProps) {
+  const [selectedPredictionDate, setSelectedPredictionDate] = useState<string | null>(null);
+
+  useEffect(() => {
+    setSelectedPredictionDate(match?.predictionDate ?? null);
+  }, [match]);
+
   useEffect(() => {
     if (!match) return;
     const previousOverflow = document.body.style.overflow;
@@ -123,10 +267,19 @@ export function MatchDetailDrawer({
 
   const home = teams[match.homeTeam];
   const away = teams[match.awayTeam];
-  const probabilities = match.prediction.probabilities;
-  const skills = match.prediction.skills;
-  const homeColor = home.colors[0];
-  const awayColor = away.colors[0] === homeColor ? away.colors[1] : away.colors[0];
+  const versions: PredictionVersion[] = [
+    ...match.predictionHistory,
+    {
+      predictionDate: match.predictionDate,
+      sourceUrl: match.sourceUrl,
+      prediction: match.prediction,
+    },
+  ].sort((left, right) => left.predictionDate.localeCompare(right.predictionDate));
+  const selectedVersion =
+    versions.find((version) => version.predictionDate === selectedPredictionDate) ??
+    versions[versions.length - 1];
+  const selectedPrediction = selectedVersion.prediction;
+  const probabilities = selectedPrediction.probabilities;
   const ongoing = isMatchOngoing(match);
   const completed = isMatchCompleted(match);
   const hasActualResult = !!match.actualResult;
@@ -134,10 +287,10 @@ export function MatchDetailDrawer({
   // Use actual result if available, otherwise show prediction
   const displayHomeScore = hasActualResult
     ? match.actualResult!.homeScore
-    : match.prediction.mostLikelyScore[0];
+    : selectedPrediction.mostLikelyScore[0];
   const displayAwayScore = hasActualResult
     ? match.actualResult!.awayScore
-    : match.prediction.mostLikelyScore[1];
+    : selectedPrediction.mostLikelyScore[1];
 
   return (
     <div className="drawer-backdrop" role="presentation" onMouseDown={onClose}>
@@ -168,53 +321,81 @@ export function MatchDetailDrawer({
               <span className="drawer-score">
                 <small>{ongoing ? "Current score" : hasActualResult ? "Final score" : "Most likely"}</small>
                 {displayHomeScore}–{displayAwayScore}
-                {!ongoing && !hasActualResult && <em>{formatPercent(match.prediction.mostLikelyScoreProbability, 1)}</em>}
+                {!ongoing && !hasActualResult && <em>{formatPercent(selectedPrediction.mostLikelyScoreProbability, 1)}</em>}
               </span>
             )}
             <TeamFlag team={away} />
           </div>
         </header>
 
+        {versions.length > 1 && (
+          <div className="prediction-date-selector" role="group" aria-label="Prediction date">
+            <span>View prediction</span>
+            {versions.slice().reverse().map((version, index) => (
+              <button
+                type="button"
+                key={version.predictionDate}
+                aria-pressed={version.predictionDate === selectedVersion.predictionDate}
+                onClick={() => setSelectedPredictionDate(version.predictionDate)}
+              >
+                {version.predictionDate}
+                {index === 0 && <small>Latest</small>}
+              </button>
+            ))}
+          </div>
+        )}
+
         <div className="drawer-grid">
           <section className="drawer-panel">
             <h3>Result probabilities</h3>
-            <ProbabilityRow label={`${match.homeTeam} win`} value={probabilities.homeWin} color={homeColor} />
-            <ProbabilityRow label="Draw" value={probabilities.draw} color="#777b76" />
-            <ProbabilityRow label={`${match.awayTeam} win`} value={probabilities.awayWin} color={awayColor} />
+            <ProbabilityRow label={`${match.homeTeam} win`} value={probabilities.homeWin} color={FIRST_TEAM_COLOR} />
+            <ProbabilityRow label="Draw" value={probabilities.draw} color={DRAW_COLOR} />
+            <ProbabilityRow label={`${match.awayTeam} win`} value={probabilities.awayWin} color={SECOND_TEAM_COLOR} />
           </section>
 
           <section className="drawer-panel drawer-panel--skills">
             <h3>Team strength estimates</h3>
-            <div className="skill-table">
-              {([
-                [match.homeTeam, "Attack", skills.home.attack],
-                [match.homeTeam, "Defence", skills.home.defence],
-                [match.awayTeam, "Attack", skills.away.attack],
-                [match.awayTeam, "Defence", skills.away.defence],
-              ] as const).map(([team, metric, estimate]) => (
-                <div className="skill-table__row" key={`${team}-${metric}`}>
-                  <span>{team} {metric}</span>
-                  <SkillLine estimate={estimate} />
-                  <strong>{estimate.mean.toFixed(2)} ± {estimate.sd.toFixed(2)}</strong>
-                </div>
-              ))}
-            </div>
+            <StrengthHistory
+              match={match}
+              versions={versions}
+              selectedDate={selectedVersion.predictionDate}
+            />
             <p className="panel-note">Higher attack and defence values indicate stronger model estimates.</p>
           </section>
 
           <section className="drawer-panel drawer-panel--wide">
             <h3>Scoreline distribution</h3>
             <p className="panel-note">
-              Expected goals: {match.homeTeam} {match.prediction.expectedGoals.home.toFixed(2)}, {match.awayTeam} {match.prediction.expectedGoals.away.toFixed(2)}.
+              Expected goals: {match.homeTeam} {selectedPrediction.expectedGoals.home.toFixed(2)}, {match.awayTeam} {selectedPrediction.expectedGoals.away.toFixed(2)}.
             </p>
-            <ScoreHeatmap match={match} />
+            <ScoreHeatmap
+              prediction={selectedPrediction}
+              homeTeam={match.homeTeam}
+              awayTeam={match.awayTeam}
+            />
           </section>
         </div>
 
         <footer className="drawer-footer">
-          <a href={match.sourceUrl} target="_blank" rel="noreferrer">
-            Snapshot {snapshotDate} source data <span aria-hidden="true">↗</span>
-          </a>
+          <div className="drawer-sources">
+            <a href={selectedVersion.sourceUrl} target="_blank" rel="noreferrer">
+              Prediction generated {selectedVersion.predictionDate} <span aria-hidden="true">↗</span>
+            </a>
+            {match.predictionHistory.length > 0 && (
+              <div className="prediction-history">
+                <strong>Previous predictions</strong>
+                <ul>
+                  {match.predictionHistory.map((historical) => (
+                    <li key={historical.predictionDate}>
+                      <a href={historical.sourceUrl} target="_blank" rel="noreferrer">
+                        {historical.predictionDate} <span aria-hidden="true">↗</span>
+                      </a>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </div>
           <span>{modelName}</span>
         </footer>
       </section>

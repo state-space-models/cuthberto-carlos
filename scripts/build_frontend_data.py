@@ -131,8 +131,10 @@ def repository_tree_url(path: Path, repository_url: str | None = None) -> str:
     return f"{base_url}/tree/main/{path.as_posix()}"
 
 
-def discover_latest_snapshot(predictions_root: Path = PREDICTIONS_ROOT) -> Path:
-    """Find the latest prediction directory whose name is an ISO date."""
+def discover_prediction_snapshots(
+    predictions_root: Path = PREDICTIONS_ROOT,
+) -> list[Path]:
+    """Return all ISO-dated prediction directories in chronological order."""
     candidates: list[tuple[datetime, Path]] = []
     if not predictions_root.exists():
         raise FileNotFoundError(f"Prediction root does not exist: {predictions_root}")
@@ -142,13 +144,81 @@ def discover_latest_snapshot(predictions_root: Path = PREDICTIONS_ROOT) -> Path:
             continue
         try:
             parsed = datetime.strptime(path.name, "%Y-%m-%d")
-        except ValueError:
-            continue
+        except ValueError as error:
+            raise ValueError(f"Invalid prediction snapshot directory: {path}") from error
+        if parsed.strftime("%Y-%m-%d") != path.name:
+            raise ValueError(f"Invalid prediction snapshot directory: {path}")
         candidates.append((parsed, path))
 
     if not candidates:
         raise ValueError(f"No dated prediction snapshots found in {predictions_root}")
-    return max(candidates, key=lambda item: item[0])[1]
+    return [path for _, path in sorted(candidates, key=lambda item: item[0])]
+
+
+def discover_latest_snapshot(predictions_root: Path = PREDICTIONS_ROOT) -> Path:
+    """Find the latest ISO-dated prediction directory."""
+    return discover_prediction_snapshots(predictions_root)[-1]
+
+
+def collect_prediction_versions(
+    snapshots: list[Path],
+    fixture_index: dict[tuple[str, tuple[str, str]], dict[str, Any]],
+) -> dict[tuple[str, tuple[str, str]], list[dict[str, Any]]]:
+    """Load and validate every available version of each scheduled fixture."""
+    prediction_versions: dict[
+        tuple[str, tuple[str, str]], list[dict[str, Any]]
+    ] = {}
+    fixture_orientations: dict[
+        tuple[str, tuple[str, str]], tuple[str, str, str]
+    ] = {}
+
+    for prediction_snapshot in snapshots:
+        snapshot_keys: set[tuple[str, tuple[str, str]]] = set()
+        for prediction_path in sorted(prediction_snapshot.glob("*/predictions.json")):
+            match_path = prediction_path.with_name("match_data.json")
+            if not match_path.exists():
+                raise ValueError(f"Missing match_data.json beside {prediction_path}")
+            match_data = json.loads(match_path.read_text())
+            predictions = json.loads(prediction_path.read_text())
+            key = fixture_key(
+                match_data["date"], match_data["home_team"], match_data["away_team"]
+            )
+            if key not in fixture_index:
+                raise ValueError(f"Prediction does not match a group fixture: {key}")
+            if key in snapshot_keys:
+                raise ValueError(
+                    f"Duplicate prediction for group fixture in "
+                    f"{prediction_snapshot.name}: {key}"
+                )
+            snapshot_keys.add(key)
+
+            orientation = (
+                match_data["date"],
+                canonical_team(match_data["home_team"]),
+                canonical_team(match_data["away_team"]),
+            )
+            previous_orientation = fixture_orientations.setdefault(key, orientation)
+            if orientation != previous_orientation:
+                raise ValueError(
+                    f"Inconsistent prediction metadata for group fixture: {key}"
+                )
+
+            prediction_versions.setdefault(key, []).append(
+                {
+                    "snapshotDate": prediction_snapshot.name,
+                    "predictionPath": prediction_path,
+                    "matchData": match_data,
+                    "predictions": predictions,
+                }
+            )
+
+    missing = sorted(set(fixture_index) - set(prediction_versions))
+    if missing:
+        raise ValueError(f"Missing predictions for schedule fixtures: {missing}")
+
+    for versions in prediction_versions.values():
+        versions.sort(key=lambda version: version["snapshotDate"], reverse=True)
+    return prediction_versions
 
 
 def _fetch_openfootball_json(url: str) -> Any:
@@ -393,6 +463,33 @@ def _skill_record(
     }
 
 
+def _prediction_record(
+    predictions: dict[str, Any], prediction_path: Path
+) -> dict[str, Any]:
+    """Convert a raw prediction output into the frontend prediction shape."""
+    raw_results = [float(value) for value in predictions["probs_results"]]
+    result_total = sum(raw_results)
+    if result_total <= 0:
+        raise ValueError(f"Invalid result probabilities in {prediction_path}")
+    draw, home_win, away_win = (value / result_total for value in raw_results)
+    return {
+        "probabilities": {
+            "homeWin": round(home_win, 8),
+            "draw": round(draw, 8),
+            "awayWin": round(away_win, 8),
+        },
+        **prediction_metrics(predictions["probs_grid"]),
+        "skills": {
+            "home": _skill_record(
+                predictions["skills_mean"], predictions["skills_cov"], 0
+            ),
+            "away": _skill_record(
+                predictions["skills_mean"], predictions["skills_cov"], 1
+            ),
+        },
+    }
+
+
 def _group_projection(
     group_name: str,
     team_names: Iterable[str],
@@ -460,8 +557,9 @@ def compile_dataset(
     schedule_data: dict[str, Any] | None = None,
     squads_data: list[dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
-    """Compile the newest prediction snapshot and schedule into frontend data."""
-    snapshot = discover_latest_snapshot(root / "outputs" / "predictions")
+    """Compile the latest prediction for every fixture plus snapshot history."""
+    snapshots = discover_prediction_snapshots(root / "outputs" / "predictions")
+    snapshot = snapshots[-1]
     repository_url = get_repository_url()
     schedule = schedule_data if schedule_data is not None else fetch_schedule()
     squads = squads_data if squads_data is not None else fetch_squads()
@@ -486,37 +584,16 @@ def compile_dataset(
         fixture_index[key] = fixture
 
     team_colors = json.loads((root / "assets" / "team_colors.json").read_text())
+    prediction_versions = collect_prediction_versions(snapshots, fixture_index)
+
     match_records: list[dict[str, Any]] = []
-    matched_keys: set[tuple[str, tuple[str, str]]] = set()
+    for key, versions in prediction_versions.items():
+        latest = versions[0]
+        prediction_path = latest["predictionPath"]
+        match_data = latest["matchData"]
+        predictions = latest["predictions"]
+        fixture = fixture_index[key]
 
-    prediction_files = sorted(snapshot.glob("*/predictions.json"))
-    if len(prediction_files) != 72:
-        raise ValueError(
-            f"Expected 72 prediction files in {snapshot}, found {len(prediction_files)}"
-        )
-
-    for prediction_path in prediction_files:
-        match_path = prediction_path.with_name("match_data.json")
-        if not match_path.exists():
-            raise ValueError(f"Missing match_data.json beside {prediction_path}")
-        match_data = json.loads(match_path.read_text())
-        predictions = json.loads(prediction_path.read_text())
-        key = fixture_key(
-            match_data["date"], match_data["home_team"], match_data["away_team"]
-        )
-        fixture = fixture_index.get(key)
-        if fixture is None:
-            raise ValueError(f"Prediction does not match a group fixture: {key}")
-        if key in matched_keys:
-            raise ValueError(f"Duplicate prediction for group fixture: {key}")
-        matched_keys.add(key)
-
-        raw_results = [float(value) for value in predictions["probs_results"]]
-        result_total = sum(raw_results)
-        if result_total <= 0:
-            raise ValueError(f"Invalid result probabilities in {prediction_path}")
-        draw, home_win, away_win = (value / result_total for value in raw_results)
-        metrics = prediction_metrics(predictions["probs_grid"])
         home_team = canonical_team(match_data["home_team"])
         away_team = canonical_team(match_data["away_team"])
         group_id = fixture["group"].removeprefix("Group ")
@@ -531,27 +608,26 @@ def compile_dataset(
             "venue": fixture["ground"],
             "homeTeam": home_team,
             "awayTeam": away_team,
+            "predictionDate": latest["snapshotDate"],
             "sourceUrl": (
                 repository_tree_url(
                     prediction_path.parent.relative_to(root), repository_url
                 )
             ),
-            "prediction": {
-                "probabilities": {
-                    "homeWin": round(home_win, 8),
-                    "draw": round(draw, 8),
-                    "awayWin": round(away_win, 8),
-                },
-                **metrics,
-                "skills": {
-                    "home": _skill_record(
-                        predictions["skills_mean"], predictions["skills_cov"], 0
+            "predictionHistory": [
+                {
+                    "predictionDate": version["snapshotDate"],
+                    "sourceUrl": repository_tree_url(
+                        version["predictionPath"].parent.relative_to(root),
+                        repository_url,
                     ),
-                    "away": _skill_record(
-                        predictions["skills_mean"], predictions["skills_cov"], 1
+                    "prediction": _prediction_record(
+                        version["predictions"], version["predictionPath"]
                     ),
-                },
-            },
+                }
+                for version in versions[1:]
+            ],
+            "prediction": _prediction_record(predictions, prediction_path),
         }
 
         # Add actual result if available from schedule
@@ -562,10 +638,6 @@ def compile_dataset(
             record["actualResult"] = actual_result
 
         match_records.append(record)
-
-    if len(matched_keys) != len(fixture_index):
-        missing = sorted(set(fixture_index) - matched_keys)
-        raise ValueError(f"Missing predictions for schedule fixtures: {missing}")
 
     match_records.sort(key=lambda match: (match["kickoffUtc"], match["id"]))
     team_names = sorted(
@@ -619,7 +691,7 @@ def compile_dataset(
     knockout_matches.sort(key=lambda match: match["matchNumber"])
 
     return {
-        "schemaVersion": 3,
+        "schemaVersion": 5,
         "repositoryUrl": repository_url,
         "snapshotDate": snapshot.name,
         "snapshotPath": str(snapshot.relative_to(root)),
@@ -680,13 +752,17 @@ def validate_dataset(dataset: dict[str, Any]) -> None:
     if missing:
         raise ValueError(f"Dataset is missing required keys: {sorted(missing)}")
 
-    if dataset["schemaVersion"] != 3:
+    if dataset["schemaVersion"] != 5:
         raise ValueError(f"Unsupported schema version: {dataset['schemaVersion']!r}")
     try:
-        datetime.strptime(dataset["snapshotDate"], "%Y-%m-%d")
+        snapshot_date = datetime.strptime(
+            dataset["snapshotDate"], "%Y-%m-%d"
+        ).strftime("%Y-%m-%d")
         datetime.fromisoformat(dataset["generatedAt"].replace("Z", "+00:00"))
     except (AttributeError, TypeError, ValueError) as error:
         raise ValueError("Dataset date metadata is invalid") from error
+    if snapshot_date != dataset["snapshotDate"]:
+        raise ValueError("Dataset date metadata is invalid")
     if not re.fullmatch(r"[0-9a-f]{12}|unknown", dataset["sourceCommit"]):
         raise ValueError("Dataset source commit is invalid")
 
@@ -695,6 +771,13 @@ def validate_dataset(dataset: dict[str, Any]) -> None:
         raise ValueError(f"Unexpected repository URL: {repository_url}")
     if not dataset["snapshotUrl"].startswith(f"{repository_url}/tree/main/"):
         raise ValueError("Snapshot URL does not use the canonical repository URL")
+    expected_snapshot_path = f"outputs/predictions/{snapshot_date}"
+    if dataset["snapshotPath"] != expected_snapshot_path:
+        raise ValueError("Snapshot path does not match snapshot date")
+    if dataset["snapshotUrl"] != repository_tree_url(
+        Path(expected_snapshot_path), repository_url
+    ):
+        raise ValueError("Snapshot URL does not match snapshot date")
 
     schedule = dataset["sources"].get("schedule", {})
     expected_schedule = {
@@ -758,11 +841,80 @@ def validate_dataset(dataset: dict[str, Any]) -> None:
     if len(all_ids) != len(set(all_ids)):
         raise ValueError("Match IDs must be unique")
 
-    source_prefix = f"{repository_url}/tree/main/{dataset['snapshotPath']}/"
     for match in group_matches:
+        try:
+            prediction_date = datetime.strptime(
+                match["predictionDate"], "%Y-%m-%d"
+            ).strftime("%Y-%m-%d")
+        except (KeyError, TypeError, ValueError) as error:
+            raise ValueError(
+                f"Match {match['id']} has an invalid prediction date"
+            ) from error
+        if prediction_date != match["predictionDate"]:
+            raise ValueError(f"Match {match['id']} has an invalid prediction date")
+        source_prefix = (
+            f"{repository_url}/tree/main/outputs/predictions/{prediction_date}/"
+        )
         if not match["sourceUrl"].startswith(source_prefix):
             raise ValueError(
                 f"Match {match['id']} source URL does not use the canonical repository"
+            )
+        history_dates: list[str] = []
+        if not isinstance(match.get("predictionHistory"), list):
+            raise ValueError(
+                f"Match {match['id']} has invalid prediction history"
+            )
+        for historical in match["predictionHistory"]:
+            try:
+                historical_date = datetime.strptime(
+                    historical["predictionDate"], "%Y-%m-%d"
+                ).strftime("%Y-%m-%d")
+            except (KeyError, TypeError, ValueError) as error:
+                raise ValueError(
+                    f"Match {match['id']} has an invalid prediction history date"
+                ) from error
+            if historical_date != historical["predictionDate"]:
+                raise ValueError(
+                    f"Match {match['id']} has an invalid prediction history date"
+                )
+            historical_prefix = (
+                f"{repository_url}/tree/main/outputs/predictions/"
+                f"{historical_date}/"
+            )
+            if not historical["sourceUrl"].startswith(historical_prefix):
+                raise ValueError(
+                    f"Match {match['id']} prediction history does not use the "
+                    "canonical repository"
+                )
+            history_dates.append(historical_date)
+            historical_prediction = historical.get("prediction")
+            if not isinstance(historical_prediction, dict):
+                raise ValueError(
+                    f"Match {match['id']} prediction history is missing prediction data"
+                )
+            historical_probabilities = historical_prediction.get("probabilities", {})
+            historical_values = [
+                historical_probabilities.get("homeWin", -1),
+                historical_probabilities.get("draw", -1),
+                historical_probabilities.get("awayWin", -1),
+            ]
+            if any(value < 0 or value > 1 for value in historical_values):
+                raise ValueError(
+                    f"Match {match['id']} prediction history has invalid probabilities"
+                )
+            if not math.isclose(sum(historical_values), 1.0, abs_tol=1e-7):
+                raise ValueError(
+                    f"Match {match['id']} prediction history probabilities do not sum to one"
+                )
+        if len(history_dates) != len(set(history_dates)):
+            raise ValueError(f"Match {match['id']} prediction history has duplicate dates")
+        if history_dates != sorted(history_dates, reverse=True):
+            raise ValueError(
+                f"Match {match['id']} prediction history is not newest-first"
+            )
+        if any(date >= prediction_date for date in history_dates):
+            raise ValueError(
+                f"Match {match['id']} prediction history is not older than latest"
             )
         probabilities = match["prediction"]["probabilities"]
         values = [

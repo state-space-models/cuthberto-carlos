@@ -5,8 +5,8 @@ on:
   push:
     branches: [main]
   workflow_dispatch:
-  schedule:
-    - cron: '0 * * * *'  # Run hourly at the top of every hour
+  repository_dispatch:
+    types: [predictions-updated]
 
 permissions:
   contents: read

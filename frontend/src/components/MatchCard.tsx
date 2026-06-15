@@ -57,7 +57,7 @@ export function MatchCard({
         </div>
       </div>
       <div className="match-card__teams">
-        <div className="match-card__team match-card__team--home">
+        <div className="match-card__team match-card__team--first">
           <TeamFlag team={teams[match.homeTeam]} />
         </div>
         {showScoreComparison ? (
@@ -77,7 +77,7 @@ export function MatchCard({
             </span>
           </div>
         )}
-        <div className="match-card__team match-card__team--away">
+        <div className="match-card__team match-card__team--second">
           <TeamFlag team={teams[match.awayTeam]} />
         </div>
       </div>
@@ -89,7 +89,7 @@ export function MatchCard({
         <>
           <div className="probability-strip" aria-label="Result probabilities">
             <span
-              className="probability-strip__home"
+              className="probability-strip__first-team"
               style={{ width: `${probabilities.homeWin * 100}%` }}
               title={`${match.homeTeam} ${formatPercent(probabilities.homeWin, 1)}`}
             />
@@ -99,15 +99,15 @@ export function MatchCard({
               title={`Draw ${formatPercent(probabilities.draw, 1)}`}
             />
             <span
-              className="probability-strip__away"
+              className="probability-strip__second-team"
               style={{ width: `${probabilities.awayWin * 100}%` }}
               title={`${match.awayTeam} ${formatPercent(probabilities.awayWin, 1)}`}
             />
           </div>
-          <div className="match-card__probabilities" aria-hidden="true">
-            <span>H {formatPercent(probabilities.homeWin)}</span>
-            <span>D {formatPercent(probabilities.draw)}</span>
-            <span>A {formatPercent(probabilities.awayWin)}</span>
+          <div className="match-card__probabilities">
+            <span>{match.homeTeam} {formatPercent(probabilities.homeWin)}</span>
+            <span>Draw {formatPercent(probabilities.draw)}</span>
+            <span>{match.awayTeam} {formatPercent(probabilities.awayWin)}</span>
           </div>
         </>
       )}

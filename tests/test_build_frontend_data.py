@@ -1,6 +1,7 @@
 """Tests for the frontend data compiler."""
 
 from pathlib import Path
+import json
 import os
 import tempfile
 import unittest
@@ -10,6 +11,8 @@ from urllib.request import Request
 from scripts.build_frontend_data import (
     canonical_scorer_name,
     canonical_team,
+    collect_prediction_versions,
+    discover_prediction_snapshots,
     discover_latest_snapshot,
     extract_actual_result,
     fetch_schedule,
@@ -32,11 +35,119 @@ class FrontendDataCompilerTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temporary_directory:
             root = Path(temporary_directory)
             (root / "2026-06-10").mkdir()
-            (root / "notes").mkdir()
             latest = root / "2026-06-11"
             latest.mkdir()
 
             self.assertEqual(discover_latest_snapshot(root), latest)
+
+    def test_snapshot_discovery_returns_all_dates_in_order(self):
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            root = Path(temporary_directory)
+            latest = root / "2026-06-15"
+            older = root / "2026-06-11"
+            latest.mkdir()
+            older.mkdir()
+
+            self.assertEqual(
+                discover_prediction_snapshots(root),
+                [older, latest],
+            )
+
+    def test_snapshot_discovery_rejects_malformed_directory(self):
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            root = Path(temporary_directory)
+            (root / "2026-06-11").mkdir()
+            (root / "notes").mkdir()
+
+            with self.assertRaisesRegex(
+                ValueError, "Invalid prediction snapshot directory"
+            ):
+                discover_prediction_snapshots(root)
+
+    def test_prediction_versions_allow_incomplete_latest_snapshot(self):
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            root = Path(temporary_directory)
+            older = root / "2026-06-11"
+            latest = root / "2026-06-15"
+            older.mkdir()
+            latest.mkdir()
+            fixtures = {
+                fixture_key("2026-06-18", "Mexico", "South Korea"): {},
+                fixture_key("2026-06-11", "Mexico", "South Africa"): {},
+            }
+
+            def write_prediction(snapshot, folder, date, home, away):
+                destination = snapshot / folder
+                destination.mkdir()
+                (destination / "match_data.json").write_text(
+                    json.dumps(
+                        {"date": date, "home_team": home, "away_team": away}
+                    )
+                )
+                (destination / "predictions.json").write_text("{}")
+
+            write_prediction(
+                older,
+                "mexico-south-korea",
+                "2026-06-18",
+                "Mexico",
+                "South Korea",
+            )
+            write_prediction(
+                older,
+                "mexico-south-africa",
+                "2026-06-11",
+                "Mexico",
+                "South Africa",
+            )
+            write_prediction(
+                latest,
+                "mexico-south-korea",
+                "2026-06-18",
+                "Mexico",
+                "South Korea",
+            )
+
+            versions = collect_prediction_versions([older, latest], fixtures)
+
+            shared = versions[
+                fixture_key("2026-06-18", "Mexico", "South Korea")
+            ]
+            completed = versions[
+                fixture_key("2026-06-11", "Mexico", "South Africa")
+            ]
+            self.assertEqual(
+                [version["snapshotDate"] for version in shared],
+                ["2026-06-15", "2026-06-11"],
+            )
+            self.assertEqual(
+                [version["snapshotDate"] for version in completed],
+                ["2026-06-11"],
+            )
+
+    def test_prediction_versions_reject_same_snapshot_duplicates(self):
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            snapshot = Path(temporary_directory) / "2026-06-11"
+            snapshot.mkdir()
+            fixtures = {
+                fixture_key("2026-06-18", "Mexico", "South Korea"): {}
+            }
+            for folder in ("first", "second"):
+                destination = snapshot / folder
+                destination.mkdir()
+                (destination / "match_data.json").write_text(
+                    json.dumps(
+                        {
+                            "date": "2026-06-18",
+                            "home_team": "Mexico",
+                            "away_team": "South Korea",
+                        }
+                    )
+                )
+                (destination / "predictions.json").write_text("{}")
+
+            with self.assertRaisesRegex(ValueError, "Duplicate prediction"):
+                collect_prediction_versions([snapshot], fixtures)
 
     def test_team_aliases_and_fixture_orientation(self):
         self.assertEqual(canonical_team("USA"), "United States")
