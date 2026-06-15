@@ -598,6 +598,13 @@ h2 {
   text-align: center;
 }
 
+.match-card__outcome {
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 750;
+  white-space: nowrap;
+}
+
 .score-comparison {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));

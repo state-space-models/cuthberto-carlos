@@ -203,13 +203,6 @@ describe("App interactions", () => {
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   });
 
-  it("does not show a predicted winner above card scorelines", () => {
-    render(<App />);
-
-    const upcoming = screen.getByTestId("upcoming-card-view");
-    expect(within(upcoming).queryByText(/Japan win/i)).not.toBeInTheDocument();
-  });
-
   it("filters countries, selects a squad, and exposes accessible player profiles", async () => {
     const user = userEvent.setup();
     render(<Countries teams={data.teams} />);
