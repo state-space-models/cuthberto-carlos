@@ -56,9 +56,13 @@ jobs:
 
       - name: Update moments filtering
         run: uv run python scripts/update_moments_filtering.py
+        env:
+          PYTHONPATH: .
 
       - name: Predict future matches
         run: uv run python scripts/predict_future_matches.py
+        env:
+          PYTHONPATH: .
 
       - name: Commit and push outputs
         shell: bash
