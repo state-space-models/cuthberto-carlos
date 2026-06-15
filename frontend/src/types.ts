@@ -51,7 +51,9 @@ export interface MatchPrediction {
   venue: string;
   homeTeam: string;
   awayTeam: string;
+  predictionDate: string;
   sourceUrl: string;
+  predictionHistory: PredictionHistoryEntry[];
   prediction: {
     probabilities: ResultProbabilities;
     scoreGrid: number[][];
@@ -67,6 +69,11 @@ export interface MatchPrediction {
     };
   };
   actualResult?: ActualResult;
+}
+
+export interface PredictionHistoryEntry {
+  predictionDate: string;
+  sourceUrl: string;
 }
 
 export interface GroupProjectionRow {

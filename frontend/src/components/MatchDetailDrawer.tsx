@@ -13,7 +13,6 @@ import { TeamFlag } from "./TeamFlag";
 interface MatchDetailDrawerProps {
   match: MatchPrediction | null;
   teams: Record<string, Team>;
-  snapshotDate: string;
   modelName: string;
   onClose: () => void;
 }
@@ -101,7 +100,6 @@ function ScoreHeatmap({ match }: { match: MatchPrediction }) {
 export function MatchDetailDrawer({
   match,
   teams,
-  snapshotDate,
   modelName,
   onClose,
 }: MatchDetailDrawerProps) {
@@ -212,9 +210,25 @@ export function MatchDetailDrawer({
         </div>
 
         <footer className="drawer-footer">
-          <a href={match.sourceUrl} target="_blank" rel="noreferrer">
-            Snapshot {snapshotDate} source data <span aria-hidden="true">↗</span>
-          </a>
+          <div className="drawer-sources">
+            <a href={match.sourceUrl} target="_blank" rel="noreferrer">
+              Prediction generated {match.predictionDate} <span aria-hidden="true">↗</span>
+            </a>
+            {match.predictionHistory.length > 0 && (
+              <div className="prediction-history">
+                <strong>Previous predictions</strong>
+                <ul>
+                  {match.predictionHistory.map((historical) => (
+                    <li key={historical.predictionDate}>
+                      <a href={historical.sourceUrl} target="_blank" rel="noreferrer">
+                        {historical.predictionDate} <span aria-hidden="true">↗</span>
+                      </a>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </div>
           <span>{modelName}</span>
         </footer>
       </section>

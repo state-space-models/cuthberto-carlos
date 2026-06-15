@@ -14,14 +14,14 @@ const repositoryUrl = `https://github.com/${process.env.GITHUB_REPOSITORY ?? "st
 
 describe("generated tournament data", () => {
   it("contains the complete initial tournament shape", () => {
-    expect(tournamentData.schemaVersion).toBe(3);
+    expect(tournamentData.schemaVersion).toBe(4);
     expect(tournamentData.repositoryUrl).toBe(repositoryUrl);
-    expect(tournamentData.snapshotDate).toBe("2026-06-11");
+    expect(tournamentData.snapshotDate).toBe("2026-06-15");
     expect(tournamentData.groupMatches).toHaveLength(72);
     expect(tournamentData.groups).toHaveLength(12);
     expect(tournamentData.groups.every((group) => group.matchIds.length === 6)).toBe(true);
     expect(tournamentData.knockoutMatches).toHaveLength(32);
-    expect(tournamentData.snapshotUrl).toContain("/outputs/predictions/2026-06-11");
+    expect(tournamentData.snapshotUrl).toContain("/outputs/predictions/2026-06-15");
     expect(tournamentData.sources.schedule.url).toBe(
       "https://github.com/openfootball/worldcup.json/blob/master/2026/worldcup.json",
     );
@@ -30,7 +30,19 @@ describe("generated tournament data", () => {
     );
     expect(Object.keys(tournamentData.teams)).toHaveLength(48);
     expect(tournamentData.teams.Mexico.players).toHaveLength(26);
-    expect(tournamentData.groupMatches.every((match) => match.sourceUrl.includes("/2026-06-11/"))).toBe(true);
+    const mexicoSouthKorea = tournamentData.groupMatches.find(
+      (match) => match.homeTeam === "Mexico" && match.awayTeam === "South Korea",
+    );
+    expect(mexicoSouthKorea?.predictionDate).toBe("2026-06-15");
+    expect(mexicoSouthKorea?.predictionHistory).toEqual([
+      expect.objectContaining({ predictionDate: "2026-06-11" }),
+    ]);
+
+    const mexicoSouthAfrica = tournamentData.groupMatches.find(
+      (match) => match.homeTeam === "Mexico" && match.awayTeam === "South Africa",
+    );
+    expect(mexicoSouthAfrica?.predictionDate).toBe("2026-06-11");
+    expect(mexicoSouthAfrica?.predictionHistory).toEqual([]);
   });
 });
 
@@ -190,11 +202,16 @@ describe("App interactions", () => {
     expect(screen.getByRole("heading", { name: "Group B" })).toBeInTheDocument();
     expect(screen.queryByRole("heading", { name: "Group A" })).not.toBeInTheDocument();
 
-    await user.click(screen.getByRole("button", { name: /Open prediction for Canada versus Bosnia and Herzegovina/i }));
-    expect(screen.getByRole("dialog", { name: /Canada vs Bosnia and Herzegovina/i })).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: /Open prediction for Canada versus Switzerland/i }));
+    expect(screen.getByRole("dialog", { name: /Canada vs Switzerland/i })).toBeInTheDocument();
     expect(screen.getByRole("table", { name: /Score probability/i })).toBeInTheDocument();
-    expect(screen.getByRole("columnheader", { name: "Bosnia and Herzegovina ↓ / Canada →" })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: /Snapshot 2026-06-11 source data/i })).toHaveAttribute(
+    expect(screen.getByRole("columnheader", { name: "Switzerland ↓ / Canada →" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /Prediction generated 2026-06-15/i })).toHaveAttribute(
+      "href",
+      expect.stringContaining("/outputs/predictions/2026-06-15/"),
+    );
+    expect(screen.getByText("Previous predictions")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /^2026-06-11/ })).toHaveAttribute(
       "href",
       expect.stringContaining("/outputs/predictions/2026-06-11/"),
     );

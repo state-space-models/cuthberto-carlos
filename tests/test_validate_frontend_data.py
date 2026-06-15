@@ -59,7 +59,7 @@ class FrontendDataValidationTests(unittest.TestCase):
         self.assertEqual(squads["ref"], SCHEDULE_REF)
 
     def test_dataset_has_complete_valid_squads(self):
-        self.assertEqual(self.dataset["schemaVersion"], 3)
+        self.assertEqual(self.dataset["schemaVersion"], 4)
         self.assertEqual(len(self.dataset["teams"]), 48)
         for name, team in self.dataset["teams"].items():
             self.assertEqual(team["name"], name)
@@ -89,6 +89,13 @@ class FrontendDataValidationTests(unittest.TestCase):
                 for match in self.dataset["groupMatches"]
             )
         )
+        self.assertTrue(
+            all(
+                historical["sourceUrl"].startswith(self.repository_url)
+                for match in self.dataset["groupMatches"]
+                for historical in match["predictionHistory"]
+            )
+        )
 
     def test_duplicate_match_id_is_rejected(self):
         changed = copy.deepcopy(self.dataset)
@@ -112,6 +119,28 @@ class FrontendDataValidationTests(unittest.TestCase):
             "https://github.com/example/fork/tree/main/outputs/predictions/match"
         )
         with self.assertRaisesRegex(ValueError, "canonical repository"):
+            self.validate(changed)
+
+    def test_prediction_history_must_be_unique_and_older(self):
+        changed = copy.deepcopy(self.dataset)
+        match = next(
+            match
+            for match in changed["groupMatches"]
+            if match["predictionHistory"]
+        )
+        match["predictionHistory"].append(copy.deepcopy(match["predictionHistory"][0]))
+        with self.assertRaisesRegex(ValueError, "duplicate dates"):
+            self.validate(changed)
+
+        changed = copy.deepcopy(self.dataset)
+        match = next(
+            match
+            for match in changed["groupMatches"]
+            if match["predictionHistory"]
+        )
+        match["predictionHistory"][0]["predictionDate"] = match["predictionDate"]
+        match["predictionHistory"][0]["sourceUrl"] = match["sourceUrl"]
+        with self.assertRaisesRegex(ValueError, "not older than latest"):
             self.validate(changed)
 
 

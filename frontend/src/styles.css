@@ -2173,6 +2173,32 @@ h2 {
   text-decoration: underline;
 }
 
+.drawer-sources {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.prediction-history {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.prediction-history strong {
+  color: var(--ink);
+  font-size: 0.78rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.prediction-history ul {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem 0.9rem;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
 @keyframes fade-in {
   from { opacity: 0; }
   to { opacity: 1; }

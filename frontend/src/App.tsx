@@ -101,7 +101,6 @@ function App() {
       <MatchDetailDrawer
         match={selectedMatch}
         teams={data.teams}
-        snapshotDate={data.snapshotDate}
         modelName={data.model.name}
         onClose={closeMatch}
       />

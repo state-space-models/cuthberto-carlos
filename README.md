@@ -115,7 +115,9 @@ does not create an hourly commit on `main`.
 The production build exposes the exact generated dataset at
 `/cuthberto-carlos/data/tournament.json`. The data builder validates the generated
 schema, match counts, probabilities, source provenance, and canonical repository
-URLs before writing the file:
+URLs before writing the file. It merges every ISO-dated directory under
+`outputs/predictions`, uses the newest available prediction for each fixture, and
+retains older prediction folders as source links in that fixture's history:
 
 ```bash
 python -m unittest discover -s tests -p 'test_*frontend_data.py'
