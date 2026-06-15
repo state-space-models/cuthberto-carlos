@@ -463,6 +463,33 @@ def _skill_record(
     }
 
 
+def _prediction_record(
+    predictions: dict[str, Any], prediction_path: Path
+) -> dict[str, Any]:
+    """Convert a raw prediction output into the frontend prediction shape."""
+    raw_results = [float(value) for value in predictions["probs_results"]]
+    result_total = sum(raw_results)
+    if result_total <= 0:
+        raise ValueError(f"Invalid result probabilities in {prediction_path}")
+    draw, home_win, away_win = (value / result_total for value in raw_results)
+    return {
+        "probabilities": {
+            "homeWin": round(home_win, 8),
+            "draw": round(draw, 8),
+            "awayWin": round(away_win, 8),
+        },
+        **prediction_metrics(predictions["probs_grid"]),
+        "skills": {
+            "home": _skill_record(
+                predictions["skills_mean"], predictions["skills_cov"], 0
+            ),
+            "away": _skill_record(
+                predictions["skills_mean"], predictions["skills_cov"], 1
+            ),
+        },
+    }
+
+
 def _group_projection(
     group_name: str,
     team_names: Iterable[str],
@@ -567,12 +594,6 @@ def compile_dataset(
         predictions = latest["predictions"]
         fixture = fixture_index[key]
 
-        raw_results = [float(value) for value in predictions["probs_results"]]
-        result_total = sum(raw_results)
-        if result_total <= 0:
-            raise ValueError(f"Invalid result probabilities in {prediction_path}")
-        draw, home_win, away_win = (value / result_total for value in raw_results)
-        metrics = prediction_metrics(predictions["probs_grid"])
         home_team = canonical_team(match_data["home_team"])
         away_team = canonical_team(match_data["away_team"])
         group_id = fixture["group"].removeprefix("Group ")
@@ -600,25 +621,13 @@ def compile_dataset(
                         version["predictionPath"].parent.relative_to(root),
                         repository_url,
                     ),
+                    "prediction": _prediction_record(
+                        version["predictions"], version["predictionPath"]
+                    ),
                 }
                 for version in versions[1:]
             ],
-            "prediction": {
-                "probabilities": {
-                    "homeWin": round(home_win, 8),
-                    "draw": round(draw, 8),
-                    "awayWin": round(away_win, 8),
-                },
-                **metrics,
-                "skills": {
-                    "home": _skill_record(
-                        predictions["skills_mean"], predictions["skills_cov"], 0
-                    ),
-                    "away": _skill_record(
-                        predictions["skills_mean"], predictions["skills_cov"], 1
-                    ),
-                },
-            },
+            "prediction": _prediction_record(predictions, prediction_path),
         }
 
         # Add actual result if available from schedule
@@ -682,7 +691,7 @@ def compile_dataset(
     knockout_matches.sort(key=lambda match: match["matchNumber"])
 
     return {
-        "schemaVersion": 4,
+        "schemaVersion": 5,
         "repositoryUrl": repository_url,
         "snapshotDate": snapshot.name,
         "snapshotPath": str(snapshot.relative_to(root)),
@@ -743,7 +752,7 @@ def validate_dataset(dataset: dict[str, Any]) -> None:
     if missing:
         raise ValueError(f"Dataset is missing required keys: {sorted(missing)}")
 
-    if dataset["schemaVersion"] != 4:
+    if dataset["schemaVersion"] != 5:
         raise ValueError(f"Unsupported schema version: {dataset['schemaVersion']!r}")
     try:
         snapshot_date = datetime.strptime(
@@ -878,6 +887,25 @@ def validate_dataset(dataset: dict[str, Any]) -> None:
                     "canonical repository"
                 )
             history_dates.append(historical_date)
+            historical_prediction = historical.get("prediction")
+            if not isinstance(historical_prediction, dict):
+                raise ValueError(
+                    f"Match {match['id']} prediction history is missing prediction data"
+                )
+            historical_probabilities = historical_prediction.get("probabilities", {})
+            historical_values = [
+                historical_probabilities.get("homeWin", -1),
+                historical_probabilities.get("draw", -1),
+                historical_probabilities.get("awayWin", -1),
+            ]
+            if any(value < 0 or value > 1 for value in historical_values):
+                raise ValueError(
+                    f"Match {match['id']} prediction history has invalid probabilities"
+                )
+            if not math.isclose(sum(historical_values), 1.0, abs_tol=1e-7):
+                raise ValueError(
+                    f"Match {match['id']} prediction history probabilities do not sum to one"
+                )
         if len(history_dates) != len(set(history_dates)):
             raise ValueError(f"Match {match['id']} prediction history has duplicate dates")
         if history_dates != sorted(history_dates, reverse=True):

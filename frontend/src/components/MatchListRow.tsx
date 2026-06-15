@@ -52,7 +52,7 @@ export function MatchListRow({
         </div>
       </div>
       <div className="match-list-row__fixture">
-        <div className="match-list-row__team match-list-row__team--home">
+        <div className="match-list-row__team match-list-row__team--first">
           <TeamFlag team={teams[match.homeTeam]} compact />
         </div>
         {showScoreComparison ? (
@@ -65,7 +65,7 @@ export function MatchListRow({
             {displayHomeScore}–{displayAwayScore}
           </strong>
         )}
-        <div className="match-list-row__team match-list-row__team--away">
+        <div className="match-list-row__team match-list-row__team--second">
           <TeamFlag team={teams[match.awayTeam]} compact />
         </div>
       </div>
@@ -76,9 +76,9 @@ export function MatchListRow({
         <div className="match-list-row__prediction">
           <span>{mostLikelyOutcome(probabilities, match.homeTeam, match.awayTeam)}</span>
           <div aria-label="Result probabilities">
-            <span>H {formatPercent(probabilities.homeWin)}</span>
-            <span>D {formatPercent(probabilities.draw)}</span>
-            <span>A {formatPercent(probabilities.awayWin)}</span>
+            <span>{match.homeTeam} {formatPercent(probabilities.homeWin)}</span>
+            <span>Draw {formatPercent(probabilities.draw)}</span>
+            <span>{match.awayTeam} {formatPercent(probabilities.awayWin)}</span>
           </div>
         </div>
       )}

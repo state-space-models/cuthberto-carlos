@@ -24,6 +24,16 @@ function GroupCard({
 }) {
   const groupMatches = group.matchIds.map((id) => matchMap.get(id)).filter(Boolean) as MatchPrediction[];
   const actualStats = getActualGroupStats(groupMatches);
+  const sortedProjection = [...group.projection].sort((left, right) => {
+    const leftStats = actualStats[left.team];
+    const rightStats = actualStats[right.team];
+    return (
+      (rightStats?.points ?? 0) - (leftStats?.points ?? 0) ||
+      (rightStats?.goalDifference ?? 0) - (leftStats?.goalDifference ?? 0) ||
+      (rightStats?.goalsScored ?? 0) - (leftStats?.goalsScored ?? 0) ||
+      left.rank - right.rank
+    );
+  });
 
   function handleOpen(match: MatchPrediction, event: MouseEvent<HTMLButtonElement>) {
     onOpen(match, event.currentTarget);
@@ -51,7 +61,7 @@ function GroupCard({
           </colgroup>
           <thead>
             <tr>
-              <th scope="col">#</th>
+              <th scope="col">Seed</th>
               <th scope="col">Team</th>
               <th scope="col" title="Games played">G</th>
               <th scope="col" title="Wins">W</th>
@@ -66,7 +76,7 @@ function GroupCard({
             </tr>
           </thead>
           <tbody>
-            {group.projection.map((row) => {
+            {sortedProjection.map((row) => {
               const stats = actualStats[row.team] ?? {
                 games: 0,
                 wins: 0,
@@ -153,7 +163,7 @@ export function GroupStage({ groups, matches, teams, onOpen }: GroupStageProps) 
           <h2 id="groups-title">Group stage</h2>
         </div>
         <p>
-          G, W, D, L, PTS, GD, and GS reflect results available from the OpenFootball schedule. PTS awards three points for a win and one for a draw, GD is goal difference, and GS is goals scored. xPTS means expected points, xGD expected goal difference, and xGF expected goals scored. Rankings remain model projections, not official standings. The top two in each group and eight best third-place teams advance.
+          G, W, D, L, PTS, GD, and GS reflect results available from the OpenFootball schedule. Tables sort by PTS, then GD, then GS. Seed is the model-projected finishing position. xPTS means expected points, xGD expected goal difference, and xGF expected goals scored. The top two in each group and eight best third-place teams advance.
         </p>
       </div>
 

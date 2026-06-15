@@ -59,7 +59,7 @@ class FrontendDataValidationTests(unittest.TestCase):
         self.assertEqual(squads["ref"], SCHEDULE_REF)
 
     def test_dataset_has_complete_valid_squads(self):
-        self.assertEqual(self.dataset["schemaVersion"], 4)
+        self.assertEqual(self.dataset["schemaVersion"], 5)
         self.assertEqual(len(self.dataset["teams"]), 48)
         for name, team in self.dataset["teams"].items():
             self.assertEqual(team["name"], name)
@@ -141,6 +141,17 @@ class FrontendDataValidationTests(unittest.TestCase):
         match["predictionHistory"][0]["predictionDate"] = match["predictionDate"]
         match["predictionHistory"][0]["sourceUrl"] = match["sourceUrl"]
         with self.assertRaisesRegex(ValueError, "not older than latest"):
+            self.validate(changed)
+
+    def test_prediction_history_requires_prediction_data(self):
+        changed = copy.deepcopy(self.dataset)
+        match = next(
+            match
+            for match in changed["groupMatches"]
+            if match["predictionHistory"]
+        )
+        del match["predictionHistory"][0]["prediction"]
+        with self.assertRaisesRegex(ValueError, "missing prediction data"):
             self.validate(changed)
 
 
