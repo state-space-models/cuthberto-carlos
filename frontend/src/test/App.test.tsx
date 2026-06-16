@@ -48,10 +48,10 @@ describe("generated tournament data", () => {
     expect(tournamentData.schemaVersion).toBe(5);
     expect(tournamentData.repositoryUrl).toBe(repositoryUrl);
     expect(tournamentData.snapshotDate).toMatch(/^\d{4}-\d{2}-\d{2}$/);
-    expect(tournamentData.groupMatches).toHaveLength(72);
-    expect(tournamentData.groups).toHaveLength(12);
-    expect(tournamentData.groups.every((group) => group.matchIds.length === 6)).toBe(true);
-    expect(tournamentData.knockoutMatches).toHaveLength(32);
+    expect(data.groupMatches).toHaveLength(72);
+    expect(data.groups).toHaveLength(12);
+    expect(data.groups.every((group) => group.matchIds.length === 6)).toBe(true);
+    expect(data.knockoutMatches).toHaveLength(32);
     expect(tournamentData.snapshotUrl).toContain(`/outputs/predictions/${tournamentData.snapshotDate}`);
     expect(tournamentData.sources.schedule.url).toBe(
       "https://github.com/openfootball/worldcup.json/blob/master/2026/worldcup.json",
@@ -61,7 +61,7 @@ describe("generated tournament data", () => {
     );
     expect(Object.keys(tournamentData.teams)).toHaveLength(48);
     expect(tournamentData.teams.Mexico.players).toHaveLength(26);
-    const mexicoSouthKorea = tournamentData.groupMatches.find(
+    const mexicoSouthKorea = data.groupMatches.find(
       (match) => match.homeTeam === "Mexico" && match.awayTeam === "South Korea",
     );
     expect(mexicoSouthKorea).toBeDefined();
@@ -83,7 +83,7 @@ describe("generated tournament data", () => {
       ]),
     );
 
-    const mexicoSouthAfrica = tournamentData.groupMatches.find(
+    const mexicoSouthAfrica = data.groupMatches.find(
       (match) => match.homeTeam === "Mexico" && match.awayTeam === "South Africa",
     );
     expect(mexicoSouthAfrica?.predictionDate).toBe("2026-06-11");
