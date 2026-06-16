@@ -1,4 +1,8 @@
-"""Predict the scores and results of future matches using the model trained on past data."""
+"""Predict the scores and results of future matches using the model trained on past data.
+
+Generates a new folder in outputs/predictions/ with the current date, and saves a subfolder
+for each match (if there are new matches to predict).
+"""
 
 from jax import numpy as jnp
 import jax

@@ -39,6 +39,10 @@ new_jax_data = jax.tree.map(
     lambda x: x[jax_data.match_index > previous_match_index], jax_data
 )
 
+if len(new_jax_data.match_index) == 0:
+    print("No new matches to update.")
+    exit(0)
+
 # Load filter(s) and factorializer
 filter_obj, factorializer, single_team_filter = model_moments.build(**params)
 
@@ -104,5 +108,3 @@ save_arraytree(save_data, FACTORIAL_STATE_FILE)
 plot_team_strengths(
     live_factorial_state, teams_id_to_name_dict, TEAM_STRENGTH_PLOT_FILE
 )
-
-# TODO: predict but only for the teams involved in the new data

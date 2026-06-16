@@ -59,8 +59,16 @@ jobs:
         env:
           PYTHONPATH: .
 
+      # update_moments_filtering.py exits without saving when there are no new
+      # matches, so an unchanged state file means there is nothing to predict.
       - name: Predict future matches
-        run: uv run python scripts/predict_future_matches.py
+        shell: bash
+        run: |
+          if git diff --quiet -- outputs/live_factorial.json; then
+            echo "No new matches; factorial state unchanged, skipping predictions."
+            exit 0
+          fi
+          uv run python scripts/predict_future_matches.py
         env:
           PYTHONPATH: .
 
