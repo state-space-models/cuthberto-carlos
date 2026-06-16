@@ -7,21 +7,52 @@ import { Countries } from "../components/Countries";
 import { GroupStage } from "../components/GroupStage";
 import { KnockoutBracket } from "../components/KnockoutBracket";
 import tournamentData from "../data/tournament.json";
-import type { TournamentDataset } from "../types";
+import type { MatchPrediction, PredictionHistoryEntry, TournamentDataset } from "../types";
 
 const data = tournamentData as unknown as TournamentDataset;
 const repositoryUrl = `https://github.com/${process.env.GITHUB_REPOSITORY ?? "state-space-models/cuthberto-carlos"}`;
+type PredictionVersion = PredictionHistoryEntry;
+
+function predictionVersions(match: MatchPrediction): PredictionVersion[] {
+  return [
+    ...match.predictionHistory,
+    {
+      predictionDate: match.predictionDate,
+      sourceUrl: match.sourceUrl,
+      prediction: match.prediction,
+    },
+  ].sort((left, right) => left.predictionDate.localeCompare(right.predictionDate));
+}
+
+function latestPredictionVersion(match: MatchPrediction): PredictionVersion {
+  return predictionVersions(match).at(-1)!;
+}
+
+function previousPredictionVersions(match: MatchPrediction): PredictionVersion[] {
+  const latest = latestPredictionVersion(match);
+  return predictionVersions(match)
+    .filter((version) => version.predictionDate < latest.predictionDate)
+    .sort((left, right) => right.predictionDate.localeCompare(left.predictionDate));
+}
+
+function formatPercentForTest(value: number): string {
+  return new Intl.NumberFormat(undefined, {
+    style: "percent",
+    maximumFractionDigits: 1,
+    minimumFractionDigits: 1,
+  }).format(value);
+}
 
 describe("generated tournament data", () => {
   it("contains the complete initial tournament shape", () => {
     expect(tournamentData.schemaVersion).toBe(5);
     expect(tournamentData.repositoryUrl).toBe(repositoryUrl);
-    expect(tournamentData.snapshotDate).toBe("2026-06-15");
+    expect(tournamentData.snapshotDate).toMatch(/^\d{4}-\d{2}-\d{2}$/);
     expect(tournamentData.groupMatches).toHaveLength(72);
     expect(tournamentData.groups).toHaveLength(12);
     expect(tournamentData.groups.every((group) => group.matchIds.length === 6)).toBe(true);
     expect(tournamentData.knockoutMatches).toHaveLength(32);
-    expect(tournamentData.snapshotUrl).toContain("/outputs/predictions/2026-06-15");
+    expect(tournamentData.snapshotUrl).toContain(`/outputs/predictions/${tournamentData.snapshotDate}`);
     expect(tournamentData.sources.schedule.url).toBe(
       "https://github.com/openfootball/worldcup.json/blob/master/2026/worldcup.json",
     );
@@ -33,16 +64,24 @@ describe("generated tournament data", () => {
     const mexicoSouthKorea = tournamentData.groupMatches.find(
       (match) => match.homeTeam === "Mexico" && match.awayTeam === "South Korea",
     );
-    expect(mexicoSouthKorea?.predictionDate).toBe("2026-06-15");
-    expect(mexicoSouthKorea?.predictionHistory).toEqual([
-      expect.objectContaining({
-        predictionDate: "2026-06-11",
-        prediction: expect.objectContaining({
-          probabilities: expect.objectContaining({ homeWin: expect.any(Number) }),
-          skills: expect.any(Object),
+    expect(mexicoSouthKorea).toBeDefined();
+    expect(mexicoSouthKorea!.predictionDate).toBe(latestPredictionVersion(mexicoSouthKorea!).predictionDate);
+    expect(mexicoSouthKorea!.predictionHistory.length).toBeGreaterThan(0);
+    expect(
+      mexicoSouthKorea!.predictionHistory.every(
+        (prediction) => prediction.predictionDate < mexicoSouthKorea!.predictionDate,
+      ),
+    ).toBe(true);
+    expect(mexicoSouthKorea!.predictionHistory).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          prediction: expect.objectContaining({
+            probabilities: expect.objectContaining({ homeWin: expect.any(Number) }),
+            skills: expect.any(Object),
+          }),
         }),
-      }),
-    ]);
+      ]),
+    );
 
     const mexicoSouthAfrica = tournamentData.groupMatches.find(
       (match) => match.homeTeam === "Mexico" && match.awayTeam === "South Africa",
@@ -262,6 +301,17 @@ describe("App interactions", () => {
 
   it("filters groups and opens an accessible prediction drawer", async () => {
     const user = userEvent.setup();
+    const canadaSwitzerland = data.groupMatches.find(
+      (match) => match.homeTeam === "Canada" && match.awayTeam === "Switzerland",
+    );
+    expect(canadaSwitzerland).toBeDefined();
+    const latestVersion = latestPredictionVersion(canadaSwitzerland!);
+    const previousVersions = previousPredictionVersions(canadaSwitzerland!);
+    const historicalVersion =
+      previousVersions.find((version) => version.predictionDate === "2026-06-11") ??
+      previousVersions.at(-1);
+    expect(historicalVersion).toBeDefined();
+
     render(<App />);
 
     const groupFilter = screen.getByRole("navigation", { name: "Filter group stage" });
@@ -274,11 +324,12 @@ describe("App interactions", () => {
     expect(screen.getByRole("table", { name: /Score probability/i })).toBeInTheDocument();
     expect(screen.getByRole("columnheader", { name: "Switzerland ↓ / Canada →" })).toBeInTheDocument();
     const dateSelector = screen.getByRole("group", { name: "Prediction date" });
-    expect(within(dateSelector).getByRole("button", { name: /2026-06-15 Latest/i })).toHaveAttribute(
-      "aria-pressed",
-      "true",
-    );
-    expect(screen.getByText("44.2%")).toBeInTheDocument();
+    expect(
+      within(dateSelector).getByRole("button", {
+        name: new RegExp(`${latestVersion.predictionDate} Latest`, "i"),
+      }),
+    ).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByText(formatPercentForTest(latestVersion.prediction.probabilities.homeWin))).toBeInTheDocument();
     const probabilityBars = document.querySelectorAll<HTMLElement>(".probability-row__track > span");
     expect(probabilityBars[0]).toHaveStyle({ background: "#15803d" });
     expect(probabilityBars[1]).toHaveStyle({ background: "#777b76" });
@@ -289,29 +340,30 @@ describe("App interactions", () => {
     expect(screen.getByLabelText("Team strength chart legend")).toHaveTextContent(
       "CanadaSwitzerlandAttackDefence",
     );
-    expect(screen.getByRole("link", { name: /Prediction generated 2026-06-15/i })).toHaveAttribute(
-      "href",
-      expect.stringContaining("/outputs/predictions/2026-06-15/"),
-    );
+    expect(
+      screen.getByRole("link", {
+        name: new RegExp(`Prediction generated ${latestVersion.predictionDate}`, "i"),
+      }),
+    ).toHaveAttribute("href", latestVersion.sourceUrl);
     expect(screen.getAllByText("Previous predictions")).toHaveLength(2);
     const historicalMatchLink = screen
-      .getAllByRole("link", { name: /^2026-06-11/ })
-      .find((link) => link.getAttribute("href")?.includes("/2026-06-11/"));
-    expect(historicalMatchLink).toHaveAttribute(
-      "href",
-      expect.stringContaining("/outputs/predictions/2026-06-11/"),
-    );
+      .getAllByRole("link", { name: new RegExp(`^${historicalVersion!.predictionDate}`) })
+      .find((link) => link.getAttribute("href") === historicalVersion!.sourceUrl);
+    expect(historicalMatchLink).toHaveAttribute("href", historicalVersion!.sourceUrl);
 
-    await user.click(within(dateSelector).getByRole("button", { name: "2026-06-11" }));
-    expect(within(dateSelector).getByRole("button", { name: "2026-06-11" })).toHaveAttribute(
+    await user.click(within(dateSelector).getByRole("button", { name: historicalVersion!.predictionDate }));
+    expect(within(dateSelector).getByRole("button", { name: historicalVersion!.predictionDate })).toHaveAttribute(
       "aria-pressed",
       "true",
     );
-    expect(screen.getByText("45.4%")).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: /Prediction generated 2026-06-11/i })).toHaveAttribute(
-      "href",
-      expect.stringContaining("/outputs/predictions/2026-06-11/"),
-    );
+    expect(
+      screen.getByText(formatPercentForTest(historicalVersion!.prediction.probabilities.homeWin)),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("link", {
+        name: new RegExp(`Prediction generated ${historicalVersion!.predictionDate}`, "i"),
+      }),
+    ).toHaveAttribute("href", historicalVersion!.sourceUrl);
 
     await user.click(screen.getByRole("button", { name: "Close prediction details" }));
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
