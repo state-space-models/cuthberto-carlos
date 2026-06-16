@@ -1495,7 +1495,7 @@ h2 {
   cursor: pointer;
   font-weight: 900;
   grid-area: action;
-  align-self: start;
+  align-self: center;
 }
 
 .fixture-row__prediction:hover,
@@ -2135,12 +2135,11 @@ h2 {
   display: flex;
   padding: 1rem 0 0;
   align-items: center;
-  gap: 0.55rem;
+  gap: 0.65rem;
   flex-wrap: wrap;
 }
 
-.prediction-date-selector > span {
-  margin-right: 0.25rem;
+.prediction-date-selector label {
   color: var(--muted);
   font-size: 0.68rem;
   font-weight: 800;
@@ -2148,39 +2147,49 @@ h2 {
   text-transform: uppercase;
 }
 
-.prediction-date-selector button {
+.prediction-date-selector__control {
+  position: relative;
   display: inline-flex;
-  padding: 0.48rem 0.7rem;
+  min-width: 11.25rem;
+}
+
+.prediction-date-selector__control::after {
+  position: absolute;
+  top: 50%;
+  right: 0.85rem;
+  width: 0.42rem;
+  height: 0.42rem;
+  border-right: 2px solid currentColor;
+  border-bottom: 2px solid currentColor;
+  color: inherit;
+  content: "";
+  pointer-events: none;
+  transform: translateY(-65%) rotate(45deg);
+}
+
+.prediction-date-selector select {
+  width: 100%;
+  min-height: 2.25rem;
+  padding: 0.5rem 2.1rem 0.5rem 0.85rem;
   border: 1px solid #d5d5ca;
   border-radius: 999px;
-  align-items: center;
-  gap: 0.4rem;
-  color: var(--muted);
+  appearance: none;
+  color: var(--green-dark);
   background: #fbfaf5;
   cursor: pointer;
-  font-size: 0.68rem;
+  font: inherit;
+  font-size: 0.76rem;
   font-weight: 800;
+  font-variant-numeric: tabular-nums;
 }
 
-.prediction-date-selector button[aria-pressed="true"] {
+.prediction-date-selector select:hover {
   border-color: var(--green-dark);
-  color: white;
-  background: var(--green-dark);
 }
 
-.prediction-date-selector button:focus-visible {
+.prediction-date-selector select:focus-visible {
   outline: 3px solid rgba(241, 210, 74, 0.75);
   outline-offset: 2px;
-}
-
-.prediction-date-selector small {
-  padding: 0.12rem 0.32rem;
-  border-radius: 999px;
-  color: var(--green-dark);
-  background: #dcebdc;
-  font-size: 0.5rem;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
 }
 
 .drawer-panel {
@@ -2346,9 +2355,16 @@ h2 {
   display: flex;
   justify-content: space-between;
   gap: 0.5rem;
+  overflow-x: auto;
+  padding-bottom: 0.2rem;
   color: var(--muted);
   font-size: 0.58rem;
   font-variant-numeric: tabular-nums;
+  scrollbar-width: thin;
+}
+
+.strength-history__dates span {
+  flex: 0 0 auto;
 }
 
 .strength-history__date--selected {
@@ -2449,6 +2465,64 @@ h2 {
   width: 100px;
   font-size: 0.57rem;
   line-height: 1.3;
+}
+
+.recent-matches__list {
+  display: grid;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.recent-matches__item {
+  display: grid;
+  grid-template-columns: minmax(9rem, 0.75fr) minmax(18rem, 1.5fr) minmax(10rem, 1fr);
+  padding: 0.8rem 0;
+  border-top: 1px solid #deddd3;
+  align-items: center;
+  gap: 1rem;
+}
+
+.recent-matches__item:last-child {
+  padding-bottom: 0;
+}
+
+.recent-matches__item time,
+.recent-matches__venue {
+  color: var(--muted);
+  font-size: 0.68rem;
+}
+
+.recent-matches__fixture {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.recent-matches__fixture .team-identity:last-child {
+  justify-content: flex-end;
+  text-align: right;
+}
+
+.recent-matches__fixture strong {
+  font-family: Georgia, serif;
+  font-size: 1.2rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.recent-matches__venue {
+  text-align: right;
+}
+
+.recent-matches__empty {
+  padding: 1rem;
+  border: 1px dashed #d5d5ca;
+  border-radius: 6px;
+  color: var(--muted);
+  background: #f6f5ef;
+  font-size: 0.72rem;
+  text-align: center;
 }
 
 .drawer-footer {
@@ -2964,6 +3038,15 @@ h2 {
 
   .drawer-panel--wide {
     grid-column: auto;
+  }
+
+  .recent-matches__item {
+    grid-template-columns: 1fr;
+    gap: 0.45rem;
+  }
+
+  .recent-matches__venue {
+    text-align: left;
   }
 
   .drawer-matchup {

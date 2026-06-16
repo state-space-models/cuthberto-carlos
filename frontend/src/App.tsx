@@ -145,6 +145,7 @@ function App() {
 
       <MatchDetailDrawer
         match={selectedMatch}
+        matches={matches}
         teams={data.teams}
         modelName={data.model.name}
         onClose={closeMatch}

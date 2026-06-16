@@ -17,6 +17,7 @@ import { TeamFlag } from "./TeamFlag";
 
 interface MatchDetailDrawerProps {
   match: MatchPrediction | null;
+  matches: MatchPrediction[];
   teams: Record<string, Team>;
   modelName: string;
   onClose: () => void;
@@ -27,6 +28,15 @@ type PredictionVersion = PredictionHistoryEntry;
 const FIRST_TEAM_COLOR = "#15803d";
 const SECOND_TEAM_COLOR = "#dc2626";
 const DRAW_COLOR = "#777b76";
+
+function formatMatchDate(date: string): string {
+  return new Intl.DateTimeFormat(undefined, {
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+    timeZone: "UTC",
+  }).format(new Date(`${date}T12:00:00Z`));
+}
 
 function ProbabilityRow({
   label,
@@ -237,8 +247,68 @@ function StrengthHistory({
   );
 }
 
+function RecentTeamMatches({
+  match,
+  matches,
+  predictionDate,
+  teams,
+}: {
+  match: MatchPrediction;
+  matches: MatchPrediction[];
+  predictionDate: string;
+  teams: Record<string, Team>;
+}) {
+  const teamNames = new Set([match.homeTeam, match.awayTeam]);
+  const recentMatches = matches
+    .filter(
+      (candidate) =>
+        candidate.id !== match.id &&
+        candidate.actualResult &&
+        candidate.date < predictionDate &&
+        (teamNames.has(candidate.homeTeam) || teamNames.has(candidate.awayTeam)),
+    )
+    .sort((left, right) => right.kickoffUtc.localeCompare(left.kickoffUtc));
+
+  return (
+    <section className="drawer-panel drawer-panel--wide recent-matches">
+      <h3>Recent matches</h3>
+      <p className="panel-note">
+        Completed matches involving {match.homeTeam} or {match.awayTeam} before {predictionDate}.
+      </p>
+      {recentMatches.length > 0 ? (
+        <ul
+          className="recent-matches__list"
+          aria-label={`Matches involving ${match.homeTeam} or ${match.awayTeam} before ${predictionDate}`}
+        >
+          {recentMatches.map((recentMatch) => {
+            const result = recentMatch.actualResult!;
+            return (
+              <li className="recent-matches__item" key={recentMatch.id}>
+                <time dateTime={recentMatch.date}>{formatMatchDate(recentMatch.date)}</time>
+                <span className="recent-matches__fixture">
+                  <TeamFlag team={teams[recentMatch.homeTeam]} compact />
+                  <strong aria-label="Final score">
+                    {result.homeScore}–{result.awayScore}
+                  </strong>
+                  <TeamFlag team={teams[recentMatch.awayTeam]} compact />
+                </span>
+                <span className="recent-matches__venue">{recentMatch.venue}</span>
+              </li>
+            );
+          })}
+        </ul>
+      ) : (
+        <p className="recent-matches__empty">
+          No completed matches involving either team before this prediction.
+        </p>
+      )}
+    </section>
+  );
+}
+
 export function MatchDetailDrawer({
   match,
+  matches,
   teams,
   modelName,
   onClose,
@@ -278,6 +348,7 @@ export function MatchDetailDrawer({
   const selectedVersion =
     versions.find((version) => version.predictionDate === selectedPredictionDate) ??
     versions[versions.length - 1];
+  const latestPredictionDate = versions[versions.length - 1].predictionDate;
   const selectedPrediction = selectedVersion.prediction;
   const probabilities = selectedPrediction.probabilities;
   const ongoing = isMatchOngoing(match);
@@ -330,18 +401,20 @@ export function MatchDetailDrawer({
 
         {versions.length > 1 && (
           <div className="prediction-date-selector" role="group" aria-label="Prediction date">
-            <span>View prediction</span>
-            {versions.slice().reverse().map((version, index) => (
-              <button
-                type="button"
-                key={version.predictionDate}
-                aria-pressed={version.predictionDate === selectedVersion.predictionDate}
-                onClick={() => setSelectedPredictionDate(version.predictionDate)}
+            <label htmlFor="prediction-date-select">View prediction</label>
+            <span className="prediction-date-selector__control">
+              <select
+                id="prediction-date-select"
+                value={selectedVersion.predictionDate}
+                onChange={(event) => setSelectedPredictionDate(event.target.value)}
               >
-                {version.predictionDate}
-                {index === 0 && <small>Latest</small>}
-              </button>
-            ))}
+                {versions.slice().reverse().map((version) => (
+                  <option key={version.predictionDate} value={version.predictionDate}>
+                    {version.predictionDate}{version.predictionDate === latestPredictionDate ? " (latest)" : ""}
+                  </option>
+                ))}
+              </select>
+            </span>
           </div>
         )}
 
@@ -374,6 +447,13 @@ export function MatchDetailDrawer({
               awayTeam={match.awayTeam}
             />
           </section>
+
+          <RecentTeamMatches
+            match={match}
+            matches={matches}
+            predictionDate={selectedVersion.predictionDate}
+            teams={teams}
+          />
         </div>
 
         <footer className="drawer-footer">

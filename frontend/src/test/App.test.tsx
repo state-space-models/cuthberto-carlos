@@ -324,11 +324,13 @@ describe("App interactions", () => {
     expect(screen.getByRole("table", { name: /Score probability/i })).toBeInTheDocument();
     expect(screen.getByRole("columnheader", { name: "Switzerland ↓ / Canada →" })).toBeInTheDocument();
     const dateSelector = screen.getByRole("group", { name: "Prediction date" });
+    const predictionDateSelect = within(dateSelector).getByRole("combobox", { name: "View prediction" });
+    expect(predictionDateSelect).toHaveValue(latestVersion.predictionDate);
     expect(
-      within(dateSelector).getByRole("button", {
-        name: new RegExp(`${latestVersion.predictionDate} Latest`, "i"),
+      within(dateSelector).getByRole("option", {
+        name: new RegExp(`${latestVersion.predictionDate} \\(latest\\)`, "i"),
       }),
-    ).toHaveAttribute("aria-pressed", "true");
+    ).toBeInTheDocument();
     expect(screen.getByText(formatPercentForTest(latestVersion.prediction.probabilities.homeWin))).toBeInTheDocument();
     const probabilityBars = document.querySelectorAll<HTMLElement>(".probability-row__track > span");
     expect(probabilityBars[0]).toHaveStyle({ background: "#15803d" });
@@ -351,11 +353,8 @@ describe("App interactions", () => {
       .find((link) => link.getAttribute("href") === historicalVersion!.sourceUrl);
     expect(historicalMatchLink).toHaveAttribute("href", historicalVersion!.sourceUrl);
 
-    await user.click(within(dateSelector).getByRole("button", { name: historicalVersion!.predictionDate }));
-    expect(within(dateSelector).getByRole("button", { name: historicalVersion!.predictionDate })).toHaveAttribute(
-      "aria-pressed",
-      "true",
-    );
+    await user.selectOptions(predictionDateSelect, historicalVersion!.predictionDate);
+    expect(predictionDateSelect).toHaveValue(historicalVersion!.predictionDate);
     expect(
       screen.getByText(formatPercentForTest(historicalVersion!.prediction.probabilities.homeWin)),
     ).toBeInTheDocument();
@@ -367,6 +366,34 @@ describe("App interactions", () => {
 
     await user.click(screen.getByRole("button", { name: "Close prediction details" }));
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  });
+
+  it("shows team results available before the selected prediction date", async () => {
+    const user = userEvent.setup();
+    render(<App />);
+
+    await user.click(screen.getByRole("button", { name: /Open prediction for Japan versus Sweden/i }));
+    const drawer = screen.getByRole("dialog", { name: /Japan vs Sweden/i });
+    const dateSelector = within(drawer).getByRole("combobox", { name: "View prediction" });
+    const latestPredictionDate = within(dateSelector).getByRole("option", { name: /\(latest\)/i });
+    const selectedDate = (dateSelector as HTMLSelectElement).value;
+
+    expect(dateSelector).toHaveValue(latestPredictionDate.getAttribute("value"));
+    const recentMatches = within(drawer).getByRole("list", {
+      name: new RegExp(`Matches involving Japan or Sweden before ${selectedDate}`),
+    });
+    expect(within(recentMatches).getByText("Netherlands")).toBeInTheDocument();
+    expect(within(recentMatches).getByText("Japan")).toBeInTheDocument();
+    expect(within(recentMatches).getByText("Sweden")).toBeInTheDocument();
+    expect(within(recentMatches).getByText("Tunisia")).toBeInTheDocument();
+    expect(within(recentMatches).getByText("2–2")).toBeInTheDocument();
+    expect(within(recentMatches).getByText("5–1")).toBeInTheDocument();
+
+    await user.selectOptions(dateSelector, "2026-06-11");
+    expect(
+      within(drawer).getByText("No completed matches involving either team before this prediction."),
+    ).toBeInTheDocument();
+    expect(within(drawer).queryByRole("list", { name: /Matches involving Japan or Sweden/ })).not.toBeInTheDocument();
   });
 
   it("filters countries, selects a squad, and exposes accessible player profiles", async () => {
