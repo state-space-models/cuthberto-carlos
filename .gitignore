@@ -6,6 +6,7 @@ uv.lock
 node_modules/
 frontend/dist/
 frontend/.vite/
+outputs/**/cache/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
