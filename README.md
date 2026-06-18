@@ -48,7 +48,7 @@ This allows the attack and defence components to revert jointly to the initial c
 The bivariate Poisson distribution is defined as follows (see 4.6 in DPR):
 
 $$
-p(y \mid x^i, x^j, \alpha, \beta) = e^{-(\lambda_1 + \lambda_2 + \lambda_3)} \frac{\lambda_1^{y^i}}{y^i!} \frac{\lambda_2^{y^j}}{y^j!} \sum_{k=0}^{\min(y^i, y^j)} \binom{y^i}{k} \binom{y^j}{k} k! \left( \frac{\lambda_{3}}{\lambda_i \lambda_1} \right)^k,
+p(y \mid x^i, x^j, \alpha, \beta) = e^{-(\lambda_1 + \lambda_2 + \lambda_3)} \frac{\lambda_1^{y^i}}{y^i!} \frac{\lambda_2^{y^j}}{y^j!} \sum_{k=0}^{\min(y^i, y^j)} \binom{y^i}{k} \binom{y^j}{k} k! \left( \frac{\lambda_{3}}{\lambda_1 \lambda_2} \right)^k,
 $$
 
 with $\lambda_1 = \exp(\alpha + x^{\text{att}, i} - x^{\text{def}, j})$, $\lambda_2 = \exp(\alpha + x^{\text{att}, j} - x^{\text{def}, i})$ and $\lambda_3 = \exp(\beta)$.
