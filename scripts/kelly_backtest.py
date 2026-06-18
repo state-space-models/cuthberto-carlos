@@ -12,7 +12,6 @@ from __future__ import annotations
 
 import argparse
 import csv
-import html
 import json
 import math
 import re
@@ -36,28 +35,6 @@ from cuthberto_carlos.data import download_data
 DEFAULT_PREDICTION_ROOT = Path("outputs/predictions/2026-06-11")
 DEFAULT_OUTPUT_ROOT = Path("outputs/kelly_backtest/2026-06-11")
 DEFAULT_FOTMOB_CCODE3 = "GBR"
-FOTMOB_KNOWN_MATCH_IDS = (
-    4667751,
-    4667752,
-    4667757,
-    4667758,
-    4667764,
-    4667765,
-    4667771,
-    4667772,
-    4667777,
-    4667778,
-    4667783,
-    4667784,
-    4667790,
-    4667791,
-    4667798,
-    4667799,
-    4667804,
-    4667805,
-    4667812,
-    4667813,
-)
 RESULT_ORDER = ("draw", "home", "away")
 
 
@@ -274,87 +251,68 @@ def cached_json_request(url: str, cache_path: Path, timeout: float = 5.0) -> Any
     return payload
 
 
-def next_data_from_html(page: str) -> dict[str, Any]:
-    match = re.search(
-        r'<script id="__NEXT_DATA__" type="application/json">(.*?)</script>',
-        page,
-        flags=re.DOTALL,
-    )
-    if match is None:
-        raise ValueError("missing __NEXT_DATA__ script")
-    payload = json.loads(html.unescape(match.group(1)))
-    if not isinstance(payload, dict):
-        raise ValueError("unexpected __NEXT_DATA__ payload")
-    return payload
-
-
-def sports_event_from_html(page: str) -> dict[str, Any]:
-    def candidates(value: Any) -> Iterable[dict[str, Any]]:
-        if isinstance(value, dict):
-            yield value
-        elif isinstance(value, list):
-            for item in value:
-                if isinstance(item, dict):
-                    yield item
-
-    for match in re.finditer(
-        r'<script[^>]+type="application/ld\+json"[^>]*>(.*?)</script>',
-        page,
-        flags=re.DOTALL,
-    ):
-        try:
-            payload = json.loads(html.unescape(match.group(1)))
-        except json.JSONDecodeError:
-            continue
-        for candidate in candidates(payload):
-            if candidate.get("@type") == "SportsEvent":
-                return candidate
-    return {}
-
-
-def fotmob_match_page(match_id: int, cache_dir: Path) -> tuple[str, str]:
-    url = f"https://www.fotmob.com/match/{match_id}"
-    cache_path = cache_dir / "fotmob" / "matches" / f"{match_id}.html"
-    if cache_path.exists():
-        return cache_path.read_text(), url
-    cache_path.parent.mkdir(parents=True, exist_ok=True)
-    request = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
-    with urllib.request.urlopen(request, timeout=20.0) as response:
-        page = response.read().decode()
-        final_url = response.geturl()
-    cache_path.write_text(page)
-    return page, final_url
-
-
-def fotmob_match_metadata(match_id: int, cache_dir: Path) -> dict[str, str]:
-    page, final_url = fotmob_match_page(match_id, cache_dir)
+def fotmob_match_list_payload(
+    match_date: str, cache_dir: Path, ccode3: str
+) -> dict[str, Any] | None:
+    date_param = pd.to_datetime(match_date).strftime("%Y%m%d")
+    params = urllib.parse.urlencode({"date": date_param, "ccode3": ccode3})
+    url = f"https://www.fotmob.com/api/data/matches?{params}"
+    cache_path = cache_dir / "fotmob" / "match_lists" / f"{date_param}_{ccode3}.json"
     try:
-        payload = next_data_from_html(page)
-        event = (
-            payload.get("props", {})
-            .get("pageProps", {})
-            .get("content", {})
-            .get("seo", {})
-            .get("eventJSONLD", {})
-        )
-        if not isinstance(event, dict):
-            event = {}
-    except ValueError:
-        event = {}
-    if not event:
-        event = sports_event_from_html(page)
+        payload = cached_json_request(url, cache_path, timeout=20.0)
+    except Exception as exc:
+        print(f"Skipping FotMob match list for {date_param}: {exc}")
+        return None
+    return payload if isinstance(payload, dict) else None
 
-    home_team = event.get("homeTeam", {}).get("name")
-    away_team = event.get("awayTeam", {}).get("name")
-    start_date = event.get("startDate")
-    if not home_team or not away_team or not start_date:
-        raise ValueError(f"Could not parse FotMob metadata for match {match_id}")
-    return {
-        "date": date_str(start_date),
-        "home_team": str(home_team),
-        "away_team": str(away_team),
-        "url": final_url,
-    }
+
+def fotmob_match_list_metadata(
+    predictions: Iterable[Prediction], cache_dir: Path, ccode3: str
+) -> list[dict[str, str]]:
+    query_dates: set[str] = set()
+    for prediction in predictions:
+        prediction_date = pd.to_datetime(prediction.date)
+        for offset in (-1, 0, 1):
+            query_dates.add(
+                (prediction_date + pd.Timedelta(days=offset)).strftime("%Y-%m-%d")
+            )
+
+    matches: list[dict[str, str]] = []
+    seen_match_ids: set[int] = set()
+    for query_date in sorted(query_dates):
+        payload = fotmob_match_list_payload(query_date, cache_dir, ccode3)
+        if payload is None:
+            continue
+        for league in payload.get("leagues", []):
+            if not isinstance(league, dict):
+                continue
+            for match in league.get("matches", []):
+                if not isinstance(match, dict) or not is_number(match.get("id")):
+                    continue
+                match_id = int(match["id"])
+                if match_id in seen_match_ids:
+                    continue
+                home = match.get("home", {})
+                away = match.get("away", {})
+                status = match.get("status", {})
+                if not all(isinstance(value, dict) for value in (home, away, status)):
+                    continue
+                home_team = home.get("name") or home.get("longName")
+                away_team = away.get("name") or away.get("longName")
+                utc_time = status.get("utcTime")
+                if not home_team or not away_team or not utc_time:
+                    continue
+                seen_match_ids.add(match_id)
+                matches.append(
+                    {
+                        "match_id": str(match_id),
+                        "date": date_str(utc_time),
+                        "home_team": str(home_team),
+                        "away_team": str(away_team),
+                        "url": f"https://www.fotmob.com/match/{match_id}",
+                    }
+                )
+    return matches
 
 
 def fotmob_odds_payload(
@@ -396,13 +354,8 @@ def odds_from_fotmob(
         return None
 
     odds_rows: list[Odds] = []
-    for match_id in FOTMOB_KNOWN_MATCH_IDS:
-        try:
-            metadata = fotmob_match_metadata(match_id, cache_dir)
-        except Exception as exc:
-            print(f"Skipping FotMob match {match_id}: {exc}")
-            continue
-
+    for metadata in fotmob_match_list_metadata(prediction_rows, cache_dir, ccode3):
+        match_id = int(metadata["match_id"])
         prediction = matching_prediction(metadata)
         if prediction is None:
             continue
