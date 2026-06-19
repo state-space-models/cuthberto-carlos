@@ -61,7 +61,7 @@ export function UpcomingMatches({ matches, teams, onOpen }: UpcomingMatchesProps
             tabIndex={0}
           >
             {displayMatches.map((match) => (
-              <MatchCard key={match.id} match={match} teams={teams} onOpen={onOpen} />
+              <MatchCard key={match.id} match={match} teams={teams} onOpen={onOpen} showPolymarket />
             ))}
           </div>
         ) : (
@@ -73,7 +73,7 @@ export function UpcomingMatches({ matches, teams, onOpen }: UpcomingMatchesProps
             tabIndex={0}
           >
             {displayMatches.map((match) => (
-              <MatchListRow key={match.id} match={match} teams={teams} onOpen={onOpen} />
+              <MatchListRow key={match.id} match={match} teams={teams} onOpen={onOpen} showPolymarket />
             ))}
           </div>
         )

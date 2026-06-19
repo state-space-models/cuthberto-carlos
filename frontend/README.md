@@ -8,6 +8,8 @@ distributions, completed-match scorer details, and an interactive country squad
 browser sourced from
 [`openfootball/worldcup.squads.json`](https://github.com/openfootball/worldcup.json/blob/master/2026/worldcup.squads.json).
 Player names expose accessible squad profiles on hover, keyboard focus, and touch.
+Upcoming fixtures also compare the model's regulation-time result probabilities
+with live three-way moneyline prices from the public Polymarket Gamma API.
 Knockout fixture metadata remains in
 the generated dataset for future frontend work, but the current UI is limited to the
 group stage.
@@ -36,6 +38,12 @@ OpenFootball schedule directly from `raw.githubusercontent.com`, using a shared
 five-minute cache bucket, and merges completed scores and scorers into the static
 predictions. If the request or schema validation fails, the deployed fallback
 results remain available. Match-result changes therefore do not rebuild Pages.
+
+The data builder also pages through Polymarket's World Cup event keyset feed and
+stores complete home-win/draw/away-win market groups as deployment-time fallback
+data. The frontend refreshes those prices directly from Polymarket in the same
+five-minute cache window. Market data is rendered only while a fixture kickoff is
+still in the future; ongoing and completed matches never show Polymarket prices.
 
 The production build exposes the exact generated dataset at
 `/cuthberto-carlos/data/tournament.json`. The data builder validates the generated

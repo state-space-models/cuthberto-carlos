@@ -37,6 +37,11 @@ SQUADS_DATA_URL = (
     "https://raw.githubusercontent.com/openfootball/worldcup.json/"
     "master/2026/worldcup.squads.json"
 )
+POLYMARKET_API_URL = "https://gamma-api.polymarket.com/events/keyset"
+POLYMARKET_SITE_URL = "https://polymarket.com"
+POLYMARKET_WORLD_CUP_TAG_ID = "102232"
+POLYMARKET_WORLD_CUP_SERIES_ID = "11433"
+POLYMARKET_MARKET_TYPE = "moneyline"
 
 
 def get_repository_slug() -> str:
@@ -52,7 +57,14 @@ def get_repository_url() -> str:
     return f"https://github.com/{get_repository_slug()}"
 
 TEAM_ALIASES = {
+    "Bosnia-Herzegovina": "Bosnia and Herzegovina",
     "Bosnia & Herzegovina": "Bosnia and Herzegovina",
+    "Cabo Verde": "Cape Verde",
+    "Côte d'Ivoire": "Ivory Coast",
+    "Czechia": "Czech Republic",
+    "IR Iran": "Iran",
+    "Korea Republic": "South Korea",
+    "Türkiye": "Turkey",
     "USA": "United States",
 }
 
@@ -251,10 +263,163 @@ def fetch_squads(url: str = SQUADS_DATA_URL) -> list[dict[str, Any]]:
     return _fetch_openfootball_json(url)
 
 
+def fetch_polymarket_markets(
+    url: str = POLYMARKET_API_URL,
+) -> list[dict[str, Any]]:
+    """Download World Cup events and flatten their nested markets."""
+    markets: list[dict[str, Any]] = []
+    cursor: str | None = None
+    while True:
+        query = {
+            "limit": "100",
+            "tag_id": POLYMARKET_WORLD_CUP_TAG_ID,
+            "series_id": POLYMARKET_WORLD_CUP_SERIES_ID,
+            "closed": "false",
+            "decimalized": "true",
+        }
+        if cursor:
+            query["after_cursor"] = cursor
+        request = Request(
+            f"{url}?{urlencode(query)}",
+            headers={
+                "User-Agent": "cuthberto-carlos-data-builder",
+                "Cache-Control": "no-cache",
+                "Pragma": "no-cache",
+            },
+        )
+        with urlopen(request, timeout=30) as response:  # noqa: S310 - pinned HTTPS URL
+            page = json.load(response)
+        page_events = page.get("events") if isinstance(page, dict) else None
+        if not isinstance(page_events, list):
+            raise ValueError("Polymarket response is missing an events array")
+        for event in page_events:
+            if not isinstance(event, dict) or not isinstance(event.get("markets"), list):
+                continue
+            for market in event["markets"]:
+                if isinstance(market, dict):
+                    markets.append({**market, "events": [event]})
+        cursor = page.get("next_cursor")
+        if not cursor:
+            return markets
+        if not isinstance(cursor, str):
+            raise ValueError("Polymarket response has an invalid next_cursor")
+
+
+def _json_string_list(value: Any, field: str) -> list[str]:
+    try:
+        parsed = json.loads(value)
+    except (TypeError, json.JSONDecodeError) as error:
+        raise ValueError(f"Polymarket {field} is invalid") from error
+    if not isinstance(parsed, list) or not all(isinstance(item, str) for item in parsed):
+        raise ValueError(f"Polymarket {field} is invalid")
+    return parsed
+
+
+def _polymarket_yes_price(market: dict[str, Any]) -> float:
+    outcomes = _json_string_list(market.get("outcomes"), "outcomes")
+    prices = _json_string_list(market.get("outcomePrices"), "outcomePrices")
+    if len(outcomes) != len(prices) or outcomes.count("Yes") != 1:
+        raise ValueError("Polymarket outcomes and prices are inconsistent")
+    try:
+        price = float(prices[outcomes.index("Yes")])
+    except ValueError as error:
+        raise ValueError("Polymarket Yes price is invalid") from error
+    if not 0 <= price <= 1:
+        raise ValueError("Polymarket Yes price is outside [0, 1]")
+    return price
+
+
+def parse_polymarket_predictions(
+    markets: list[dict[str, Any]],
+) -> dict[tuple[str, str], dict[str, Any]]:
+    """Build complete three-way fixture predictions from raw market records."""
+    grouped: dict[tuple[str, str], dict[str, Any]] = {}
+    invalid_keys: set[tuple[str, str]] = set()
+
+    for market in markets:
+        if (
+            market.get("sportsMarketType") != POLYMARKET_MARKET_TYPE
+            or market.get("closed") is True
+            or market.get("active") is not True
+        ):
+            continue
+        events = market.get("events")
+        metadata = market.get("marketMetadata")
+        if not isinstance(events, list) or len(events) != 1:
+            continue
+        event = events[0]
+        if not isinstance(event, dict):
+            continue
+        event_date = event.get("eventDate")
+        title = event.get("title")
+        slug = event.get("slug")
+        selection = (
+            metadata.get("opticOddsSelection")
+            if isinstance(metadata, dict)
+            else market.get("groupItemTitle")
+        )
+        if not all(isinstance(value, str) and value for value in (event_date, title, slug, selection)):
+            continue
+        title_teams = re.split(r"\s+vs\.?\s+", title, maxsplit=1, flags=re.IGNORECASE)
+        if len(title_teams) != 2:
+            continue
+        key = team_pair_key(title_teams[0], title_teams[1])
+        try:
+            price = _polymarket_yes_price(market)
+        except ValueError:
+            invalid_keys.add(key)
+            continue
+
+        canonical_selection = canonical_team(selection)
+        if selection.casefold() == "draw":
+            outcome = "draw"
+        elif canonical_selection == canonical_team(title_teams[0]):
+            outcome = canonical_selection
+        elif canonical_selection == canonical_team(title_teams[1]):
+            outcome = canonical_selection
+        else:
+            invalid_keys.add(key)
+            continue
+
+        group = grouped.setdefault(
+            key,
+            {
+                "eventUrl": f"{POLYMARKET_SITE_URL}/event/{slug}",
+                "updatedAt": market.get("updatedAt"),
+                "outcomes": {},
+            },
+        )
+        if group["eventUrl"] != f"{POLYMARKET_SITE_URL}/event/{slug}" or outcome in group["outcomes"]:
+            invalid_keys.add(key)
+            continue
+        group["outcomes"][outcome] = price
+        updated_at = market.get("updatedAt")
+        if isinstance(updated_at, str) and (
+            not isinstance(group["updatedAt"], str) or updated_at > group["updatedAt"]
+        ):
+            group["updatedAt"] = updated_at
+
+    predictions: dict[tuple[str, str], dict[str, Any]] = {}
+    for key, group in grouped.items():
+        if key in invalid_keys:
+            continue
+        team1, team2 = key
+        outcomes = group["outcomes"]
+        if set(outcomes) != {team1, team2, "draw"} or not isinstance(group["updatedAt"], str):
+            continue
+        predictions[key] = group
+    return predictions
+
+
 def fixture_key(date: str, team1: str, team2: str) -> tuple[str, tuple[str, str]]:
     """Build an orientation-independent fixture key."""
     teams = tuple(sorted((canonical_team(team1), canonical_team(team2))))
     return date, teams
+
+
+def team_pair_key(team1: str, team2: str) -> tuple[str, str]:
+    """Build an orientation-independent team-pair key for market matching."""
+    return tuple(sorted((canonical_team(team1), canonical_team(team2))))
 
 
 def normalize_player_name(name: str) -> str:
@@ -556,6 +721,7 @@ def compile_dataset(
     root: Path = ROOT,
     schedule_data: dict[str, Any] | None = None,
     squads_data: list[dict[str, Any]] | None = None,
+    polymarket_markets: list[dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
     """Compile the latest prediction for every fixture plus snapshot history."""
     snapshots = discover_prediction_snapshots(root / "outputs" / "predictions")
@@ -563,6 +729,13 @@ def compile_dataset(
     repository_url = get_repository_url()
     schedule = schedule_data if schedule_data is not None else fetch_schedule()
     squads = squads_data if squads_data is not None else fetch_squads()
+    raw_polymarket = (
+        polymarket_markets
+        if polymarket_markets is not None
+        else fetch_polymarket_markets()
+    )
+    polymarket_predictions = parse_polymarket_predictions(raw_polymarket)
+    generated_at = datetime.now(timezone.utc)
     squad_index = _squad_index(squads)
     squad_players = {
         name: squad["players"] for name, squad in squad_index.items()
@@ -637,6 +810,19 @@ def compile_dataset(
         if actual_result:
             record["actualResult"] = actual_result
 
+        market = polymarket_predictions.get(team_pair_key(home_team, away_team))
+        if market and datetime.fromisoformat(
+            record["kickoffUtc"].replace("Z", "+00:00")
+        ) > generated_at:
+            outcomes = market["outcomes"]
+            record["polymarket"] = {
+                "homeWin": outcomes[home_team],
+                "draw": outcomes["draw"],
+                "awayWin": outcomes[away_team],
+                "eventUrl": market["eventUrl"],
+                "updatedAt": market["updatedAt"],
+            }
+
         match_records.append(record)
 
     match_records.sort(key=lambda match: (match["kickoffUtc"], match["id"]))
@@ -691,12 +877,12 @@ def compile_dataset(
     knockout_matches.sort(key=lambda match: match["matchNumber"])
 
     return {
-        "schemaVersion": 5,
+        "schemaVersion": 6,
         "repositoryUrl": repository_url,
         "snapshotDate": snapshot.name,
         "snapshotPath": str(snapshot.relative_to(root)),
         "snapshotUrl": repository_tree_url(snapshot.relative_to(root), repository_url),
-        "generatedAt": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+        "generatedAt": generated_at.isoformat().replace("+00:00", "Z"),
         "sourceCommit": source_commit(root),
         "model": {
             "name": "Cuthberto Carlos bivariate Poisson model",
@@ -722,6 +908,14 @@ def compile_dataset(
                 "name": "martj42/international_results",
                 "url": "https://github.com/martj42/international_results",
                 "license": "CC0-1.0",
+            },
+            "polymarket": {
+                "name": "Polymarket Gamma API",
+                "url": "https://docs.polymarket.com/api-reference/events/list-events-keyset-pagination",
+                "dataUrl": POLYMARKET_API_URL,
+                "tagId": POLYMARKET_WORLD_CUP_TAG_ID,
+                "seriesId": POLYMARKET_WORLD_CUP_SERIES_ID,
+                "marketType": POLYMARKET_MARKET_TYPE,
             },
         },
         "teams": teams,
@@ -752,7 +946,7 @@ def validate_dataset(dataset: dict[str, Any]) -> None:
     if missing:
         raise ValueError(f"Dataset is missing required keys: {sorted(missing)}")
 
-    if dataset["schemaVersion"] != 5:
+    if dataset["schemaVersion"] != 6:
         raise ValueError(f"Unsupported schema version: {dataset['schemaVersion']!r}")
     try:
         snapshot_date = datetime.strptime(
@@ -798,6 +992,17 @@ def validate_dataset(dataset: dict[str, Any]) -> None:
     for key, expected in expected_squads.items():
         if squads.get(key) != expected:
             raise ValueError(f"Unexpected squads {key}: {squads.get(key)!r}")
+
+    polymarket = dataset["sources"].get("polymarket", {})
+    expected_polymarket = {
+        "dataUrl": POLYMARKET_API_URL,
+        "tagId": POLYMARKET_WORLD_CUP_TAG_ID,
+        "seriesId": POLYMARKET_WORLD_CUP_SERIES_ID,
+        "marketType": POLYMARKET_MARKET_TYPE,
+    }
+    for key, expected in expected_polymarket.items():
+        if polymarket.get(key) != expected:
+            raise ValueError(f"Unexpected Polymarket {key}: {polymarket.get(key)!r}")
 
     group_matches = dataset["groupMatches"]
     knockout_matches = dataset["knockoutMatches"]
@@ -935,6 +1140,22 @@ def validate_dataset(dataset: dict[str, Any]) -> None:
                     r"\d+(?:\+\d+)?", goal["minute"]
                 ):
                     raise ValueError(f"Match {match['id']} has an invalid goal minute")
+        if "polymarket" in match:
+            market = match["polymarket"]
+            market_values = [market.get("homeWin"), market.get("draw"), market.get("awayWin")]
+            if any(not isinstance(value, (int, float)) or not 0 <= value <= 1 for value in market_values):
+                raise ValueError(f"Match {match['id']} has invalid Polymarket probabilities")
+            if not isinstance(market.get("eventUrl"), str) or not market["eventUrl"].startswith(
+                f"{POLYMARKET_SITE_URL}/event/"
+            ):
+                raise ValueError(f"Match {match['id']} has an invalid Polymarket URL")
+            if not isinstance(market.get("updatedAt"), str) or not re.fullmatch(
+                r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?Z",
+                market["updatedAt"],
+            ):
+                raise ValueError(
+                    f"Match {match['id']} has an invalid Polymarket timestamp"
+                )
 
 
 def main() -> None:

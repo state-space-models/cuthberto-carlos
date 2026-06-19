@@ -8,6 +8,7 @@ import { MatchDetailDrawer } from "./components/MatchDetailDrawer";
 import { UpcomingMatches } from "./components/UpcomingMatches";
 import type { MatchPrediction, TournamentDataset } from "./types";
 import { useLiveResults } from "./useLiveResults";
+import { usePolymarket } from "./usePolymarket";
 
 const data = tournamentData as unknown as TournamentDataset;
 
@@ -23,11 +24,16 @@ const predictionDates = Array.from(
 const snapshotBaseUrl = data.snapshotUrl.slice(0, -data.snapshotDate.length);
 
 function App() {
-  const { matches, status, lastCheckedAt } = useLiveResults(
+  const { matches: resultMatches, status, lastCheckedAt } = useLiveResults(
     data.groupMatches,
     data.sources.schedule.dataUrl,
     data.teams,
   );
+  const polymarket = usePolymarket(data.groupMatches, data.sources.polymarket);
+  const matches = resultMatches.map((match) => ({
+    ...match,
+    polymarket: polymarket.predictions[match.id],
+  }));
   const [selectedMatchId, setSelectedMatchId] = useState<string | null>(null);
   const lastTrigger = useRef<HTMLElement | null>(null);
   const selectedMatch = selectedMatchId
@@ -129,17 +135,23 @@ function App() {
           <span>A state-space model predicting the 2026 World Cup.</span>
         </div>
         <div className="site-footer__sources">
-          <span>Open data:</span>
+          <span>Sources:</span>
           <a href={data.sources.schedule.url} target="_blank" rel="noreferrer">openfootball schedule (CC0)</a>
           <a href={data.sources.squads.url} target="_blank" rel="noreferrer">openfootball squads (CC0)</a>
           <a href={data.sources.historicalResults.url} target="_blank" rel="noreferrer">international results (CC0)</a>
           <a href="https://github.com/lipis/flag-icons" target="_blank" rel="noreferrer">flag-icons (MIT)</a>
+          <a href={data.sources.polymarket.url} target="_blank" rel="noreferrer">Polymarket Gamma API</a>
         </div>
-        <p>Probabilities are model estimates, not betting advice or official FIFA data.</p>
+        <p>Model probabilities and Polymarket prices are informational, not betting advice or official FIFA data.</p>
         <p className="site-footer__results-status" role="status">
           {status === "loading" && "Checking OpenFootball for current results…"}
           {status === "current" && `Results checked ${new Date(lastCheckedAt!).toLocaleTimeString()}.`}
           {status === "fallback" && "Showing deployment-time results; the live source is unavailable."}
+        </p>
+        <p className="site-footer__results-status" role="status">
+          {polymarket.status === "loading" && "Checking Polymarket for current prices…"}
+          {polymarket.status === "current" && `Polymarket prices checked ${new Date(polymarket.lastCheckedAt!).toLocaleTimeString()}.`}
+          {polymarket.status === "fallback" && "Showing deployment-time Polymarket prices; the live source is unavailable."}
         </p>
       </footer>
 

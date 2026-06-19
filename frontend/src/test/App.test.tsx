@@ -45,7 +45,7 @@ function formatPercentForTest(value: number): string {
 
 describe("generated tournament data", () => {
   it("contains the complete initial tournament shape", () => {
-    expect(tournamentData.schemaVersion).toBe(5);
+    expect(tournamentData.schemaVersion).toBe(6);
     expect(tournamentData.repositoryUrl).toBe(repositoryUrl);
     expect(tournamentData.snapshotDate).toMatch(/^\d{4}-\d{2}-\d{2}$/);
     expect(data.groupMatches).toHaveLength(72);
@@ -293,7 +293,32 @@ describe("App interactions", () => {
     try {
       render(<App />);
       const upcoming = screen.getByRole("region", { name: "All upcoming matches in card view" });
-      expect(within(upcoming).getByText("LIVE")).toBeInTheDocument();
+      const liveCard = within(upcoming).getByText("LIVE").closest("article")!;
+      expect(liveCard).toBeInTheDocument();
+      expect(within(liveCard).queryByLabelText("Model versus Polymarket probabilities")).not.toBeInTheDocument();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("shows Polymarket only for future fixtures and in their drawer", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-06-19T12:00:00Z"));
+
+    try {
+      render(<App />);
+      const upcoming = screen.getByRole("region", { name: "All upcoming matches in card view" });
+      const marketRows = within(upcoming).getAllByLabelText("Model versus Polymarket probabilities");
+      expect(marketRows.length).toBeGreaterThan(0);
+      expect(screen.getByTestId("completed-list-view").querySelector(".polymarket-compact")).toBeNull();
+
+      const marketCard = marketRows[0].closest("article")!;
+      expect(within(marketCard).getByRole("heading", { name: "Model vs Polymarket" })).toBeInTheDocument();
+      expect(within(marketCard).getByRole("columnheader", { name: "Difference" })).toBeInTheDocument();
+      expect(within(marketCard).queryByLabelText("Result probabilities")).not.toBeInTheDocument();
+      fireEvent.click(within(marketCard).getByRole("button", { name: "Explore prediction" }));
+      const drawer = screen.getByRole("dialog");
+      expect(within(drawer).getByRole("heading", { name: "Model vs Polymarket" })).toBeInTheDocument();
     } finally {
       vi.useRealTimers();
     }
@@ -330,8 +355,9 @@ describe("App interactions", () => {
       within(dateSelector).getByRole("option", {
         name: new RegExp(`${latestVersion.predictionDate} \\(latest\\)`, "i"),
       }),
-    ).toBeInTheDocument();
-    expect(screen.getByText(formatPercentForTest(latestVersion.prediction.probabilities.homeWin))).toBeInTheDocument();
+    ).toHaveAttribute("aria-pressed", "true");
+    const resultPanel = screen.getByRole("heading", { name: "Result probabilities" }).closest("section")!;
+    expect(within(resultPanel).getByText(formatPercentForTest(latestVersion.prediction.probabilities.homeWin))).toBeInTheDocument();
     const probabilityBars = document.querySelectorAll<HTMLElement>(".probability-row__track > span");
     expect(probabilityBars[0]).toHaveStyle({ background: "#15803d" });
     expect(probabilityBars[1]).toHaveStyle({ background: "#777b76" });
@@ -356,7 +382,7 @@ describe("App interactions", () => {
     await user.selectOptions(predictionDateSelect, historicalVersion!.predictionDate);
     expect(predictionDateSelect).toHaveValue(historicalVersion!.predictionDate);
     expect(
-      screen.getByText(formatPercentForTest(historicalVersion!.prediction.probabilities.homeWin)),
+      within(resultPanel).getByText(formatPercentForTest(historicalVersion!.prediction.probabilities.homeWin)),
     ).toBeInTheDocument();
     expect(
       screen.getByRole("link", {

@@ -59,7 +59,7 @@ class FrontendDataValidationTests(unittest.TestCase):
         self.assertEqual(squads["ref"], SCHEDULE_REF)
 
     def test_dataset_has_complete_valid_squads(self):
-        self.assertEqual(self.dataset["schemaVersion"], 5)
+        self.assertEqual(self.dataset["schemaVersion"], 6)
         self.assertEqual(len(self.dataset["teams"]), 48)
         for name, team in self.dataset["teams"].items():
             self.assertEqual(team["name"], name)

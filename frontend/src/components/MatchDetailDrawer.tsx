@@ -14,6 +14,7 @@ import {
 } from "../utils";
 import { MatchScoreComparison } from "./MatchScoreComparison";
 import { TeamFlag } from "./TeamFlag";
+import { PolymarketDetail } from "./PolymarketComparison";
 
 interface MatchDetailDrawerProps {
   match: MatchPrediction | null;
@@ -425,6 +426,8 @@ export function MatchDetailDrawer({
             <ProbabilityRow label="Draw" value={probabilities.draw} color={DRAW_COLOR} />
             <ProbabilityRow label={`${match.awayTeam} win`} value={probabilities.awayWin} color={SECOND_TEAM_COLOR} />
           </section>
+
+          <PolymarketDetail match={match} />
 
           <section className="drawer-panel drawer-panel--skills">
             <h3>Team strength estimates</h3>

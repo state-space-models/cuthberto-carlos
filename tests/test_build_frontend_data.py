@@ -5,7 +5,7 @@ import json
 import os
 import tempfile
 import unittest
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 from urllib.request import Request
 
 from scripts.build_frontend_data import (
@@ -17,14 +17,17 @@ from scripts.build_frontend_data import (
     extract_actual_result,
     fetch_schedule,
     fetch_squads,
+    fetch_polymarket_markets,
     fixture_key,
     get_repository_slug,
     get_repository_url,
     normalize_grid,
     normalize_player_name,
     parse_kickoff_utc,
+    parse_polymarket_predictions,
     prediction_metrics,
     repository_tree_url,
+    team_pair_key,
 )
 
 
@@ -158,6 +161,114 @@ class FrontendDataCompilerTests(unittest.TestCase):
         self.assertEqual(
             canonical_team("Bosnia & Herzegovina"), "Bosnia and Herzegovina"
         )
+
+    @staticmethod
+    def polymarket_market(
+        selection="Mexico",
+        title="Mexico vs. South Korea",
+        date="2026-06-18",
+        slug="fifwc-mex-kor-2026-06-18",
+        price="0.5",
+    ):
+        return {
+            "active": True,
+            "closed": False,
+            "sportsMarketType": "moneyline",
+            "outcomes": '["Yes", "No"]',
+            "outcomePrices": json.dumps([price, str(1 - float(price))]),
+            "updatedAt": "2026-06-17T12:00:00Z",
+            "marketMetadata": {"opticOddsSelection": selection},
+            "events": [{"eventDate": date, "title": title, "slug": slug}],
+        }
+
+    def test_polymarket_predictions_match_reversed_orientation(self):
+        markets = [
+            self.polymarket_market(selection="South Korea", price="0.2"),
+            self.polymarket_market(selection="Draw", price="0.3"),
+            self.polymarket_market(selection="Mexico", price="0.5"),
+        ]
+
+        predictions = parse_polymarket_predictions(markets)
+        market = predictions[team_pair_key("South Korea", "Mexico")]
+
+        self.assertEqual(market["outcomes"]["Mexico"], 0.5)
+        self.assertEqual(market["outcomes"]["South Korea"], 0.2)
+        self.assertEqual(market["outcomes"]["draw"], 0.3)
+
+    def test_polymarket_predictions_support_aliases(self):
+        markets = [
+            self.polymarket_market(selection="USA", title="USA vs. Paraguay", price="0.6"),
+            self.polymarket_market(selection="Draw", title="USA vs. Paraguay", price="0.25"),
+            self.polymarket_market(selection="Paraguay", title="USA vs. Paraguay", price="0.15"),
+        ]
+
+        market = parse_polymarket_predictions(markets)[
+            team_pair_key("United States", "Paraguay")
+        ]
+        self.assertEqual(market["outcomes"]["United States"], 0.6)
+
+    def test_polymarket_team_aliases_cover_provider_names(self):
+        aliases = {
+            "Türkiye": "Turkey",
+            "Côte d'Ivoire": "Ivory Coast",
+            "IR Iran": "Iran",
+            "Cabo Verde": "Cape Verde",
+            "Bosnia-Herzegovina": "Bosnia and Herzegovina",
+            "Czechia": "Czech Republic",
+            "Korea Republic": "South Korea",
+        }
+        for provider_name, project_name in aliases.items():
+            self.assertEqual(canonical_team(provider_name), project_name)
+
+    def test_polymarket_predictions_drop_incomplete_or_malformed_fixtures(self):
+        incomplete = [
+            self.polymarket_market(selection="Mexico", price="0.5"),
+            self.polymarket_market(selection="Draw", price="0.3"),
+        ]
+        malformed = self.polymarket_market(selection="South Korea", price="0.2")
+        malformed["outcomePrices"] = "not-json"
+
+        self.assertEqual(parse_polymarket_predictions(incomplete + [malformed]), {})
+
+    def test_polymarket_selection_falls_back_to_group_item_title(self):
+        markets = [
+            self.polymarket_market(selection="Qatar", title="Bosnia-Herzegovina vs. Qatar", price="0.15"),
+            self.polymarket_market(selection="Draw", title="Bosnia-Herzegovina vs. Qatar", price="0.2"),
+            self.polymarket_market(selection="Bosnia-Herzegovina", title="Bosnia-Herzegovina vs. Qatar", price="0.65"),
+        ]
+        markets[2]["marketMetadata"] = None
+        markets[2]["groupItemTitle"] = "Bosnia-Herzegovina"
+
+        prediction = parse_polymarket_predictions(markets)[
+            team_pair_key("Bosnia and Herzegovina", "Qatar")
+        ]
+        self.assertEqual(prediction["outcomes"]["Bosnia and Herzegovina"], 0.65)
+
+    @patch("scripts.build_frontend_data.urlopen")
+    def test_polymarket_fetch_uses_keyset_pagination(self, mocked_urlopen):
+        first = mocked_urlopen.return_value.__enter__.return_value
+        second = MagicMock()
+        first.read.return_value = json.dumps(
+            {"events": [{"slug": "one", "markets": [{"id": "1"}]}], "next_cursor": "next page"}
+        ).encode()
+        second.__enter__.return_value.read.return_value = json.dumps(
+            {"events": [{"slug": "two", "markets": [{"id": "2"}]}]}
+        ).encode()
+        mocked_urlopen.side_effect = [mocked_urlopen.return_value, second]
+
+        self.assertEqual(
+            fetch_polymarket_markets(),
+            [
+                {"id": "1", "events": [{"slug": "one", "markets": [{"id": "1"}]}]},
+                {"id": "2", "events": [{"slug": "two", "markets": [{"id": "2"}]}]},
+            ],
+        )
+        requests = [call.args[0] for call in mocked_urlopen.call_args_list]
+        self.assertIn("limit=100", requests[0].full_url)
+        self.assertIn("tag_id=102232", requests[0].full_url)
+        self.assertIn("series_id=11433", requests[0].full_url)
+        self.assertIn("closed=false", requests[0].full_url)
+        self.assertIn("after_cursor=next+page", requests[1].full_url)
 
     def test_kickoff_offset_is_converted_to_utc(self):
         self.assertEqual(

@@ -55,7 +55,16 @@ export interface MatchPrediction {
   sourceUrl: string;
   predictionHistory: PredictionHistoryEntry[];
   prediction: PredictionDetails;
+  polymarket?: PolymarketPrediction;
   actualResult?: ActualResult;
+}
+
+export interface PolymarketPrediction {
+  homeWin: number;
+  draw: number;
+  awayWin: number;
+  eventUrl: string;
+  updatedAt: string;
 }
 
 export interface PredictionHistoryEntry {
@@ -141,6 +150,7 @@ export interface TournamentDataset {
     schedule: DataSource;
     squads: DataSource;
     historicalResults: DataSource;
+    polymarket: PolymarketDataSource;
   };
   teams: Record<string, Team>;
   groupMatches: MatchPrediction[];
@@ -151,8 +161,15 @@ export interface TournamentDataset {
 export interface DataSource {
   name: string;
   url: string;
-  license: string;
+  license?: string;
   commit?: string;
   dataUrl?: string;
   ref?: string;
+}
+
+export interface PolymarketDataSource extends DataSource {
+  dataUrl: string;
+  tagId: string;
+  seriesId: string;
+  marketType: string;
 }
