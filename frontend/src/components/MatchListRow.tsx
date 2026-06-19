@@ -3,6 +3,7 @@ import type { MatchPrediction, Team } from "../types";
 import { formatKickoffParts, formatPercent, isMatchOngoing, mostLikelyOutcome } from "../utils";
 import { TeamFlag } from "./TeamFlag";
 import { MatchScoreComparison } from "./MatchScoreComparison";
+import { PolymarketCompact } from "./PolymarketComparison";
 
 interface MatchListRowProps {
   match: MatchPrediction;
@@ -10,6 +11,7 @@ interface MatchListRowProps {
   onOpen: (match: MatchPrediction, trigger: HTMLElement) => void;
   showScoreComparison?: boolean;
   hidePredictionDetails?: boolean;
+  showPolymarket?: boolean;
 }
 
 export function MatchListRow({
@@ -18,6 +20,7 @@ export function MatchListRow({
   onOpen,
   showScoreComparison = false,
   hidePredictionDetails = false,
+  showPolymarket = false,
 }: MatchListRowProps) {
   const kickoff = formatKickoffParts(match.kickoffUtc);
   const probabilities = match.prediction.probabilities;
@@ -80,6 +83,7 @@ export function MatchListRow({
             <span>Draw {formatPercent(probabilities.draw)}</span>
             <span>{match.awayTeam} {formatPercent(probabilities.awayWin)}</span>
           </div>
+          {showPolymarket && <PolymarketCompact match={match} />}
         </div>
       )}
       <span className="match-list-row__venue">{match.venue}</span>

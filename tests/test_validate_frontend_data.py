@@ -47,6 +47,22 @@ class FrontendDataValidationTests(unittest.TestCase):
             probabilities = match["prediction"]["probabilities"]
             self.assertAlmostEqual(sum(probabilities.values()), 1.0, places=7)
             self.assertTrue(all(0 <= value <= 1 for value in probabilities.values()))
+        knockout = self.dataset["knockoutMatches"]
+        self.assertEqual([match["matchNumber"] for match in knockout], list(range(73, 105)))
+        self.assertEqual(knockout[0]["team1Slot"], "2A")
+        self.assertEqual(knockout[-1]["team1Slot"], "W101")
+        self.assertEqual(knockout[-1]["team2Slot"], "W102")
+
+    def test_invalid_knockout_topology_and_scores_are_rejected(self):
+        changed = copy.deepcopy(self.dataset)
+        changed["knockoutMatches"][0]["team1Slot"] = "1A"
+        with self.assertRaisesRegex(ValueError, "Invalid knockout topology"):
+            self.validate(changed)
+
+        changed = copy.deepcopy(self.dataset)
+        changed["knockoutMatches"][0]["score"] = {"fullTime": [1, -1]}
+        with self.assertRaisesRegex(ValueError, "Invalid fullTime score"):
+            self.validate(changed)
 
     def test_dataset_records_openfootball_master_provenance(self):
         schedule = self.dataset["sources"]["schedule"]
@@ -59,7 +75,7 @@ class FrontendDataValidationTests(unittest.TestCase):
         self.assertEqual(squads["ref"], SCHEDULE_REF)
 
     def test_dataset_has_complete_valid_squads(self):
-        self.assertEqual(self.dataset["schemaVersion"], 5)
+        self.assertEqual(self.dataset["schemaVersion"], 7)
         self.assertEqual(len(self.dataset["teams"]), 48)
         for name, team in self.dataset["teams"].items():
             self.assertEqual(team["name"], name)

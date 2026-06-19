@@ -8,6 +8,7 @@ import {
 } from "../utils";
 import { TeamFlag } from "./TeamFlag";
 import { MatchScoreComparison } from "./MatchScoreComparison";
+import { PolymarketCardComparison } from "./PolymarketComparison";
 
 interface MatchCardProps {
   match: MatchPrediction;
@@ -15,6 +16,7 @@ interface MatchCardProps {
   onOpen: (match: MatchPrediction, trigger: HTMLElement) => void;
   showScoreComparison?: boolean;
   hidePredictionDetails?: boolean;
+  showPolymarket?: boolean;
 }
 
 export function MatchCard({
@@ -23,6 +25,7 @@ export function MatchCard({
   onOpen,
   showScoreComparison = false,
   hidePredictionDetails = false,
+  showPolymarket = false,
 }: MatchCardProps) {
   const kickoff = formatKickoffParts(match.kickoffUtc);
   const probabilities = match.prediction.probabilities;
@@ -85,7 +88,9 @@ export function MatchCard({
         <div className="match-card__result-badge">Final</div>
       )}
       <p className="match-card__venue">{match.venue}</p>
-      {!hidePredictionDetails && (
+      {!hidePredictionDetails && showPolymarket && match.polymarket ? (
+        <PolymarketCardComparison match={match} />
+      ) : !hidePredictionDetails ? (
         <>
           <div className="probability-strip" aria-label="Result probabilities">
             <span
@@ -110,7 +115,7 @@ export function MatchCard({
             <span>{match.awayTeam} {formatPercent(probabilities.awayWin)}</span>
           </div>
         </>
-      )}
+      ) : null}
       <div className="match-card__footer match-card__footer--actions-only">
         <span className="match-card__actions">
           <button className="text-button" type="button" onClick={handleOpen}>

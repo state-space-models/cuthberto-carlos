@@ -8,6 +8,12 @@ Using [`cuthbert`](https://github.com/state-space-models/cuthbert) to predict th
 
 Check out the frontend for the predictions here: [https://state-space-models.github.io/cuthberto-carlos/](https://state-space-models.github.io/cuthberto-carlos/)
 
+The frontend includes chronological group and playoff fixtures, an interactive 2026
+knockout bracket, a filterable playoff list, dynamic OpenFootball participant/result
+updates, and deployment-time fallback data. See
+[`frontend/README.md`](frontend/README.md) for its architecture, data contract,
+accessibility behavior, and verification workflow.
+
 ## Rough idea
 
 The idea is to use `cuthbert`'s factorial support to use a simple model to predict

@@ -1,0 +1,167 @@
+import { renderHook, waitFor } from "@testing-library/react";
+import { describe, expect, it, vi } from "vitest";
+import type { MatchPrediction } from "../types";
+import {
+  parsePolymarketMarkets,
+  predictionsForMatches,
+  usePolymarket,
+} from "../usePolymarket";
+
+function market(selection: string, price: number, title = "USA vs. Paraguay") {
+  return {
+    active: true,
+    closed: false,
+    sportsMarketType: "moneyline",
+    outcomes: '["Yes", "No"]',
+    outcomePrices: JSON.stringify([String(price), String(1 - price)]),
+    updatedAt: "2026-06-18T12:00:00Z",
+    marketMetadata: { opticOddsSelection: selection },
+    events: [{ eventDate: "2026-06-19", title, slug: "fifwc-usa-par-2026-06-19" }],
+  };
+}
+
+const markets = [market("Paraguay", 0.2), market("Draw", 0.3), market("USA", 0.5)];
+const match = {
+  id: "usa-paraguay",
+  date: "2026-06-19",
+  kickoffUtc: "2026-06-19T20:00:00Z",
+  homeTeam: "United States",
+  awayTeam: "Paraguay",
+} as MatchPrediction;
+
+describe("Polymarket data", () => {
+  it("matches aliases and reversed market order", () => {
+    const prediction = predictionsForMatches(
+      [match],
+      markets,
+      new Date("2026-06-19T10:00:00Z"),
+    )[match.id];
+
+    expect(prediction).toMatchObject({ homeWin: 0.5, draw: 0.3, awayWin: 0.2 });
+  });
+
+  it("matches Polymarket team names and tolerates its event-date discrepancies", () => {
+    const providerMarkets = [
+      market("Türkiye", 0.45, "Türkiye vs. Paraguay"),
+      market("Draw", 0.3, "Türkiye vs. Paraguay"),
+      market("Paraguay", 0.25, "Türkiye vs. Paraguay"),
+    ].map((item) => ({
+      ...item,
+      events: [{ ...item.events[0], eventDate: "2026-06-20" }],
+    }));
+    const projectMatch = {
+      ...match,
+      id: "turkey-paraguay",
+      homeTeam: "Turkey",
+      date: "2026-06-19",
+    };
+
+    expect(
+      predictionsForMatches(
+        [projectMatch],
+        providerMarkets,
+        new Date("2026-06-19T10:00:00Z"),
+      )[projectMatch.id],
+    ).toMatchObject({ homeWin: 0.45, draw: 0.3, awayWin: 0.25 });
+  });
+
+  it("drops malformed, duplicate, and incomplete fixture groups", () => {
+    expect(Object.keys(parsePolymarketMarkets(markets.slice(0, 2)))).toHaveLength(0);
+    expect(Object.keys(parsePolymarketMarkets([...markets, market("USA", 0.4)]))).toHaveLength(0);
+    expect(Object.keys(parsePolymarketMarkets([
+      ...markets.slice(0, 2),
+      { ...market("USA", 0.5), outcomePrices: "invalid" },
+    ]))).toHaveLength(0);
+  });
+
+  it("falls back to the group item title when market metadata is missing", () => {
+    const providerMarkets = [
+      market("Qatar", 0.15, "Bosnia-Herzegovina vs. Qatar"),
+      market("Draw", 0.2, "Bosnia-Herzegovina vs. Qatar"),
+      {
+        ...market("Bosnia-Herzegovina", 0.65, "Bosnia-Herzegovina vs. Qatar"),
+        marketMetadata: null,
+        groupItemTitle: "Bosnia-Herzegovina",
+      },
+    ];
+    const projectMatch = {
+      ...match,
+      id: "bosnia-qatar",
+      homeTeam: "Bosnia and Herzegovina",
+      awayTeam: "Qatar",
+    };
+
+    expect(
+      predictionsForMatches(
+        [projectMatch],
+        providerMarkets,
+        new Date("2026-06-19T10:00:00Z"),
+      )[projectMatch.id],
+    ).toMatchObject({ homeWin: 0.65, draw: 0.2, awayWin: 0.15 });
+  });
+
+  it("never returns prices once kickoff has arrived", () => {
+    expect(predictionsForMatches([match], markets, new Date(match.kickoffUtc))).toEqual({});
+  });
+
+  it("paginates live events and replaces the fallback", async () => {
+    const futureMatch = {
+      ...match,
+      polymarket: {
+        homeWin: 0.4,
+        draw: 0.4,
+        awayWin: 0.2,
+        eventUrl: "https://polymarket.com/event/fallback",
+        updatedAt: "2026-06-18T00:00:00Z",
+      },
+    };
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          events: [{ ...markets[0].events[0], markets: [markets[0]] }],
+          next_cursor: "next",
+        }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          events: [{ ...markets[1].events[0], markets: markets.slice(1) }],
+        }),
+      });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const { result } = renderHook(() => usePolymarket([futureMatch], {
+      dataUrl: "https://gamma-api.polymarket.com/events/keyset",
+      tagId: "102232",
+      seriesId: "11433",
+      marketType: "moneyline",
+    }));
+
+    expect(result.current.predictions[match.id].homeWin).toBe(0.4);
+    await waitFor(() => expect(result.current.status).toBe("current"));
+    expect(result.current.predictions[match.id].homeWin).toBe(0.5);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(String(fetchMock.mock.calls[1][0])).toContain("after_cursor=next");
+  });
+
+  it("keeps deployment fallback when the live request fails", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new Error("offline")));
+    const fallback = {
+      homeWin: 0.4,
+      draw: 0.4,
+      awayWin: 0.2,
+      eventUrl: "https://polymarket.com/event/fallback",
+      updatedAt: "2026-06-18T00:00:00Z",
+    };
+    const { result } = renderHook(() => usePolymarket([{ ...match, polymarket: fallback }], {
+      dataUrl: "https://gamma-api.polymarket.com/events/keyset",
+      tagId: "102232",
+      seriesId: "11433",
+      marketType: "moneyline",
+    }));
+
+    await waitFor(() => expect(result.current.status).toBe("fallback"));
+    expect(result.current.predictions[match.id]).toEqual(fallback);
+  });
+});
