@@ -131,6 +131,15 @@ export interface KnockoutMatch {
   venue: string;
   team1Slot: string;
   team2Slot: string;
+  team1?: string;
+  team2?: string;
+  score?: KnockoutScore;
+}
+
+export interface KnockoutScore {
+  fullTime: [number, number];
+  extraTime?: [number, number];
+  penalties?: [number, number];
 }
 
 export interface TournamentDataset {

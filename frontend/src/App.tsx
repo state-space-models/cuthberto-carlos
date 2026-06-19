@@ -1,9 +1,8 @@
 import { useCallback, useRef, useState } from "react";
 import tournamentData from "./data/tournament.json";
 import { CompletedMatches } from "./components/CompletedMatches";
-import { Countries } from "./components/Countries";
 import { GroupStage } from "./components/GroupStage";
-// import { KnockoutBracket } from "./components/KnockoutBracket";
+import { KnockoutBracket } from "./components/KnockoutBracket";
 import { MatchDetailDrawer } from "./components/MatchDetailDrawer";
 import { UpcomingMatches } from "./components/UpcomingMatches";
 import type { MatchPrediction, TournamentDataset } from "./types";
@@ -24,10 +23,11 @@ const predictionDates = Array.from(
 const snapshotBaseUrl = data.snapshotUrl.slice(0, -data.snapshotDate.length);
 
 function App() {
-  const { matches: resultMatches, status, lastCheckedAt } = useLiveResults(
+  const { matches: resultMatches, knockoutMatches, status, lastCheckedAt } = useLiveResults(
     data.groupMatches,
     data.sources.schedule.dataUrl,
     data.teams,
+    data.knockoutMatches,
   );
   const polymarket = usePolymarket(data.groupMatches, data.sources.polymarket);
   const matches = resultMatches.map((match) => ({
@@ -62,8 +62,7 @@ function App() {
           <a href="#upcoming">Upcoming</a>
           <a href="#completed">Completed</a>
           <a href="#groups">Groups</a>
-          <a href="#countries">Countries</a>
-          {/* <a href="#playoffs">Playoffs</a> */}
+          <a href="#playoffs">Playoffs</a>
         </nav>
         <div className="header-actions">
           <div className="header-snapshot">
@@ -101,18 +100,19 @@ function App() {
         <section className="hero" id="top">
           <div className="hero__content">
             <span className="hero__kicker">2026 World Cup · model forecast</span>
-            <h1>Every group match.<br /><em>One curious caterpillar.</em></h1>
+            <h1>Every group forecast.<br /><em>The full playoff path.</em></h1>
             <p>
-              Explore score distributions, result probabilities, and projected group tables for every group-stage fixture.
+              Explore group-stage forecasts, projected tables, and the complete road to the 2026 World Cup final.
             </p>
             <div className="hero__actions">
               <a className="button button--primary" href="#upcoming">See upcoming matches</a>
               <a className="button button--secondary" href="#groups">Explore all groups</a>
+              <a className="button button--secondary" href="#playoffs">View playoffs</a>
             </div>
             <dl className="hero__stats">
               <div><dt>72</dt><dd>match forecasts</dd></div>
               <div><dt>12</dt><dd>group projections</dd></div>
-              <div><dt>{Object.keys(data.teams).length}</dt><dd>national teams</dd></div>
+              <div><dt>32</dt><dd>playoff fixtures</dd></div>
             </dl>
           </div>
           <div className="hero__art" aria-hidden="true">
@@ -122,11 +122,10 @@ function App() {
           </div>
         </section>
 
-        <UpcomingMatches matches={matches} teams={data.teams} onOpen={openMatch} />
+        <UpcomingMatches matches={matches} knockoutMatches={knockoutMatches} teams={data.teams} onOpen={openMatch} />
         <CompletedMatches matches={matches} teams={data.teams} onOpen={openMatch} />
         <GroupStage groups={data.groups} matches={matches} teams={data.teams} onOpen={openMatch} />
-        <Countries teams={data.teams} />
-        {/* <KnockoutBracket matches={data.knockoutMatches} /> */}
+        <KnockoutBracket matches={knockoutMatches} teams={data.teams} />
       </main>
 
       <footer className="site-footer">

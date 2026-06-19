@@ -43,6 +43,27 @@ POLYMARKET_WORLD_CUP_TAG_ID = "102232"
 POLYMARKET_WORLD_CUP_SERIES_ID = "11433"
 POLYMARKET_MARKET_TYPE = "moneyline"
 
+KNOCKOUT_TOPOLOGY = {
+    73: ("Round of 32", "2A", "2B"), 74: ("Round of 32", "1E", "3A/B/C/D/F"),
+    75: ("Round of 32", "1F", "2C"), 76: ("Round of 32", "1C", "2F"),
+    77: ("Round of 32", "1I", "3C/D/F/G/H"), 78: ("Round of 32", "2E", "2I"),
+    79: ("Round of 32", "1A", "3C/E/F/H/I"), 80: ("Round of 32", "1L", "3E/H/I/J/K"),
+    81: ("Round of 32", "1D", "3B/E/F/I/J"), 82: ("Round of 32", "1G", "3A/E/H/I/J"),
+    83: ("Round of 32", "2K", "2L"), 84: ("Round of 32", "1H", "2J"),
+    85: ("Round of 32", "1B", "3E/F/G/I/J"), 86: ("Round of 32", "1J", "2H"),
+    87: ("Round of 32", "1K", "3D/E/I/J/L"), 88: ("Round of 32", "2D", "2G"),
+    89: ("Round of 16", "W74", "W77"), 90: ("Round of 16", "W73", "W75"),
+    91: ("Round of 16", "W76", "W78"), 92: ("Round of 16", "W79", "W80"),
+    93: ("Round of 16", "W83", "W84"), 94: ("Round of 16", "W81", "W82"),
+    95: ("Round of 16", "W86", "W88"), 96: ("Round of 16", "W85", "W87"),
+    97: ("Quarter-final", "W89", "W90"), 98: ("Quarter-final", "W93", "W94"),
+    99: ("Quarter-final", "W91", "W92"), 100: ("Quarter-final", "W95", "W96"),
+    101: ("Semi-final", "W97", "W98"), 102: ("Semi-final", "W99", "W100"),
+    103: ("Match for third place", "L101", "L102"), 104: ("Final", "W101", "W102"),
+}
+
+BRACKET_SLOT_PATTERN = re.compile(r"^(?:[12][A-L]|3[A-L/]+|[WL]\d+)$")
+
 
 def get_repository_slug() -> str:
     """Return the canonical owner/name, preferring GitHub Actions metadata."""
@@ -862,22 +883,35 @@ def compile_dataset(
         match_number = fixture.get("num") or KNOCKOUT_NUMBERS.get(fixture["round"])
         if not match_number:
             raise ValueError(f"Missing match number for knockout fixture: {fixture}")
-        knockout_matches.append(
-            {
+        topology = KNOCKOUT_TOPOLOGY.get(match_number)
+        if not topology or fixture["round"] != topology[0]:
+            raise ValueError(f"Unexpected knockout topology for match {match_number}")
+        record = {
                 "id": f"match-{match_number}",
                 "matchNumber": match_number,
                 "round": fixture["round"],
                 "date": fixture["date"],
                 "kickoffUtc": parse_kickoff_utc(fixture["date"], fixture["time"]),
                 "venue": fixture["ground"],
-                "team1Slot": fixture["team1"],
-                "team2Slot": fixture["team2"],
-            }
-        )
+                "team1Slot": topology[1],
+                "team2Slot": topology[2],
+        }
+        for side in ("team1", "team2"):
+            participant = fixture[side]
+            if not BRACKET_SLOT_PATTERN.fullmatch(participant):
+                record[side] = canonical_team(participant)
+        source_score = fixture.get("score")
+        if isinstance(source_score, dict) and source_score.get("ft") is not None:
+            record["score"] = {"fullTime": source_score["ft"]}
+            if source_score.get("et") is not None:
+                record["score"]["extraTime"] = source_score["et"]
+            if source_score.get("p") is not None:
+                record["score"]["penalties"] = source_score["p"]
+        knockout_matches.append(record)
     knockout_matches.sort(key=lambda match: match["matchNumber"])
 
     return {
-        "schemaVersion": 6,
+        "schemaVersion": 7,
         "repositoryUrl": repository_url,
         "snapshotDate": snapshot.name,
         "snapshotPath": str(snapshot.relative_to(root)),
@@ -946,7 +980,7 @@ def validate_dataset(dataset: dict[str, Any]) -> None:
     if missing:
         raise ValueError(f"Dataset is missing required keys: {sorted(missing)}")
 
-    if dataset["schemaVersion"] != 6:
+    if dataset["schemaVersion"] != 7:
         raise ValueError(f"Unsupported schema version: {dataset['schemaVersion']!r}")
     try:
         snapshot_date = datetime.strptime(
@@ -1010,6 +1044,39 @@ def validate_dataset(dataset: dict[str, Any]) -> None:
         raise ValueError(f"Expected 72 group matches, found {len(group_matches)}")
     if len(knockout_matches) != 32:
         raise ValueError(f"Expected 32 knockout matches, found {len(knockout_matches)}")
+    if {match.get("matchNumber") for match in knockout_matches} != set(KNOCKOUT_TOPOLOGY):
+        raise ValueError("Knockout matches must be numbered 73 through 104")
+    expected_round_counts = {
+        "Round of 32": 16, "Round of 16": 8, "Quarter-final": 4,
+        "Semi-final": 2, "Match for third place": 1, "Final": 1,
+    }
+    actual_round_counts = {
+        round_name: sum(match.get("round") == round_name for match in knockout_matches)
+        for round_name in expected_round_counts
+    }
+    if actual_round_counts != expected_round_counts:
+        raise ValueError(f"Unexpected knockout round counts: {actual_round_counts}")
+    for match in knockout_matches:
+        round_name, team1_slot, team2_slot = KNOCKOUT_TOPOLOGY[match["matchNumber"]]
+        if (match.get("round"), match.get("team1Slot"), match.get("team2Slot")) != (
+            round_name, team1_slot, team2_slot
+        ):
+            raise ValueError(f"Invalid knockout topology for match {match['matchNumber']}")
+        for participant_key in ("team1", "team2"):
+            participant = match.get(participant_key)
+            if participant is not None and participant not in dataset["teams"]:
+                raise ValueError(f"Unknown knockout participant: {participant}")
+        score = match.get("score")
+        if score is not None:
+            for score_key in ("fullTime", "extraTime", "penalties"):
+                value = score.get(score_key)
+                if value is not None and (
+                    not isinstance(value, list) or len(value) != 2
+                    or any(not isinstance(goals, int) or goals < 0 for goals in value)
+                ):
+                    raise ValueError(f"Invalid {score_key} score for match {match['matchNumber']}")
+            if "fullTime" not in score:
+                raise ValueError(f"Missing fullTime score for match {match['matchNumber']}")
     if len(dataset["groups"]) != 12:
         raise ValueError(f"Expected 12 groups, found {len(dataset['groups'])}")
     if not dataset["teams"]:
