@@ -55,7 +55,6 @@ describe("Polymarket data", () => {
       homeTeam: "Turkey",
       date: "2026-06-19",
     };
-
     expect(
       predictionsForMatches(
         [projectMatch],
@@ -109,7 +108,7 @@ describe("Polymarket data", () => {
     expect(predictionsForMatches([match], markets, new Date("2026-06-19T22:00:00Z"))).toEqual({});
   });
 
-  it("paginates live events and replaces the fallback", async () => {
+  it("shows no stale fallback while loading, then displays all fetched pages", async () => {
     const futureMatch = {
       ...match,
       kickoffUtc: "2099-06-21T20:00:00Z",
@@ -121,6 +120,7 @@ describe("Polymarket data", () => {
         updatedAt: "2026-06-18T00:00:00Z",
       },
     };
+    const futureMatches = [futureMatch];
     const fetchMock = vi.fn()
       .mockResolvedValueOnce({
         ok: true,
@@ -137,18 +137,49 @@ describe("Polymarket data", () => {
       });
     vi.stubGlobal("fetch", fetchMock);
 
-    const { result } = renderHook(() => usePolymarket([futureMatch], {
+    const { result } = renderHook(() => usePolymarket(futureMatches, {
       dataUrl: "https://gamma-api.polymarket.com/events/keyset",
       tagId: "102232",
       seriesId: "11433",
       marketType: "moneyline",
     }));
 
-    expect(result.current.predictions[match.id].homeWin).toBe(0.4);
+    expect(result.current.status).toBe("loading");
+    expect(result.current.predictions[match.id]).toBeUndefined();
     await waitFor(() => expect(result.current.status).toBe("current"));
     expect(result.current.predictions[match.id].homeWin).toBe(0.5);
     expect(fetchMock).toHaveBeenCalledTimes(2);
     expect(String(fetchMock.mock.calls[1][0])).toContain("after_cursor=next");
+  });
+
+  it("starts a fresh no-store request for each frontend mount", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        events: [{ ...markets[0].events[0], markets }],
+      }),
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    const futureMatch = { ...match, kickoffUtc: "2099-06-21T20:00:00Z" };
+    const futureMatches = [futureMatch];
+    const source = {
+      dataUrl: "https://gamma-api.polymarket.com/events/keyset",
+      tagId: "102232",
+      seriesId: "11433",
+      marketType: "moneyline",
+    };
+
+    const first = renderHook(() => usePolymarket(futureMatches, source));
+    await waitFor(() => expect(first.result.current.status).toBe("current"));
+    first.unmount();
+    const second = renderHook(() => usePolymarket(futureMatches, source));
+    await waitFor(() => expect(second.result.current.status).toBe("current"));
+    second.unmount();
+
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(fetchMock.mock.calls.every(([, options]) => options?.cache === "no-store")).toBe(true);
+    const requestUrls = fetchMock.mock.calls.map(([url]) => String(url));
+    expect(requestUrls[0]).not.toBe(requestUrls[1]);
   });
 
   it("keeps deployment fallback when the live request fails", async () => {
@@ -160,11 +191,12 @@ describe("Polymarket data", () => {
       eventUrl: "https://polymarket.com/event/fallback",
       updatedAt: "2026-06-18T00:00:00Z",
     };
-    const { result } = renderHook(() => usePolymarket([{
+    const fallbackMatches = [{
       ...match,
       kickoffUtc: "2099-06-21T20:00:00Z",
       polymarket: fallback,
-    }], {
+    }];
+    const { result } = renderHook(() => usePolymarket(fallbackMatches, {
       dataUrl: "https://gamma-api.polymarket.com/events/keyset",
       tagId: "102232",
       seriesId: "11433",

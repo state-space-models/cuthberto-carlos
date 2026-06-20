@@ -28,8 +28,7 @@ const TEAM_ALIASES: Record<string, string> = {
   Türkiye: "Turkey",
   USA: "United States",
 };
-const FIVE_MINUTES_MS = 5 * 60 * 1000;
-let marketRequest: Promise<unknown[]> | null = null;
+let requestSequence = 0;
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -159,7 +158,7 @@ async function fetchAllMarkets(source: PolymarketSource): Promise<unknown[]> {
     url.searchParams.set("series_id", source.seriesId);
     url.searchParams.set("closed", "false");
     url.searchParams.set("decimalized", "true");
-    url.searchParams.set("refresh", String(Math.floor(Date.now() / FIVE_MINUTES_MS)));
+    url.searchParams.set("refresh", `${Date.now()}-${requestSequence++}`);
     if (cursor) url.searchParams.set("after_cursor", cursor);
     const response = await fetch(url, { cache: "no-store" });
     if (!response.ok) throw new Error(`Polymarket request failed with ${response.status}`);
@@ -177,22 +176,13 @@ async function fetchAllMarkets(source: PolymarketSource): Promise<unknown[]> {
   return markets;
 }
 
-function getMarkets(source: PolymarketSource): Promise<unknown[]> {
-  marketRequest ??= fetchAllMarkets(source);
-  return marketRequest;
-}
-
-export function resetPolymarketCacheForTests(): void {
-  marketRequest = null;
-}
-
 export function usePolymarket(
   matches: MatchPrediction[],
   source: PolymarketSource | undefined,
 ): PolymarketState {
   const fallback = fallbackPredictions(matches);
   const [state, setState] = useState<PolymarketState>({
-    predictions: fallback,
+    predictions: source ? {} : fallback,
     status: source ? "loading" : "fallback",
     lastCheckedAt: null,
   });
@@ -203,11 +193,12 @@ export function usePolymarket(
       setState({ predictions: fallback, status: "fallback", lastCheckedAt: null });
       return () => { active = false; };
     }
-    getMarkets(source)
+    setState({ predictions: {}, status: "loading", lastCheckedAt: null });
+    fetchAllMarkets(source)
       .then((markets) => {
         if (!active) return;
         setState({
-          predictions: { ...fallback, ...predictionsForMatches(matches, markets) },
+          predictions: predictionsForMatches(matches, markets),
           status: "current",
           lastCheckedAt: new Date().toISOString(),
         });

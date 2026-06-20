@@ -292,12 +292,13 @@ describe("App interactions", () => {
     }
   });
 
-  it("shows ongoing fixtures with LIVE model and Polymarket values in card and list views", () => {
+  it("shows ongoing fixtures with LIVE model and Polymarket values in card and list views", async () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-06-20T18:00:00Z"));
 
     try {
       render(<App />);
+      await act(async () => { await Promise.resolve(); });
       const upcoming = screen.getByRole("region", { name: "All upcoming matches in card view" });
       const liveCard = within(upcoming).getByText("LIVE").closest("article");
       expect(liveCard).toHaveTextContent("Netherlands");
@@ -319,12 +320,13 @@ describe("App interactions", () => {
     }
   });
 
-  it("shows Polymarket only for future fixtures and in their drawer", () => {
+  it("shows Polymarket only for future fixtures and in their drawer", async () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-06-19T12:00:00Z"));
 
     try {
       render(<App />);
+      await act(async () => { await Promise.resolve(); });
       const upcoming = screen.getByRole("region", { name: "All upcoming matches in card view" });
       const marketRows = within(upcoming).getAllByLabelText("Model versus Polymarket probabilities");
       expect(marketRows.length).toBeGreaterThan(0);
