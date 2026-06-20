@@ -292,14 +292,23 @@ describe("App interactions", () => {
     }
   });
 
-  it("keeps ongoing fixtures out of Upcoming matches", () => {
+  it("shows ongoing fixtures with a LIVE tag in Upcoming card and list views", () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-06-11T20:00:00Z"));
 
     try {
       render(<App />);
       const upcoming = screen.getByRole("region", { name: "All upcoming matches in card view" });
-      expect(within(upcoming).queryByText("LIVE")).not.toBeInTheDocument();
+      const liveCard = within(upcoming).getByText("LIVE").closest("article");
+      expect(liveCard).toHaveTextContent("Mexico");
+      expect(liveCard).toHaveTextContent("South Africa");
+
+      const viewToggle = screen.getByRole("group", { name: "Upcoming matches view" });
+      fireEvent.click(within(viewToggle).getByRole("button", { name: "List" }));
+      const upcomingList = screen.getByRole("region", { name: "All upcoming matches in list view" });
+      const liveRow = within(upcomingList).getByText("LIVE").closest("article");
+      expect(liveRow).toHaveTextContent("Mexico");
+      expect(liveRow).toHaveTextContent("South Africa");
     } finally {
       vi.useRealTimers();
     }

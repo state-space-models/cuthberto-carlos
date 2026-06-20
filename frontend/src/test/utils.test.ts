@@ -5,6 +5,7 @@ import {
   describeBracketSlot,
   getActualGroupStats,
   getCompletedMatches,
+  getOngoingMatches,
   getUpcomingMatches,
 } from "../utils";
 
@@ -57,6 +58,27 @@ describe("getCompletedMatches", () => {
     expect(
       getCompletedMatches(matches, new Date("2026-06-11T18:00:00Z")).map((item) => item.id),
     ).toEqual(["newer", "older"]);
+  });
+
+  it("partitions fixtures into exactly one time-based state at each boundary", () => {
+    const fixture = match("boundary", "2026-06-11T14:00:00Z");
+    const times = [
+      new Date("2026-06-11T13:59:59.999Z"),
+      new Date("2026-06-11T14:00:00.000Z"),
+      new Date("2026-06-11T15:59:59.999Z"),
+      new Date("2026-06-11T16:00:00.000Z"),
+    ];
+
+    expect(times.map((now) => [
+      getUpcomingMatches([fixture], now).length,
+      getOngoingMatches([fixture], now).length,
+      getCompletedMatches([fixture], now).length,
+    ])).toEqual([
+      [1, 0, 0],
+      [0, 1, 0],
+      [0, 1, 0],
+      [0, 0, 1],
+    ]);
   });
 });
 

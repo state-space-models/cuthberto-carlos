@@ -1,6 +1,12 @@
 import { useState } from "react";
 import type { KnockoutMatch, MatchPrediction, Team } from "../types";
-import { describeBracketSlot, formatKickoffParts, getUpcomingMatches, ROUND_LABELS } from "../utils";
+import {
+  describeBracketSlot,
+  formatKickoffParts,
+  getOngoingMatches,
+  getUpcomingMatches,
+  ROUND_LABELS,
+} from "../utils";
 import { MatchCard } from "./MatchCard";
 import { MatchListRow } from "./MatchListRow";
 import { TeamFlag } from "./TeamFlag";
@@ -78,6 +84,7 @@ function UpcomingPlayoffRow({ match, teams }: { match: KnockoutMatch; teams: Rec
 export function UpcomingMatches({ matches, knockoutMatches, teams, onOpen }: UpcomingMatchesProps) {
   const [view, setView] = useState<"cards" | "list">("cards");
   const entries: UpcomingEntry[] = [
+    ...getOngoingMatches(matches).map((match): UpcomingEntry => ({ kind: "group", match })),
     ...getUpcomingMatches(matches).map((match): UpcomingEntry => ({ kind: "group", match })),
     ...knockoutMatches
       .filter((match) => new Date(match.kickoffUtc).getTime() > Date.now())
@@ -91,7 +98,7 @@ export function UpcomingMatches({ matches, knockoutMatches, teams, onOpen }: Upc
       <div className="section-heading">
         <div><span className="eyebrow">Next up</span><h2 id="upcoming-title">Upcoming matches</h2></div>
         <div className="section-heading__tools">
-          <p>Every future group and playoff fixture, shown in your local timezone.</p>
+          <p>Every live and future group and playoff fixture, shown in your local timezone.</p>
           <div className="upcoming-view-controls">
             <span className="upcoming-match-count">{entries.length} matches</span>
             <div className="view-toggle" role="group" aria-label="Upcoming matches view">
