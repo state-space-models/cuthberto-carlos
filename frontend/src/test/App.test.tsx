@@ -292,6 +292,46 @@ describe("App interactions", () => {
     }
   });
 
+  it("labels a team once it has mathematically clinched a top-two finish", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-07-01T00:00:00Z"));
+    const group = data.groups[0];
+    const winners = new Map<string, string>([
+      [["Mexico", "South Africa"].sort().join("|"), "Mexico"],
+      [["Czech Republic", "South Korea"].sort().join("|"), "South Korea"],
+      [["Mexico", "South Korea"].sort().join("|"), "Mexico"],
+    ]);
+    const draw = ["Czech Republic", "South Africa"].sort().join("|");
+    const groupMatches = data.groupMatches
+      .filter((match) => match.group === group.id)
+      .map((match) => {
+        const copy = structuredClone(match);
+        delete copy.actualResult;
+        const pair = [copy.homeTeam, copy.awayTeam].sort().join("|");
+        const winner = winners.get(pair);
+        if (winner) {
+          copy.actualResult = {
+            homeScore: copy.homeTeam === winner ? 1 : 0,
+            awayScore: copy.awayTeam === winner ? 1 : 0,
+            homeGoals: [],
+            awayGoals: [],
+          };
+        } else if (pair === draw) {
+          copy.actualResult = { homeScore: 1, awayScore: 1, homeGoals: [], awayGoals: [] };
+        }
+        return copy;
+      });
+
+    try {
+      render(<GroupStage groups={[group]} matches={groupMatches} teams={data.teams} onOpen={vi.fn()} />);
+
+      expect(within(screen.getByRole("row", { name: /Mexico/ })).getByText("Qualified")).toBeInTheDocument();
+      expect(screen.getAllByText("Qualified")).toHaveLength(1);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it("shows ongoing fixtures with LIVE model and Polymarket values in card and list views", async () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-06-20T18:00:00Z"));

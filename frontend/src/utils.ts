@@ -170,6 +170,65 @@ export function getActualGroupStats(
   return stats;
 }
 
+export function getClinchedTopTwoTeams(
+  matches: MatchPrediction[],
+  now = new Date(),
+): Set<string> {
+  const teams = Array.from(new Set(matches.flatMap((match) => [match.homeTeam, match.awayTeam])));
+  const appearances = Object.fromEntries(teams.map((team) => [team, 0]));
+  const pairs = new Set<string>();
+  for (const match of matches) {
+    appearances[match.homeTeam] += 1;
+    appearances[match.awayTeam] += 1;
+    pairs.add([match.homeTeam, match.awayTeam].sort().join("|"));
+  }
+  if (
+    teams.length !== 4 ||
+    matches.length !== 6 ||
+    pairs.size !== 6 ||
+    teams.some((team) => appearances[team] !== 3)
+  ) {
+    return new Set();
+  }
+
+  const resolved = matches.filter((match) => match.actualResult && isMatchCompleted(match, now));
+  const unresolved = matches.filter((match) => !match.actualResult || !isMatchCompleted(match, now));
+  const actualStats = getActualGroupStats(resolved);
+  const points = Object.fromEntries(teams.map((team) => [team, actualStats[team]?.points ?? 0]));
+  const clinched = new Set(teams);
+
+  function evaluateRemaining(index: number): void {
+    if (clinched.size === 0) return;
+    if (index === unresolved.length) {
+      for (const team of clinched) {
+        const opponentsAtOrAbove = teams.filter(
+          (opponent) => opponent !== team && points[opponent] >= points[team],
+        ).length;
+        if (opponentsAtOrAbove >= 2) clinched.delete(team);
+      }
+      return;
+    }
+
+    const match = unresolved[index];
+    points[match.homeTeam] += 3;
+    evaluateRemaining(index + 1);
+    points[match.homeTeam] -= 3;
+
+    points[match.homeTeam] += 1;
+    points[match.awayTeam] += 1;
+    evaluateRemaining(index + 1);
+    points[match.homeTeam] -= 1;
+    points[match.awayTeam] -= 1;
+
+    points[match.awayTeam] += 3;
+    evaluateRemaining(index + 1);
+    points[match.awayTeam] -= 3;
+  }
+
+  evaluateRemaining(0);
+  return clinched;
+}
+
 export function aggregateScoreGrid(grid: number[][]): number[][] {
   const aggregate = Array.from({ length: 6 }, () => Array(6).fill(0));
   grid.forEach((row, homeGoals) => {
