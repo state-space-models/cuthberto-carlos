@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import type { MatchPrediction, PolymarketPrediction } from "./types";
+import { isMatchCompleted } from "./utils";
 
 export type PolymarketStatus = "loading" | "current" | "fallback";
 
@@ -127,7 +128,7 @@ export function predictionsForMatches(
 ): Record<string, PolymarketPrediction> {
   const groups = parsePolymarketMarkets(markets);
   return Object.fromEntries(matches.flatMap((match) => {
-    if (new Date(match.kickoffUtc).getTime() <= now.getTime()) return [];
+    if (isMatchCompleted(match, now)) return [];
     const group = groups[teamPairKey(match.homeTeam, match.awayTeam)];
     if (!group) return [];
     return [[match.id, {
@@ -142,7 +143,7 @@ export function predictionsForMatches(
 
 function fallbackPredictions(matches: MatchPrediction[], now = new Date()): Record<string, PolymarketPrediction> {
   return Object.fromEntries(matches.flatMap((match) =>
-    match.polymarket && new Date(match.kickoffUtc).getTime() > now.getTime()
+    match.polymarket && !isMatchCompleted(match, now)
       ? [[match.id, match.polymarket]]
       : [],
   ));
@@ -205,7 +206,11 @@ export function usePolymarket(
     getMarkets(source)
       .then((markets) => {
         if (!active) return;
-        setState({ predictions: predictionsForMatches(matches, markets), status: "current", lastCheckedAt: new Date().toISOString() });
+        setState({
+          predictions: { ...fallback, ...predictionsForMatches(matches, markets) },
+          status: "current",
+          lastCheckedAt: new Date().toISOString(),
+        });
       })
       .catch(() => {
         if (!active) return;

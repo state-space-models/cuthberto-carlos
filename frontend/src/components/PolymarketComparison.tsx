@@ -1,5 +1,5 @@
 import type { MatchPrediction } from "../types";
-import { formatPercent } from "../utils";
+import { formatPercent, isMatchCompleted } from "../utils";
 
 function formatDelta(market: number, model: number): string {
   const points = (market - model) * 100;
@@ -18,7 +18,7 @@ function comparisonRows(match: MatchPrediction) {
 }
 
 export function PolymarketCompact({ match }: { match: MatchPrediction }) {
-  if (!match.polymarket || new Date(match.kickoffUtc).getTime() <= Date.now()) return null;
+  if (!match.polymarket || isMatchCompleted(match)) return null;
   const market = match.polymarket;
   return (
     <div className="polymarket-compact" aria-label="Polymarket probabilities">
@@ -38,7 +38,7 @@ export function PolymarketCompact({ match }: { match: MatchPrediction }) {
 }
 
 export function PolymarketDetail({ match }: { match: MatchPrediction }) {
-  if (!match.polymarket || new Date(match.kickoffUtc).getTime() <= Date.now()) return null;
+  if (!match.polymarket || isMatchCompleted(match)) return null;
   const market = match.polymarket;
   const rows = comparisonRows(match);
   return (
@@ -66,7 +66,7 @@ export function PolymarketDetail({ match }: { match: MatchPrediction }) {
 }
 
 export function PolymarketCardComparison({ match }: { match: MatchPrediction }) {
-  if (!match.polymarket || new Date(match.kickoffUtc).getTime() <= Date.now()) return null;
+  if (!match.polymarket || isMatchCompleted(match)) return null;
   const market = match.polymarket;
   const rows = comparisonRows(match);
   return (

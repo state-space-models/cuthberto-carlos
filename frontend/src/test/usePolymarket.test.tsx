@@ -100,13 +100,19 @@ describe("Polymarket data", () => {
     ).toMatchObject({ homeWin: 0.65, draw: 0.2, awayWin: 0.15 });
   });
 
-  it("never returns prices once kickoff has arrived", () => {
-    expect(predictionsForMatches([match], markets, new Date(match.kickoffUtc))).toEqual({});
+  it("keeps prices during the live window and removes them after completion", () => {
+    expect(predictionsForMatches([match], markets, new Date(match.kickoffUtc))[match.id]).toMatchObject({
+      homeWin: 0.5,
+      draw: 0.3,
+      awayWin: 0.2,
+    });
+    expect(predictionsForMatches([match], markets, new Date("2026-06-19T22:00:00Z"))).toEqual({});
   });
 
   it("paginates live events and replaces the fallback", async () => {
     const futureMatch = {
       ...match,
+      kickoffUtc: "2099-06-21T20:00:00Z",
       polymarket: {
         homeWin: 0.4,
         draw: 0.4,
@@ -154,7 +160,11 @@ describe("Polymarket data", () => {
       eventUrl: "https://polymarket.com/event/fallback",
       updatedAt: "2026-06-18T00:00:00Z",
     };
-    const { result } = renderHook(() => usePolymarket([{ ...match, polymarket: fallback }], {
+    const { result } = renderHook(() => usePolymarket([{
+      ...match,
+      kickoffUtc: "2099-06-21T20:00:00Z",
+      polymarket: fallback,
+    }], {
       dataUrl: "https://gamma-api.polymarket.com/events/keyset",
       tagId: "102232",
       seriesId: "11433",

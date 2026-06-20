@@ -292,23 +292,28 @@ describe("App interactions", () => {
     }
   });
 
-  it("shows ongoing fixtures with a LIVE tag in Upcoming card and list views", () => {
+  it("shows ongoing fixtures with LIVE model and Polymarket values in card and list views", () => {
     vi.useFakeTimers();
-    vi.setSystemTime(new Date("2026-06-11T20:00:00Z"));
+    vi.setSystemTime(new Date("2026-06-20T18:00:00Z"));
 
     try {
       render(<App />);
       const upcoming = screen.getByRole("region", { name: "All upcoming matches in card view" });
       const liveCard = within(upcoming).getByText("LIVE").closest("article");
-      expect(liveCard).toHaveTextContent("Mexico");
-      expect(liveCard).toHaveTextContent("South Africa");
+      expect(liveCard).toHaveTextContent("Netherlands");
+      expect(liveCard).toHaveTextContent("Sweden");
+      expect(within(liveCard!).getByRole("heading", { name: "Model vs Polymarket" })).toBeInTheDocument();
+      const homeComparison = within(liveCard!).getByRole("row", { name: /Netherlands win/ });
+      expect(homeComparison).toHaveTextContent("59.6%");
+      expect(homeComparison).toHaveTextContent("55.5%");
 
       const viewToggle = screen.getByRole("group", { name: "Upcoming matches view" });
       fireEvent.click(within(viewToggle).getByRole("button", { name: "List" }));
       const upcomingList = screen.getByRole("region", { name: "All upcoming matches in list view" });
       const liveRow = within(upcomingList).getByText("LIVE").closest("article");
-      expect(liveRow).toHaveTextContent("Mexico");
-      expect(liveRow).toHaveTextContent("South Africa");
+      expect(liveRow).toHaveTextContent("Netherlands");
+      expect(liveRow).toHaveTextContent("Sweden");
+      expect(within(liveRow!).getByLabelText("Polymarket probabilities")).toBeInTheDocument();
     } finally {
       vi.useRealTimers();
     }
