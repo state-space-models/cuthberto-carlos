@@ -1,0 +1,12 @@
+cuthbert>=0.0.13
+ghq>=0.0.5
+optax>=0.2.8
+pandas>=2.3.3
+plotnine>=0.15.5
+pytest>=9.0.3
+ty>=0.0.44
+uv>=0.6.0
+certifi
+matplotlib
+seaborn
+polars
