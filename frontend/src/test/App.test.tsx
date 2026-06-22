@@ -497,12 +497,21 @@ describe("App interactions", () => {
     const recentMatches = within(drawer).getByRole("list", {
       name: new RegExp(`Matches involving Japan or Sweden before ${selectedDate}`),
     });
-    expect(within(recentMatches).getByText("Netherlands")).toBeInTheDocument();
-    expect(within(recentMatches).getByText("Japan")).toBeInTheDocument();
-    expect(within(recentMatches).getByText("Sweden")).toBeInTheDocument();
-    expect(within(recentMatches).getByText("Tunisia")).toBeInTheDocument();
-    expect(within(recentMatches).getByText("2–2")).toBeInTheDocument();
-    expect(within(recentMatches).getByText("5–1")).toBeInTheDocument();
+    const recentMatchRows = within(recentMatches).getAllByRole("listitem");
+    expect(
+      recentMatchRows.some((row) =>
+        row.textContent?.includes("Netherlands") &&
+        row.textContent.includes("Japan") &&
+        row.textContent.includes("2–2"),
+      ),
+    ).toBe(true);
+    expect(
+      recentMatchRows.some((row) =>
+        row.textContent?.includes("Sweden") &&
+        row.textContent.includes("Tunisia") &&
+        row.textContent.includes("5–1"),
+      ),
+    ).toBe(true);
 
     await user.selectOptions(dateSelector, "2026-06-11");
     expect(
