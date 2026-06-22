@@ -10,3 +10,4 @@ certifi
 matplotlib
 seaborn
 polars
+tqdm
