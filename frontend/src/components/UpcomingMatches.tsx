@@ -95,7 +95,7 @@ function UpcomingPlayoffCard({ match, teams, onOpen }: { match: KnockoutMatch; t
       </div>
       <p className="match-card__venue">{match.venue}</p>
       {prediction && (
-        <PolymarketCardComparison match={{ ...match, homeTeam: team1 ?? match.team1Slot, awayTeam: team2 ?? match.team2Slot }} />
+        <PolymarketCardComparison match={{ ...match, homeTeam: team1 ?? match.team1Slot, awayTeam: team2 ?? match.team2Slot, prediction }} />
       )}
     </article>
   );
@@ -140,7 +140,7 @@ function UpcomingPlayoffRow({ match, teams, onOpen }: { match: KnockoutMatch; te
       </div>
       <span className="match-list-row__venue">{match.venue}</span>
       {prediction && (
-        <PolymarketCardComparison match={{ ...match, homeTeam: team1 ?? match.team1Slot, awayTeam: team2 ?? match.team2Slot }} />
+        <PolymarketCardComparison match={{ ...match, homeTeam: team1 ?? match.team1Slot, awayTeam: team2 ?? match.team2Slot, prediction }} />
       )}
       {!prediction && (
         <strong className="upcoming-playoff-row__stage">Playoff</strong>
