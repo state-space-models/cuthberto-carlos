@@ -638,6 +638,11 @@ h2 {
   text-align: right;
 }
 
+.match-card__team--second .upcoming-playoff-flag {
+  flex-direction: row-reverse;
+  text-align: right;
+}
+
 .match-card__team {
   display: flex;
   min-width: 0;
@@ -713,12 +718,22 @@ h2 {
 
 .upcoming-playoff-flag {
   display: inline-flex;
+  min-width: 0;
   align-items: center;
+  gap: 0.55rem;
 }
 
 .upcoming-playoff-flag .team-flag {
   font-size: 2.2rem;
   line-height: 1;
+}
+
+.upcoming-playoff-flag > span:last-child {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 750;
 }
 
 .upcoming-playoff-card--clickable {
@@ -1196,6 +1211,11 @@ h2 {
   text-align: right;
 }
 
+.upcoming-playoff-row__fixture > .upcoming-playoff-flag:last-child {
+  flex-direction: row-reverse;
+  text-align: right;
+}
+
 .upcoming-playoff-row__stage {
   padding: 0.25rem 0.55rem;
   border-radius: 999px;
@@ -1557,6 +1577,13 @@ h2 {
   gap: 0.5rem;
 }
 
+.standings-team .team-identity > span:last-child {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .qualification-badge {
   padding: 0.18rem 0.42rem;
   border-radius: 999px;
@@ -1777,6 +1804,18 @@ h2 {
   cursor: pointer;
   text-align: left;
   transition: border-color 140ms ease, background 140ms ease, transform 140ms ease;
+}
+
+.country-card .team-identity {
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.country-card .team-identity > span:last-child {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .country-card:hover,
@@ -2034,6 +2073,13 @@ h2 {
   display: flex;
   min-width: 0;
   flex-direction: column;
+}
+
+.bracket-slot strong {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .bracket-slot--winner strong {
@@ -2755,6 +2801,34 @@ h2 {
   color: var(--muted);
   font-size: 0.7rem;
   line-height: 1.5;
+}
+
+.predicted-score {
+  display: flex;
+  align-items: baseline;
+  gap: 0.6rem;
+  margin-bottom: 1rem;
+  color: var(--ink);
+  font-size: 0.78rem;
+}
+
+.predicted-score strong {
+  color: var(--green-dark);
+  font-size: 0.72rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.predicted-score span {
+  font-family: Georgia, serif;
+  font-size: 1.4rem;
+  font-weight: 700;
+}
+
+.predicted-score em {
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-style: normal;
 }
 
 .drawer-panel--skills .panel-note {
