@@ -5,7 +5,7 @@ import { GroupStage } from "./components/GroupStage";
 import { KnockoutBracket } from "./components/KnockoutBracket";
 import { MatchDetailDrawer } from "./components/MatchDetailDrawer";
 import { UpcomingMatches } from "./components/UpcomingMatches";
-import type { MatchPrediction, TournamentDataset } from "./types";
+import type { KnockoutMatch, MatchPrediction, TournamentDataset } from "./types";
 import { useLiveResults } from "./useLiveResults";
 import { usePolymarket } from "./usePolymarket";
 
@@ -29,18 +29,24 @@ function App() {
     data.teams,
     data.knockoutMatches,
   );
-  const polymarket = usePolymarket(data.groupMatches, data.sources.polymarket);
+  const polymarket = usePolymarket(data.groupMatches, data.knockoutMatches, data.sources.polymarket);
   const matches = resultMatches.map((match) => ({
+    ...match,
+    polymarket: polymarket.predictions[match.id],
+  }));
+  const enrichedKnockoutMatches = knockoutMatches.map((match) => ({
     ...match,
     polymarket: polymarket.predictions[match.id],
   }));
   const [selectedMatchId, setSelectedMatchId] = useState<string | null>(null);
   const lastTrigger = useRef<HTMLElement | null>(null);
   const selectedMatch = selectedMatchId
-    ? matches.find((match) => match.id === selectedMatchId) ?? null
+    ? matches.find((match) => match.id === selectedMatchId)
+      ?? enrichedKnockoutMatches.find((match) => match.id === selectedMatchId)
+      ?? null
     : null;
 
-  const openMatch = useCallback((match: MatchPrediction, trigger: HTMLElement) => {
+  const openMatch = useCallback((match: MatchPrediction | KnockoutMatch, trigger: HTMLElement) => {
     lastTrigger.current = trigger;
     setSelectedMatchId(match.id);
   }, []);
@@ -60,9 +66,9 @@ function App() {
         </a>
         <nav aria-label="Primary navigation">
           <a href="#upcoming">Upcoming</a>
+          <a href="#playoffs">Playoffs</a>
           <a href="#completed">Completed</a>
           <a href="#groups">Groups</a>
-          <a href="#playoffs">Playoffs</a>
         </nav>
         <div className="header-actions">
           <div className="header-snapshot">
@@ -122,10 +128,10 @@ function App() {
           </div>
         </section>
 
-        <UpcomingMatches matches={matches} knockoutMatches={knockoutMatches} teams={data.teams} onOpen={openMatch} />
+        <UpcomingMatches matches={matches} knockoutMatches={enrichedKnockoutMatches} teams={data.teams} onOpen={openMatch} />
+        <KnockoutBracket matches={enrichedKnockoutMatches} teams={data.teams} onOpen={openMatch} />
         <CompletedMatches matches={matches} teams={data.teams} onOpen={openMatch} />
         <GroupStage groups={data.groups} matches={matches} teams={data.teams} onOpen={openMatch} />
-        <KnockoutBracket matches={knockoutMatches} teams={data.teams} />
       </main>
 
       <footer className="site-footer">

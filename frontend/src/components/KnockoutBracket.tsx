@@ -1,11 +1,12 @@
 import { useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { KnockoutMatch, KnockoutRound, Team } from "../types";
 import { describeBracketSlot, formatKickoff, KNOCKOUT_ROUNDS, ROUND_LABELS } from "../utils";
-import { TeamFlag } from "./TeamFlag";
+import { flagClassNames } from "../flags";
 
 interface KnockoutBracketProps {
   matches: KnockoutMatch[];
   teams?: Record<string, Team>;
+  onOpen?: (match: KnockoutMatch, trigger: HTMLElement) => void;
 }
 
 type View = "bracket" | "list";
@@ -44,7 +45,9 @@ function Participant({ match, side, teams }: { match: KnockoutMatch; side: 1 | 2
   const winner = winnerSide(match) === side;
   return (
     <span className={`bracket-slot${winner ? " bracket-slot--winner" : ""}`}>
-      {value.name && teams?.[value.name] && <TeamFlag team={teams[value.name]} compact />}
+      {value.name && teams?.[value.name] && (
+        <span className={`team-flag ${flagClassNames[teams[value.name].flagCode] || "fi fi-unknown"}`} aria-hidden="true" />
+      )}
       <span>
         <strong>{value.name ?? value.slot}{winner ? " · Winner" : ""}</strong>
         <small>{describeBracketSlot(value.slot)}</small>
@@ -55,19 +58,31 @@ function Participant({ match, side, teams }: { match: KnockoutMatch; side: 1 | 2
 
 function Score({ match }: { match: KnockoutMatch }) {
   const score = finalScore(match);
-  if (!score) return null;
-  return (
-    <span className="bracket-match__score">
-      {score[0]}–{score[1]}
-      {match.score?.penalties && <small>pens {match.score.penalties[0]}–{match.score.penalties[1]}</small>}
-      {!match.score?.penalties && match.score?.extraTime && <small>AET</small>}
-    </span>
-  );
+  if (score) {
+    return (
+      <span className="bracket-match__score">
+        {score[0]}–{score[1]}
+        {match.score?.penalties && <small>pens {match.score.penalties[0]}–{match.score.penalties[1]}</small>}
+        {!match.score?.penalties && match.score?.extraTime && <small>AET</small>}
+      </span>
+    );
+  }
+  if (match.prediction) {
+    const [home, away] = match.prediction.mostLikelyScore;
+    return (
+      <span className="bracket-match__score bracket-match__score--predicted" aria-label="Most likely score">
+        {home}–{away}
+        <small>predicted</small>
+      </span>
+    );
+  }
+  return null;
 }
 
-function BracketMatchCard({ match, teams }: {
+function BracketMatchCard({ match, teams, onOpen }: {
   match: KnockoutMatch;
   teams?: Record<string, Team>;
+  onOpen?: (match: KnockoutMatch, trigger: HTMLElement) => void;
 }) {
   return (
     <article className="bracket-match" data-match-number={match.matchNumber}>
@@ -75,12 +90,21 @@ function BracketMatchCard({ match, teams }: {
       <Participant match={match} side={1} teams={teams} />
       <span className="bracket-match__divider" />
       <Participant match={match} side={2} teams={teams} />
-      <span className="bracket-match__footer"><span>{formatKickoff(match.kickoffUtc)}</span><Score match={match} /></span>
+      <span className="bracket-match__footer">
+        <span>{formatKickoff(match.kickoffUtc)}</span>
+        <Score match={match} />
+      </span>
+      {match.prediction && onOpen && (
+        <button className="text-button bracket-match__explore" type="button"
+          onClick={(event) => onOpen(match, event.currentTarget)}>
+          Explore prediction
+        </button>
+      )}
     </article>
   );
 }
 
-export function KnockoutBracket({ matches, teams }: KnockoutBracketProps) {
+export function KnockoutBracket({ matches, teams, onOpen }: KnockoutBracketProps) {
   const [view, setView] = useState<View>("bracket");
   const [selectedRound, setSelectedRound] = useState<KnockoutRound>("Round of 32");
   const [listRound, setListRound] = useState<RoundFilter>("All");
@@ -179,16 +203,16 @@ export function KnockoutBracket({ matches, teams }: KnockoutBracketProps) {
           {BRACKET_ROUNDS.map((round) => <section className={`bracket-round bracket-round--${round.replaceAll(" ", "-").toLowerCase()}`} key={round}>
             <h3>{ROUND_LABELS[round]}</h3>
             <div className="bracket-round__matches">{matchesByRound.get(round)?.map((match) =>
-              <BracketMatchCard key={match.id} match={match} teams={teams} />)}</div>
+              <BracketMatchCard key={match.id} match={match} teams={teams} onOpen={onOpen} />)}</div>
           </section>)}
         </div>
         <div className="playoff-third-place">
           <h3>{ROUND_LABELS["Match for third place"]}</h3>
           {matchesByRound.get("Match for third place")?.map((match) =>
-            <BracketMatchCard key={match.id} match={match} teams={teams} />)}
+            <BracketMatchCard key={match.id} match={match} teams={teams} onOpen={onOpen} />)}
         </div>
         <div className="bracket-mobile" aria-live="polite">{matchesByRound.get(selectedRound)?.map((match) =>
-          <BracketMatchCard key={match.id} match={match} teams={teams} />)}</div>
+          <BracketMatchCard key={match.id} match={match} teams={teams} onOpen={onOpen} />)}</div>
       </> : <>
         <nav className="playoff-list-filter" aria-label="Filter playoff list">
           {(["All", ...KNOCKOUT_ROUNDS] as RoundFilter[]).map((round) => <button type="button" key={round}

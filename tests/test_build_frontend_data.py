@@ -111,7 +111,7 @@ class FrontendDataCompilerTests(unittest.TestCase):
                 "South Korea",
             )
 
-            versions = collect_prediction_versions([older, latest], fixtures)
+            versions, _knockout = collect_prediction_versions([older, latest], fixtures)
 
             shared = versions[
                 fixture_key("2026-06-18", "Mexico", "South Korea")

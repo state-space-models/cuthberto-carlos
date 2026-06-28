@@ -196,14 +196,27 @@ def discover_latest_snapshot(predictions_root: Path = PREDICTIONS_ROOT) -> Path:
 def collect_prediction_versions(
     snapshots: list[Path],
     fixture_index: dict[tuple[str, tuple[str, str]], dict[str, Any]],
-) -> dict[tuple[str, tuple[str, str]], list[dict[str, Any]]]:
-    """Load and validate every available version of each scheduled fixture."""
+    knockout_fixture_index: dict[tuple[str, tuple[str, str]], dict[str, Any]] | None = None,
+) -> tuple[
+    dict[tuple[str, tuple[str, str]], list[dict[str, Any]]],
+    dict[tuple[str, tuple[str, str]], list[dict[str, Any]]],
+]:
+    """Load and validate every available version of each scheduled fixture.
+
+    Returns ``(group_versions, knockout_versions)``.  Group fixtures must
+    have at least one prediction (raises if any are missing).  Knockout
+    fixtures are optional — unresolved bracket slots have no predictions.
+    """
     prediction_versions: dict[
+        tuple[str, tuple[str, str]], list[dict[str, Any]]
+    ] = {}
+    knockout_prediction_versions: dict[
         tuple[str, tuple[str, str]], list[dict[str, Any]]
     ] = {}
     fixture_orientations: dict[
         tuple[str, tuple[str, str]], tuple[str, str, str]
     ] = {}
+    knockout_fixture_index = knockout_fixture_index or {}
 
     for prediction_snapshot in snapshots:
         snapshot_keys: set[tuple[str, tuple[str, str]]] = set()
@@ -216,14 +229,18 @@ def collect_prediction_versions(
             key = fixture_key(
                 match_data["date"], match_data["home_team"], match_data["away_team"]
             )
-            if key not in fixture_index:
-                # Predictions include knockout matches, which are not group
-                # fixtures. Skip those — only group-stage predictions are
-                # compiled into the frontend dataset.
+            if key in fixture_index:
+                target_versions = prediction_versions
+            elif key in knockout_fixture_index:
+                target_versions = knockout_prediction_versions
+            else:
+                # Predictions for fixtures not in the schedule (e.g. past
+                # friendlies) are ignored.
                 continue
             if key in snapshot_keys:
+                label = "group" if key in fixture_index else "knockout"
                 raise ValueError(
-                    f"Duplicate prediction for group fixture in "
+                    f"Duplicate prediction for {label} fixture in "
                     f"{prediction_snapshot.name}: {key}"
                 )
             snapshot_keys.add(key)
@@ -236,10 +253,10 @@ def collect_prediction_versions(
             previous_orientation = fixture_orientations.setdefault(key, orientation)
             if orientation != previous_orientation:
                 raise ValueError(
-                    f"Inconsistent prediction metadata for group fixture: {key}"
+                    f"Inconsistent prediction metadata for fixture: {key}"
                 )
 
-            prediction_versions.setdefault(key, []).append(
+            target_versions.setdefault(key, []).append(
                 {
                     "snapshotDate": prediction_snapshot.name,
                     "predictionPath": prediction_path,
@@ -254,7 +271,9 @@ def collect_prediction_versions(
 
     for versions in prediction_versions.values():
         versions.sort(key=lambda version: version["snapshotDate"], reverse=True)
-    return prediction_versions
+    for versions in knockout_prediction_versions.values():
+        versions.sort(key=lambda version: version["snapshotDate"], reverse=True)
+    return prediction_versions, knockout_prediction_versions
 
 
 def _fetch_openfootball_json(url: str) -> Any:
@@ -780,8 +799,23 @@ def compile_dataset(
             raise ValueError(f"Duplicate group fixture in schedule: {key}")
         fixture_index[key] = fixture
 
+    knockout_fixture_index: dict[tuple[str, tuple[str, str]], dict[str, Any]] = {}
+    for fixture in knockout_schedule:
+        # Only index knockout fixtures with concrete team names (not bracket
+        # slots like "2A" or "W73") — predictions are keyed by team names.
+        if BRACKET_SLOT_PATTERN.fullmatch(fixture["team1"]):
+            continue
+        if BRACKET_SLOT_PATTERN.fullmatch(fixture["team2"]):
+            continue
+        key = fixture_key(fixture["date"], fixture["team1"], fixture["team2"])
+        if key in knockout_fixture_index:
+            raise ValueError(f"Duplicate knockout fixture in schedule: {key}")
+        knockout_fixture_index[key] = fixture
+
     team_colors = json.loads((root / "assets" / "team_colors.json").read_text())
-    prediction_versions = collect_prediction_versions(snapshots, fixture_index)
+    prediction_versions, knockout_prediction_versions = collect_prediction_versions(
+        snapshots, fixture_index, knockout_fixture_index
+    )
 
     match_records: list[dict[str, Any]] = []
     for key, versions in prediction_versions.items():
@@ -910,6 +944,51 @@ def compile_dataset(
                 record["score"]["extraTime"] = source_score["et"]
             if source_score.get("p") is not None:
                 record["score"]["penalties"] = source_score["p"]
+
+        # Attach prediction + Polymarket when the knockout fixture has
+        # resolved teams and a matching prediction exists.
+        ko_key = fixture_key(fixture["date"], fixture["team1"], fixture["team2"])
+        ko_versions = knockout_prediction_versions.get(ko_key)
+        if ko_versions:
+            latest = ko_versions[0]
+            prediction_path = latest["predictionPath"]
+            match_data = latest["matchData"]
+            predictions = latest["predictions"]
+            record["predictionDate"] = latest["snapshotDate"]
+            record["sourceUrl"] = repository_tree_url(
+                prediction_path.parent.relative_to(root), repository_url
+            )
+            record["predictionHistory"] = [
+                {
+                    "predictionDate": version["snapshotDate"],
+                    "sourceUrl": repository_tree_url(
+                        version["predictionPath"].parent.relative_to(root),
+                        repository_url,
+                    ),
+                    "prediction": _prediction_record(
+                        version["predictions"], version["predictionPath"]
+                    ),
+                }
+                for version in ko_versions[1:]
+            ]
+            record["prediction"] = _prediction_record(predictions, prediction_path)
+
+            team1 = record.get("team1")
+            team2 = record.get("team2")
+            if team1 and team2:
+                market = polymarket_predictions.get(team_pair_key(team1, team2))
+                if market and datetime.fromisoformat(
+                    record["kickoffUtc"].replace("Z", "+00:00")
+                ) > generated_at:
+                    outcomes = market["outcomes"]
+                    record["polymarket"] = {
+                        "homeWin": outcomes[team1],
+                        "draw": outcomes["draw"],
+                        "awayWin": outcomes[team2],
+                        "eventUrl": market["eventUrl"],
+                        "updatedAt": market["updatedAt"],
+                    }
+
         knockout_matches.append(record)
     knockout_matches.sort(key=lambda match: match["matchNumber"])
 
@@ -1080,6 +1159,42 @@ def validate_dataset(dataset: dict[str, Any]) -> None:
                     raise ValueError(f"Invalid {score_key} score for match {match['matchNumber']}")
             if "fullTime" not in score:
                 raise ValueError(f"Missing fullTime score for match {match['matchNumber']}")
+
+        prediction = match.get("prediction")
+        if prediction is not None:
+            if not isinstance(prediction, dict):
+                raise ValueError(f"Invalid prediction for match {match['matchNumber']}")
+            probabilities = prediction.get("probabilities")
+            if not isinstance(probabilities, dict):
+                raise ValueError(
+                    f"Missing prediction probabilities for match {match['matchNumber']}"
+                )
+            prob_values = [
+                probabilities.get("homeWin"),
+                probabilities.get("draw"),
+                probabilities.get("awayWin"),
+            ]
+            if any(not isinstance(v, (int, float)) or v < 0 or v > 1 for v in prob_values):
+                raise ValueError(
+                    f"Invalid prediction probabilities for match {match['matchNumber']}"
+                )
+            if abs(sum(prob_values) - 1.0) > 1e-6:
+                raise ValueError(
+                    f"Prediction probabilities do not sum to 1 for match {match['matchNumber']}"
+                )
+            if not match.get("predictionDate") or not match.get("sourceUrl"):
+                raise ValueError(
+                    f"Missing prediction provenance for match {match['matchNumber']}"
+                )
+        polymarket = match.get("polymarket")
+        if polymarket is not None:
+            if not isinstance(polymarket, dict):
+                raise ValueError(f"Invalid polymarket for match {match['matchNumber']}")
+            for field in ("homeWin", "draw", "awayWin", "eventUrl", "updatedAt"):
+                if field not in polymarket:
+                    raise ValueError(
+                        f"Missing polymarket {field} for match {match['matchNumber']}"
+                    )
     if len(dataset["groups"]) != 12:
         raise ValueError(f"Expected 12 groups, found {len(dataset['groups'])}")
     if not dataset["teams"]:

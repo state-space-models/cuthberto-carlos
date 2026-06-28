@@ -408,7 +408,7 @@ describe("App interactions", () => {
       expect(within(marketCard).getByRole("heading", { name: "Model vs Polymarket" })).toBeInTheDocument();
       expect(within(marketCard).getByRole("columnheader", { name: "Difference" })).toBeInTheDocument();
       expect(within(marketCard).queryByLabelText("Result probabilities")).not.toBeInTheDocument();
-      fireEvent.click(within(marketCard).getByRole("button", { name: "Explore prediction" }));
+      fireEvent.click(marketCard);
       const drawer = screen.getByRole("dialog");
       expect(within(drawer).getByRole("heading", { name: "Model vs Polymarket" })).toBeInTheDocument();
     } finally {

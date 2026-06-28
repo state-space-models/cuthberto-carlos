@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import type {
+  KnockoutMatch,
   MatchPrediction,
   PredictionDetails,
   PredictionHistoryEntry,
@@ -16,12 +17,61 @@ import { MatchScoreComparison } from "./MatchScoreComparison";
 import { TeamFlag } from "./TeamFlag";
 import { PolymarketDetail } from "./PolymarketComparison";
 
+interface DrawerMatch {
+  id: string;
+  homeTeam: string;
+  awayTeam: string;
+  kickoffUtc: string;
+  venue: string;
+  eyebrow: string;
+  prediction: PredictionDetails;
+  predictionDate: string;
+  sourceUrl: string;
+  predictionHistory: PredictionHistoryEntry[];
+  polymarket?: MatchPrediction["polymarket"];
+  actualResult?: MatchPrediction["actualResult"];
+  knockoutScore?: KnockoutMatch["score"];
+}
+
 interface MatchDetailDrawerProps {
-  match: MatchPrediction | null;
+  match: MatchPrediction | KnockoutMatch | null;
   matches: MatchPrediction[];
   teams: Record<string, Team>;
   modelName: string;
   onClose: () => void;
+}
+
+function normalizeMatch(match: MatchPrediction | KnockoutMatch): DrawerMatch {
+  if ("homeTeam" in match) {
+    return {
+      id: match.id,
+      homeTeam: match.homeTeam,
+      awayTeam: match.awayTeam,
+      kickoffUtc: match.kickoffUtc,
+      venue: match.venue,
+      eyebrow: `Group ${match.group}`,
+      prediction: match.prediction,
+      predictionDate: match.predictionDate,
+      sourceUrl: match.sourceUrl,
+      predictionHistory: match.predictionHistory,
+      polymarket: match.polymarket,
+      actualResult: match.actualResult,
+    };
+  }
+  return {
+    id: match.id,
+    homeTeam: match.team1 ?? match.team1Slot,
+    awayTeam: match.team2 ?? match.team2Slot,
+    kickoffUtc: match.kickoffUtc,
+    venue: match.venue,
+    eyebrow: match.round,
+    prediction: match.prediction!,
+    predictionDate: match.predictionDate!,
+    sourceUrl: match.sourceUrl!,
+    predictionHistory: match.predictionHistory ?? [],
+    polymarket: match.polymarket,
+    knockoutScore: match.score,
+  };
 }
 
 type PredictionVersion = PredictionHistoryEntry;
@@ -120,7 +170,7 @@ function StrengthHistory({
   versions,
   selectedDate,
 }: {
-  match: MatchPrediction;
+  match: DrawerMatch;
   versions: PredictionVersion[];
   selectedDate: string;
 }) {
@@ -254,7 +304,7 @@ function RecentTeamMatches({
   predictionDate,
   teams,
 }: {
-  match: MatchPrediction;
+  match: DrawerMatch;
   matches: MatchPrediction[];
   predictionDate: string;
   teams: Record<string, Team>;
@@ -336,14 +386,15 @@ export function MatchDetailDrawer({
 
   if (!match) return null;
 
-  const home = teams[match.homeTeam];
-  const away = teams[match.awayTeam];
+  const normalized = normalizeMatch(match);
+  const home = teams[normalized.homeTeam];
+  const away = teams[normalized.awayTeam];
   const versions: PredictionVersion[] = [
-    ...match.predictionHistory,
+    ...normalized.predictionHistory,
     {
-      predictionDate: match.predictionDate,
-      sourceUrl: match.sourceUrl,
-      prediction: match.prediction,
+      predictionDate: normalized.predictionDate,
+      sourceUrl: normalized.sourceUrl,
+      prediction: normalized.prediction,
     },
   ].sort((left, right) => left.predictionDate.localeCompare(right.predictionDate));
   const selectedVersion =
@@ -352,17 +403,23 @@ export function MatchDetailDrawer({
   const latestPredictionDate = versions[versions.length - 1].predictionDate;
   const selectedPrediction = selectedVersion.prediction;
   const probabilities = selectedPrediction.probabilities;
-  const ongoing = isMatchOngoing(match);
-  const completed = isMatchCompleted(match);
-  const hasActualResult = !!match.actualResult;
+  const ongoing = isMatchOngoing(normalized);
+  const completed = isMatchCompleted(normalized);
+  const hasActualResult = !!normalized.actualResult;
+  const hasKnockoutScore = !!normalized.knockoutScore;
+  const isKnockout = hasKnockoutScore;
 
   // Use actual result if available, otherwise show prediction
   const displayHomeScore = hasActualResult
-    ? match.actualResult!.homeScore
-    : selectedPrediction.mostLikelyScore[0];
+    ? normalized.actualResult!.homeScore
+    : hasKnockoutScore
+      ? (normalized.knockoutScore!.extraTime ?? normalized.knockoutScore!.fullTime)[0]
+      : selectedPrediction.mostLikelyScore[0];
   const displayAwayScore = hasActualResult
-    ? match.actualResult!.awayScore
-    : selectedPrediction.mostLikelyScore[1];
+    ? normalized.actualResult!.awayScore
+    : hasKnockoutScore
+      ? (normalized.knockoutScore!.extraTime ?? normalized.knockoutScore!.fullTime)[1]
+      : selectedPrediction.mostLikelyScore[1];
 
   return (
     <div className="drawer-backdrop" role="presentation" onMouseDown={onClose}>
@@ -380,20 +437,26 @@ export function MatchDetailDrawer({
 
         <header className="drawer-header">
           <span className="eyebrow">
-            Group {match.group} · {formatKickoff(match.kickoffUtc)}
+            {normalized.eyebrow} · {formatKickoff(normalized.kickoffUtc)}
             {ongoing && <span className="drawer-live-badge">LIVE</span>}
           </span>
-          <h2 id="prediction-title">{match.homeTeam} vs {match.awayTeam}</h2>
-          <p>{match.venue}</p>
+          <h2 id="prediction-title">{normalized.homeTeam} vs {normalized.awayTeam}</h2>
+          <p>{normalized.venue}</p>
           <div className="drawer-matchup">
             <TeamFlag team={home} />
-            {completed ? (
-              <MatchScoreComparison match={match} variant="drawer" />
+            {completed && !isKnockout ? (
+              <MatchScoreComparison match={match as MatchPrediction} variant="drawer" />
             ) : (
               <span className="drawer-score">
-                <small>{ongoing ? "Current score" : hasActualResult ? "Final score" : "Most likely"}</small>
+                <small>{ongoing ? "Current score" : hasActualResult || hasKnockoutScore ? "Final score" : "Most likely"}</small>
                 {displayHomeScore}–{displayAwayScore}
-                {!ongoing && !hasActualResult && <em>{formatPercent(selectedPrediction.mostLikelyScoreProbability, 1)}</em>}
+                {!ongoing && !hasActualResult && !hasKnockoutScore && <em>{formatPercent(selectedPrediction.mostLikelyScoreProbability, 1)}</em>}
+                {hasKnockoutScore && normalized.knockoutScore?.penalties && (
+                  <em>pens {normalized.knockoutScore.penalties[0]}–{normalized.knockoutScore.penalties[1]}</em>
+                )}
+                {hasKnockoutScore && !normalized.knockoutScore?.penalties && normalized.knockoutScore?.extraTime && (
+                  <em>AET</em>
+                )}
               </span>
             )}
             <TeamFlag team={away} />
@@ -422,17 +485,17 @@ export function MatchDetailDrawer({
         <div className="drawer-grid">
           <section className="drawer-panel">
             <h3>Result probabilities</h3>
-            <ProbabilityRow label={`${match.homeTeam} win`} value={probabilities.homeWin} color={FIRST_TEAM_COLOR} />
+            <ProbabilityRow label={`${normalized.homeTeam} win`} value={probabilities.homeWin} color={FIRST_TEAM_COLOR} />
             <ProbabilityRow label="Draw" value={probabilities.draw} color={DRAW_COLOR} />
-            <ProbabilityRow label={`${match.awayTeam} win`} value={probabilities.awayWin} color={SECOND_TEAM_COLOR} />
+            <ProbabilityRow label={`${normalized.awayTeam} win`} value={probabilities.awayWin} color={SECOND_TEAM_COLOR} />
           </section>
 
-          <PolymarketDetail match={match} />
+          <PolymarketDetail match={normalized} />
 
           <section className="drawer-panel drawer-panel--skills">
             <h3>Team strength estimates</h3>
             <StrengthHistory
-              match={match}
+              match={normalized}
               versions={versions}
               selectedDate={selectedVersion.predictionDate}
             />
@@ -442,17 +505,17 @@ export function MatchDetailDrawer({
           <section className="drawer-panel drawer-panel--wide">
             <h3>Scoreline distribution</h3>
             <p className="panel-note">
-              Expected goals: {match.homeTeam} {selectedPrediction.expectedGoals.home.toFixed(2)}, {match.awayTeam} {selectedPrediction.expectedGoals.away.toFixed(2)}.
+              Expected goals: {normalized.homeTeam} {selectedPrediction.expectedGoals.home.toFixed(2)}, {normalized.awayTeam} {selectedPrediction.expectedGoals.away.toFixed(2)}.
             </p>
             <ScoreHeatmap
               prediction={selectedPrediction}
-              homeTeam={match.homeTeam}
-              awayTeam={match.awayTeam}
+              homeTeam={normalized.homeTeam}
+              awayTeam={normalized.awayTeam}
             />
           </section>
 
           <RecentTeamMatches
-            match={match}
+            match={normalized}
             matches={matches}
             predictionDate={selectedVersion.predictionDate}
             teams={teams}
@@ -464,11 +527,11 @@ export function MatchDetailDrawer({
             <a href={selectedVersion.sourceUrl} target="_blank" rel="noreferrer">
               Prediction generated {selectedVersion.predictionDate} <span aria-hidden="true">↗</span>
             </a>
-            {match.predictionHistory.length > 0 && (
+            {normalized.predictionHistory.length > 0 && (
               <div className="prediction-history">
                 <strong>Previous predictions</strong>
                 <ul>
-                  {match.predictionHistory.map((historical) => (
+                  {normalized.predictionHistory.map((historical) => (
                     <li key={historical.predictionDate}>
                       <a href={historical.sourceUrl} target="_blank" rel="noreferrer">
                         {historical.predictionDate} <span aria-hidden="true">↗</span>

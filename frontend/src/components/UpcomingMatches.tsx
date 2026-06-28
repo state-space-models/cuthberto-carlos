@@ -3,33 +3,43 @@ import type { KnockoutMatch, MatchPrediction, Team } from "../types";
 import {
   describeBracketSlot,
   formatKickoffParts,
+  formatPercent,
   getOngoingMatches,
   getUpcomingMatches,
+  mostLikelyOutcome,
   ROUND_LABELS,
 } from "../utils";
+import { flagClassNames } from "../flags";
 import { MatchCard } from "./MatchCard";
 import { MatchListRow } from "./MatchListRow";
-import { TeamFlag } from "./TeamFlag";
+import { PolymarketCardComparison } from "./PolymarketComparison";
 
 interface UpcomingMatchesProps {
   matches: MatchPrediction[];
   knockoutMatches: KnockoutMatch[];
   teams: Record<string, Team>;
-  onOpen: (match: MatchPrediction, trigger: HTMLElement) => void;
+  onOpen: (match: MatchPrediction | KnockoutMatch, trigger: HTMLElement) => void;
 }
 
 type UpcomingEntry =
   | { kind: "group"; match: MatchPrediction }
   | { kind: "playoff"; match: KnockoutMatch };
 
-function PlayoffParticipant({ name, slot, teams }: {
+function PlayoffFlag({ name, slot, teams }: {
   name?: string;
   slot: string;
   teams: Record<string, Team>;
 }) {
-  return name && teams[name] ? (
-    <TeamFlag team={teams[name]} compact />
-  ) : (
+  if (name && teams[name]) {
+    const flagClass = flagClassNames[teams[name].flagCode] || "fi fi-unknown";
+    return (
+      <span className="upcoming-playoff-flag" title={name}>
+        <span className={`team-flag ${flagClass}`} aria-hidden="true" />
+        <span className="sr-only">{name}</span>
+      </span>
+    );
+  }
+  return (
     <span className="upcoming-playoff-participant">
       <strong>{name ?? slot}</strong>
       <small>{describeBracketSlot(slot)}</small>
@@ -37,10 +47,27 @@ function PlayoffParticipant({ name, slot, teams }: {
   );
 }
 
-function UpcomingPlayoffCard({ match, teams }: { match: KnockoutMatch; teams: Record<string, Team> }) {
+function UpcomingPlayoffCard({ match, teams, onOpen }: { match: KnockoutMatch; teams: Record<string, Team>; onOpen: (match: KnockoutMatch, trigger: HTMLElement) => void }) {
   const kickoff = formatKickoffParts(match.kickoffUtc);
+  const prediction = match.prediction;
+  const team1 = match.team1;
+  const team2 = match.team2;
+  const clickable = !!prediction;
   return (
-    <article className="match-card upcoming-playoff-card">
+    <article
+      className={`match-card upcoming-playoff-card${clickable ? " upcoming-playoff-card--clickable" : ""}`}
+      {...(clickable ? {
+        onClick: (event: React.MouseEvent) => onOpen(match, event.currentTarget as HTMLElement),
+        tabIndex: 0,
+        onKeyDown: (event: React.KeyboardEvent) => {
+          if (event.key === "Enter" || event.key === " ") {
+            event.preventDefault();
+            onOpen(match, event.currentTarget as HTMLElement);
+          }
+        },
+        "aria-label": `Explore prediction for ${team1 ?? match.team1Slot} versus ${team2 ?? match.team2Slot}`,
+      } : {})}
+    >
       <div className="match-card__meta">
         <span className="eyebrow">{ROUND_LABELS[match.round]} · M{match.matchNumber}</span>
         <span>{kickoff.date}</span>
@@ -48,35 +75,76 @@ function UpcomingPlayoffCard({ match, teams }: { match: KnockoutMatch; teams: Re
       </div>
       <div className="match-card__teams">
         <div className="match-card__team match-card__team--first">
-          <PlayoffParticipant name={match.team1} slot={match.team1Slot} teams={teams} />
+          <PlayoffFlag name={team1} slot={match.team1Slot} teams={teams} />
         </div>
-        <strong className="upcoming-playoff-card__versus">vs</strong>
+        {prediction ? (
+          <div className="match-card__score-block">
+            <span className="match-card__outcome">
+              {mostLikelyOutcome(prediction.probabilities, team1 ?? match.team1Slot, team2 ?? match.team2Slot)}
+            </span>
+            <span className="match-card__score" aria-label="Most likely score">
+              {prediction.mostLikelyScore[0]}–{prediction.mostLikelyScore[1]}
+            </span>
+          </div>
+        ) : (
+          <strong className="upcoming-playoff-card__versus">vs</strong>
+        )}
         <div className="match-card__team match-card__team--second">
-          <PlayoffParticipant name={match.team2} slot={match.team2Slot} teams={teams} />
+          <PlayoffFlag name={team2} slot={match.team2Slot} teams={teams} />
         </div>
       </div>
       <p className="match-card__venue">{match.venue}</p>
-      <div className="match-card__footer"><span>Playoff fixture</span></div>
+      {prediction && (
+        <PolymarketCardComparison match={{ ...match, homeTeam: team1 ?? match.team1Slot, awayTeam: team2 ?? match.team2Slot }} />
+      )}
     </article>
   );
 }
 
-function UpcomingPlayoffRow({ match, teams }: { match: KnockoutMatch; teams: Record<string, Team> }) {
+function UpcomingPlayoffRow({ match, teams, onOpen }: { match: KnockoutMatch; teams: Record<string, Team>; onOpen: (match: KnockoutMatch, trigger: HTMLElement) => void }) {
   const kickoff = formatKickoffParts(match.kickoffUtc);
+  const prediction = match.prediction;
+  const team1 = match.team1;
+  const team2 = match.team2;
+  const clickable = !!prediction;
   return (
-    <article className="match-list-row upcoming-playoff-row">
+    <article
+      className={`match-list-row upcoming-playoff-row${clickable ? " upcoming-playoff-row--clickable" : ""}`}
+      {...(clickable ? {
+        onClick: (event: React.MouseEvent) => onOpen(match, event.currentTarget as HTMLElement),
+        tabIndex: 0,
+        onKeyDown: (event: React.KeyboardEvent) => {
+          if (event.key === "Enter" || event.key === " ") {
+            event.preventDefault();
+            onOpen(match, event.currentTarget as HTMLElement);
+          }
+        },
+        "aria-label": `Explore prediction for ${team1 ?? match.team1Slot} versus ${team2 ?? match.team2Slot}`,
+      } : {})}
+    >
       <div className="match-list-row__kickoff">
         <span className="eyebrow">{ROUND_LABELS[match.round]} · M{match.matchNumber}</span>
         <strong>{kickoff.date}</strong>
         <span>{kickoff.time}</span>
       </div>
       <div className="upcoming-playoff-row__fixture">
-        <PlayoffParticipant name={match.team1} slot={match.team1Slot} teams={teams} />
-        <strong>vs</strong>
-        <PlayoffParticipant name={match.team2} slot={match.team2Slot} teams={teams} />
+        <PlayoffFlag name={team1} slot={match.team1Slot} teams={teams} />
+        {prediction ? (
+          <span className="match-list-row__score" aria-label="Most likely score">
+            {prediction.mostLikelyScore[0]}–{prediction.mostLikelyScore[1]}
+          </span>
+        ) : (
+          <strong>vs</strong>
+        )}
+        <PlayoffFlag name={team2} slot={match.team2Slot} teams={teams} />
       </div>
       <span className="match-list-row__venue">{match.venue}</span>
-      <strong className="upcoming-playoff-row__stage">Playoff</strong>
+      {prediction && (
+        <PolymarketCardComparison match={{ ...match, homeTeam: team1 ?? match.team1Slot, awayTeam: team2 ?? match.team2Slot }} />
+      )}
+      {!prediction && (
+        <strong className="upcoming-playoff-row__stage">Playoff</strong>
+      )}
     </article>
   );
 }
@@ -121,8 +189,8 @@ export function UpcomingMatches({ matches, knockoutMatches, teams, onOpen }: Upc
               ? <MatchCard key={`group-${entry.match.id}`} match={entry.match} teams={teams} onOpen={onOpen} showPolymarket />
               : <MatchListRow key={`group-${entry.match.id}`} match={entry.match} teams={teams} onOpen={onOpen} showPolymarket />
             : view === "cards"
-              ? <UpcomingPlayoffCard key={`playoff-${entry.match.id}`} match={entry.match} teams={teams} />
-              : <UpcomingPlayoffRow key={`playoff-${entry.match.id}`} match={entry.match} teams={teams} />)}
+              ? <UpcomingPlayoffCard key={`playoff-${entry.match.id}`} match={entry.match} teams={teams} onOpen={onOpen} />
+              : <UpcomingPlayoffRow key={`playoff-${entry.match.id}`} match={entry.match} teams={teams} onOpen={onOpen} />)}
         </div>
       ) : (
         <div className="empty-state"><strong>No future fixtures remain.</strong><span>Browse completed matches and the playoff archive below.</span></div>
