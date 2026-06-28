@@ -4,8 +4,8 @@
   "snapshotDate": "2026-06-28",
   "snapshotPath": "outputs/predictions/2026-06-28",
   "snapshotUrl": "https://github.com/state-space-models/cuthberto-carlos/tree/main/outputs/predictions/2026-06-28",
-  "generatedAt": "2026-06-28T09:01:54.251537Z",
-  "sourceCommit": "82a01048512b",
+  "generatedAt": "2026-06-28T10:57:56.581979Z",
+  "sourceCommit": "8b655732cc59",
   "model": {
     "name": "Cuthberto Carlos bivariate Poisson model",
     "resultProbabilityOrder": [
