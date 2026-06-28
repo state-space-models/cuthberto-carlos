@@ -6,6 +6,8 @@ import {
   formatPercent,
   getOngoingMatches,
   getUpcomingMatches,
+  isMatchCompleted,
+  isMatchOngoing,
   mostLikelyOutcome,
   ROUND_LABELS,
 } from "../utils";
@@ -35,7 +37,7 @@ function PlayoffFlag({ name, slot, teams }: {
     return (
       <span className="upcoming-playoff-flag" title={name}>
         <span className={`team-flag ${flagClass}`} aria-hidden="true" />
-        <span className="sr-only">{name}</span>
+        <span>{name}</span>
       </span>
     );
   }
@@ -53,9 +55,10 @@ function UpcomingPlayoffCard({ match, teams, onOpen }: { match: KnockoutMatch; t
   const team1 = match.team1;
   const team2 = match.team2;
   const clickable = !!prediction;
+  const ongoing = isMatchOngoing(match);
   return (
     <article
-      className={`match-card upcoming-playoff-card${clickable ? " upcoming-playoff-card--clickable" : ""}`}
+      className={`match-card upcoming-playoff-card${clickable ? " upcoming-playoff-card--clickable" : ""}${ongoing ? " match-card--ongoing" : ""}`}
       {...(clickable ? {
         onClick: (event: React.MouseEvent) => onOpen(match, event.currentTarget as HTMLElement),
         tabIndex: 0,
@@ -71,7 +74,12 @@ function UpcomingPlayoffCard({ match, teams, onOpen }: { match: KnockoutMatch; t
       <div className="match-card__meta">
         <span className="eyebrow">{ROUND_LABELS[match.round]} · M{match.matchNumber}</span>
         <span>{kickoff.date}</span>
-        <strong>{kickoff.time}</strong>
+        <div className="match-card__time-wrapper">
+          <strong>{kickoff.time}</strong>
+          {ongoing && (
+            <span className="match-card__live-badge">LIVE</span>
+          )}
+        </div>
       </div>
       <div className="match-card__teams">
         <div className="match-card__team match-card__team--first">
@@ -107,9 +115,10 @@ function UpcomingPlayoffRow({ match, teams, onOpen }: { match: KnockoutMatch; te
   const team1 = match.team1;
   const team2 = match.team2;
   const clickable = !!prediction;
+  const ongoing = isMatchOngoing(match);
   return (
     <article
-      className={`match-list-row upcoming-playoff-row${clickable ? " upcoming-playoff-row--clickable" : ""}`}
+      className={`match-list-row upcoming-playoff-row${clickable ? " upcoming-playoff-row--clickable" : ""}${ongoing ? " match-list-row--ongoing" : ""}`}
       {...(clickable ? {
         onClick: (event: React.MouseEvent) => onOpen(match, event.currentTarget as HTMLElement),
         tabIndex: 0,
@@ -125,7 +134,12 @@ function UpcomingPlayoffRow({ match, teams, onOpen }: { match: KnockoutMatch; te
       <div className="match-list-row__kickoff">
         <span className="eyebrow">{ROUND_LABELS[match.round]} · M{match.matchNumber}</span>
         <strong>{kickoff.date}</strong>
-        <span>{kickoff.time}</span>
+        <div className="match-list-row__time-wrapper">
+          <span>{kickoff.time}</span>
+          {ongoing && (
+            <span className="match-list-row__live-badge">LIVE</span>
+          )}
+        </div>
       </div>
       <div className="upcoming-playoff-row__fixture">
         <PlayoffFlag name={team1} slot={match.team1Slot} teams={teams} />
@@ -155,7 +169,7 @@ export function UpcomingMatches({ matches, knockoutMatches, teams, onOpen }: Upc
     ...getOngoingMatches(matches).map((match): UpcomingEntry => ({ kind: "group", match })),
     ...getUpcomingMatches(matches).map((match): UpcomingEntry => ({ kind: "group", match })),
     ...knockoutMatches
-      .filter((match) => new Date(match.kickoffUtc).getTime() > Date.now())
+      .filter((match) => !isMatchCompleted(match))
       .map((match): UpcomingEntry => ({ kind: "playoff", match })),
   ].sort((left, right) =>
     new Date(left.match.kickoffUtc).getTime() - new Date(right.match.kickoffUtc).getTime(),

@@ -507,6 +507,11 @@ export function MatchDetailDrawer({
             <p className="panel-note">
               Expected goals: {normalized.homeTeam} {selectedPrediction.expectedGoals.home.toFixed(2)}, {normalized.awayTeam} {selectedPrediction.expectedGoals.away.toFixed(2)}.
             </p>
+            <p className="panel-note predicted-score">
+              <strong>Predicted Score</strong>
+              <span>{selectedPrediction.mostLikelyScore[0]}–{selectedPrediction.mostLikelyScore[1]}</span>
+              <em>{formatPercent(selectedPrediction.mostLikelyScoreProbability, 1)}</em>
+            </p>
             <ScoreHeatmap
               prediction={selectedPrediction}
               homeTeam={normalized.homeTeam}
