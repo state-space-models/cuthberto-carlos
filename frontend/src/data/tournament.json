@@ -4,8 +4,8 @@
   "snapshotDate": "2026-06-28",
   "snapshotPath": "outputs/predictions/2026-06-28",
   "snapshotUrl": "https://github.com/state-space-models/cuthberto-carlos/tree/main/outputs/predictions/2026-06-28",
-  "generatedAt": "2026-06-28T11:29:44.874727Z",
-  "sourceCommit": "02a8e658d155",
+  "generatedAt": "2026-06-28T15:15:30.412346Z",
+  "sourceCommit": "c621f612b3be",
   "model": {
     "name": "Cuthberto Carlos bivariate Poisson model",
     "resultProbabilityOrder": [
@@ -85718,7 +85718,7 @@
         "draw": 0.255,
         "awayWin": 0.595,
         "eventUrl": "https://polymarket.com/event/fifwc-rsa-can-2026-06-28",
-        "updatedAt": "2026-06-28T11:27:58.680284Z"
+        "updatedAt": "2026-06-28T15:13:57.320847Z"
       }
     },
     {
@@ -85879,7 +85879,7 @@
         "draw": 0.185,
         "awayWin": 0.085,
         "eventUrl": "https://polymarket.com/event/fifwc-ger-par-2026-06-29",
-        "updatedAt": "2026-06-28T11:27:58.680284Z"
+        "updatedAt": "2026-06-28T15:13:57.320847Z"
       }
     },
     {
@@ -86036,11 +86036,11 @@
         }
       },
       "polymarket": {
-        "homeWin": 0.445,
+        "homeWin": 0.435,
         "draw": 0.305,
         "awayWin": 0.245,
         "eventUrl": "https://polymarket.com/event/fifwc-nld-mar-2026-06-29",
-        "updatedAt": "2026-06-28T11:27:58.680284Z"
+        "updatedAt": "2026-06-28T15:13:57.320847Z"
       }
     },
     {
@@ -86201,7 +86201,7 @@
         "draw": 0.255,
         "awayWin": 0.185,
         "eventUrl": "https://polymarket.com/event/fifwc-bra-jpn-2026-06-29",
-        "updatedAt": "2026-06-28T11:27:58.680284Z"
+        "updatedAt": "2026-06-28T15:13:57.320847Z"
       }
     },
     {
@@ -86358,11 +86358,11 @@
         }
       },
       "polymarket": {
-        "homeWin": 0.765,
+        "homeWin": 0.775,
         "draw": 0.155,
         "awayWin": 0.075,
         "eventUrl": "https://polymarket.com/event/fifwc-fra-swe-2026-06-30",
-        "updatedAt": "2026-06-28T11:27:58.680284Z"
+        "updatedAt": "2026-06-28T15:13:57.320847Z"
       }
     },
     {
@@ -86523,7 +86523,7 @@
         "draw": 0.265,
         "awayWin": 0.475,
         "eventUrl": "https://polymarket.com/event/fifwc-civ-nor-2026-06-30",
-        "updatedAt": "2026-06-28T11:27:58.680284Z"
+        "updatedAt": "2026-06-28T15:13:57.320847Z"
       }
     },
     {
@@ -86680,11 +86680,11 @@
         }
       },
       "polymarket": {
-        "homeWin": 0.435,
+        "homeWin": 0.425,
         "draw": 0.325,
         "awayWin": 0.245,
         "eventUrl": "https://polymarket.com/event/fifwc-mex-ecu-2026-06-30",
-        "updatedAt": "2026-06-28T11:27:58.680284Z"
+        "updatedAt": "2026-06-28T15:13:57.320847Z"
       }
     },
     {
@@ -86845,7 +86845,7 @@
         "draw": 0.165,
         "awayWin": 0.065,
         "eventUrl": "https://polymarket.com/event/fifwc-eng-cdr-2026-07-01",
-        "updatedAt": "2026-06-28T11:27:58.680284Z"
+        "updatedAt": "2026-06-28T15:13:57.320847Z"
       }
     },
     {
@@ -87006,7 +87006,7 @@
         "draw": 0.185,
         "awayWin": 0.095,
         "eventUrl": "https://polymarket.com/event/fifwc-usa-bih-2026-07-01",
-        "updatedAt": "2026-06-28T11:27:58.680284Z"
+        "updatedAt": "2026-06-28T15:13:57.320847Z"
       }
     },
     {
@@ -87167,7 +87167,7 @@
         "draw": 0.305,
         "awayWin": 0.255,
         "eventUrl": "https://polymarket.com/event/fifwc-bel-sen-2026-07-01",
-        "updatedAt": "2026-06-28T11:27:58.680284Z"
+        "updatedAt": "2026-06-28T15:13:57.320847Z"
       }
     },
     {
@@ -87325,10 +87325,10 @@
       },
       "polymarket": {
         "homeWin": 0.535,
-        "draw": 0.285,
+        "draw": 0.275,
         "awayWin": 0.195,
         "eventUrl": "https://polymarket.com/event/fifwc-prt-hrv-2026-07-02",
-        "updatedAt": "2026-06-28T11:27:58.680284Z"
+        "updatedAt": "2026-06-28T15:13:57.320847Z"
       }
     },
     {
@@ -87485,11 +87485,11 @@
         }
       },
       "polymarket": {
-        "homeWin": 0.765,
+        "homeWin": 0.755,
         "draw": 0.175,
-        "awayWin": 0.055,
+        "awayWin": 0.065,
         "eventUrl": "https://polymarket.com/event/fifwc-esp-aut-2026-07-02",
-        "updatedAt": "2026-06-28T11:27:58.680284Z"
+        "updatedAt": "2026-06-28T15:13:57.320847Z"
       }
     },
     {
@@ -87646,11 +87646,11 @@
         }
       },
       "polymarket": {
-        "homeWin": 0.515,
+        "homeWin": 0.51,
         "draw": 0.275,
         "awayWin": 0.215,
         "eventUrl": "https://polymarket.com/event/fifwc-che-alg-2026-07-02",
-        "updatedAt": "2026-06-28T11:27:58.680284Z"
+        "updatedAt": "2026-06-28T15:13:57.320847Z"
       }
     },
     {
@@ -87809,9 +87809,9 @@
       "polymarket": {
         "homeWin": 0.855,
         "draw": 0.105,
-        "awayWin": 0.038,
+        "awayWin": 0.0395,
         "eventUrl": "https://polymarket.com/event/fifwc-arg-cvi-2026-07-03",
-        "updatedAt": "2026-06-28T11:27:58.680284Z"
+        "updatedAt": "2026-06-28T15:13:57.320847Z"
       }
     },
     {
@@ -87969,10 +87969,10 @@
       },
       "polymarket": {
         "homeWin": 0.615,
-        "draw": 0.255,
-        "awayWin": 0.135,
+        "draw": 0.245,
+        "awayWin": 0.125,
         "eventUrl": "https://polymarket.com/event/fifwc-col-gha-2026-07-03",
-        "updatedAt": "2026-06-28T11:27:58.680284Z"
+        "updatedAt": "2026-06-28T15:13:57.320847Z"
       }
     },
     {
@@ -88133,7 +88133,7 @@
         "draw": 0.335,
         "awayWin": 0.385,
         "eventUrl": "https://polymarket.com/event/fifwc-aus-egy-2026-07-03",
-        "updatedAt": "2026-06-28T11:27:58.680284Z"
+        "updatedAt": "2026-06-28T15:13:57.320847Z"
       }
     },
     {
