@@ -134,6 +134,11 @@ export interface KnockoutMatch {
   team1?: string;
   team2?: string;
   score?: KnockoutScore;
+  prediction?: PredictionDetails;
+  predictionDate?: string;
+  sourceUrl?: string;
+  predictionHistory?: PredictionHistoryEntry[];
+  polymarket?: PolymarketPrediction;
 }
 
 export interface KnockoutScore {

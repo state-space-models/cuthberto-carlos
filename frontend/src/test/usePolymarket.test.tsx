@@ -1,11 +1,13 @@
 import { renderHook, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
-import type { MatchPrediction } from "../types";
+import type { KnockoutMatch, MatchPrediction } from "../types";
 import {
   parsePolymarketMarkets,
   predictionsForMatches,
   usePolymarket,
 } from "../usePolymarket";
+
+const NO_KNOCKOUT_MATCHES: KnockoutMatch[] = [];
 
 function market(selection: string, price: number, title = "USA vs. Paraguay") {
   return {
@@ -137,7 +139,7 @@ describe("Polymarket data", () => {
       });
     vi.stubGlobal("fetch", fetchMock);
 
-    const { result } = renderHook(() => usePolymarket(futureMatches, {
+    const { result } = renderHook(() => usePolymarket(futureMatches, NO_KNOCKOUT_MATCHES, {
       dataUrl: "https://gamma-api.polymarket.com/events/keyset",
       tagId: "102232",
       seriesId: "11433",
@@ -145,7 +147,7 @@ describe("Polymarket data", () => {
     }));
 
     expect(result.current.status).toBe("loading");
-    expect(result.current.predictions[match.id]).toBeUndefined();
+    expect(result.current.predictions[match.id]).toMatchObject({ homeWin: 0.4 });
     await waitFor(() => expect(result.current.status).toBe("current"));
     expect(result.current.predictions[match.id].homeWin).toBe(0.5);
     expect(fetchMock).toHaveBeenCalledTimes(2);
@@ -169,10 +171,10 @@ describe("Polymarket data", () => {
       marketType: "moneyline",
     };
 
-    const first = renderHook(() => usePolymarket(futureMatches, source));
+    const first = renderHook(() => usePolymarket(futureMatches, NO_KNOCKOUT_MATCHES, source));
     await waitFor(() => expect(first.result.current.status).toBe("current"));
     first.unmount();
-    const second = renderHook(() => usePolymarket(futureMatches, source));
+    const second = renderHook(() => usePolymarket(futureMatches, NO_KNOCKOUT_MATCHES, source));
     await waitFor(() => expect(second.result.current.status).toBe("current"));
     second.unmount();
 
@@ -196,7 +198,7 @@ describe("Polymarket data", () => {
       kickoffUtc: "2099-06-21T20:00:00Z",
       polymarket: fallback,
     }];
-    const { result } = renderHook(() => usePolymarket(fallbackMatches, {
+    const { result } = renderHook(() => usePolymarket(fallbackMatches, NO_KNOCKOUT_MATCHES, {
       dataUrl: "https://gamma-api.polymarket.com/events/keyset",
       tagId: "102232",
       seriesId: "11433",

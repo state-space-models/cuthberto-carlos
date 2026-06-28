@@ -79,11 +79,15 @@ export function getUpcomingMatches(
 
 const ASSUMED_MATCH_DURATION_MS = 2 * 60 * 60 * 1000;
 
-export function isMatchCompleted(match: MatchPrediction, now = new Date()): boolean {
+interface KickoffLike {
+  kickoffUtc: string;
+}
+
+export function isMatchCompleted(match: KickoffLike, now = new Date()): boolean {
   return new Date(match.kickoffUtc).getTime() + ASSUMED_MATCH_DURATION_MS <= now.getTime();
 }
 
-export function isMatchOngoing(match: MatchPrediction, now = new Date()): boolean {
+export function isMatchOngoing(match: KickoffLike, now = new Date()): boolean {
   const nowTime = now.getTime();
   const kickoffTime = new Date(match.kickoffUtc).getTime();
   const endTime = kickoffTime + ASSUMED_MATCH_DURATION_MS;

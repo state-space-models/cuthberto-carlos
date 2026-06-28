@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import type { MatchPrediction, PolymarketPrediction } from "./types";
+import type { KnockoutMatch, MatchPrediction, PolymarketPrediction } from "./types";
 import { isMatchCompleted } from "./utils";
 
 export type PolymarketStatus = "loading" | "current" | "fallback";
@@ -140,12 +140,42 @@ export function predictionsForMatches(
   }));
 }
 
-function fallbackPredictions(matches: MatchPrediction[], now = new Date()): Record<string, PolymarketPrediction> {
-  return Object.fromEntries(matches.flatMap((match) =>
+export function predictionsForKnockoutMatches(
+  matches: KnockoutMatch[],
+  markets: unknown[],
+  now = new Date(),
+): Record<string, PolymarketPrediction> {
+  const groups = parsePolymarketMarkets(markets);
+  return Object.fromEntries(matches.flatMap((match) => {
+    if (!match.team1 || !match.team2 || isMatchCompleted(match, now)) return [];
+    const group = groups[teamPairKey(match.team1, match.team2)];
+    if (!group) return [];
+    return [[match.id, {
+      homeWin: group.outcomes[canonicalTeam(match.team1)],
+      draw: group.outcomes.draw,
+      awayWin: group.outcomes[canonicalTeam(match.team2)],
+      eventUrl: group.eventUrl,
+      updatedAt: group.updatedAt,
+    } satisfies PolymarketPrediction]];
+  }));
+}
+
+function fallbackPredictions(
+  matches: MatchPrediction[],
+  knockoutMatches: KnockoutMatch[],
+  now = new Date(),
+): Record<string, PolymarketPrediction> {
+  const groupFallback = matches.flatMap((match) =>
     match.polymarket && !isMatchCompleted(match, now)
-      ? [[match.id, match.polymarket]]
+      ? [[match.id, match.polymarket] as const]
       : [],
-  ));
+  );
+  const knockoutFallback = knockoutMatches.flatMap((match) =>
+    match.polymarket && !isMatchCompleted(match, now)
+      ? [[match.id, match.polymarket] as const]
+      : [],
+  );
+  return Object.fromEntries([...groupFallback, ...knockoutFallback]);
 }
 
 async function fetchAllMarkets(source: PolymarketSource): Promise<unknown[]> {
@@ -178,11 +208,12 @@ async function fetchAllMarkets(source: PolymarketSource): Promise<unknown[]> {
 
 export function usePolymarket(
   matches: MatchPrediction[],
+  knockoutMatches: KnockoutMatch[],
   source: PolymarketSource | undefined,
 ): PolymarketState {
-  const fallback = fallbackPredictions(matches);
+  const fallback = fallbackPredictions(matches, knockoutMatches);
   const [state, setState] = useState<PolymarketState>({
-    predictions: source ? {} : fallback,
+    predictions: fallback,
     status: source ? "loading" : "fallback",
     lastCheckedAt: null,
   });
@@ -193,12 +224,15 @@ export function usePolymarket(
       setState({ predictions: fallback, status: "fallback", lastCheckedAt: null });
       return () => { active = false; };
     }
-    setState({ predictions: {}, status: "loading", lastCheckedAt: null });
+    setState({ predictions: fallback, status: "loading", lastCheckedAt: null });
     fetchAllMarkets(source)
       .then((markets) => {
         if (!active) return;
         setState({
-          predictions: predictionsForMatches(matches, markets),
+          predictions: {
+            ...predictionsForMatches(matches, markets),
+            ...predictionsForKnockoutMatches(knockoutMatches, markets),
+          },
           status: "current",
           lastCheckedAt: new Date().toISOString(),
         });
@@ -208,7 +242,7 @@ export function usePolymarket(
         setState({ predictions: fallback, status: "fallback", lastCheckedAt: new Date().toISOString() });
       });
     return () => { active = false; };
-  }, [matches, source?.dataUrl, source?.marketType, source?.seriesId, source?.tagId]);
+  }, [matches, knockoutMatches, source?.dataUrl, source?.marketType, source?.seriesId, source?.tagId]);
 
   return state;
 }

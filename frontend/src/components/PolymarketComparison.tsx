@@ -1,23 +1,30 @@
-import type { MatchPrediction } from "../types";
+import type { MatchPrediction, PolymarketPrediction, PredictionDetails } from "../types";
 import { formatPercent, isMatchCompleted } from "../utils";
+
+interface PolymarketMatch {
+  homeTeam: string;
+  awayTeam: string;
+  kickoffUtc: string;
+  prediction: PredictionDetails;
+  polymarket?: PolymarketPrediction;
+}
 
 function formatDelta(market: number, model: number): string {
   const points = (market - model) * 100;
   return `${points >= 0 ? "+" : ""}${points.toFixed(1)} pp`;
 }
 
-function comparisonRows(match: MatchPrediction) {
-  if (!match.polymarket) return [];
+function comparisonRows(match: PolymarketMatch) {
   const model = match.prediction.probabilities;
   const market = match.polymarket;
   return [
-    { label: `${match.homeTeam} win`, model: model.homeWin, market: market.homeWin },
-    { label: "Draw", model: model.draw, market: market.draw },
-    { label: `${match.awayTeam} win`, model: model.awayWin, market: market.awayWin },
+    { label: `${match.homeTeam} win`, model: model.homeWin, market: market?.homeWin },
+    { label: "Draw", model: model.draw, market: market?.draw },
+    { label: `${match.awayTeam} win`, model: model.awayWin, market: market?.awayWin },
   ];
 }
 
-export function PolymarketCompact({ match }: { match: MatchPrediction }) {
+export function PolymarketCompact({ match }: { match: PolymarketMatch }) {
   if (!match.polymarket || isMatchCompleted(match)) return null;
   const market = match.polymarket;
   return (
@@ -37,15 +44,15 @@ export function PolymarketCompact({ match }: { match: MatchPrediction }) {
   );
 }
 
-export function PolymarketDetail({ match }: { match: MatchPrediction }) {
-  if (!match.polymarket || isMatchCompleted(match)) return null;
+export function PolymarketDetail({ match }: { match: PolymarketMatch }) {
+  if (isMatchCompleted(match)) return null;
   const market = match.polymarket;
   const rows = comparisonRows(match);
   return (
     <section className="drawer-panel drawer-panel--polymarket">
       <div className="polymarket-heading">
         <h3>Model vs Polymarket</h3>
-        <a href={market.eventUrl} target="_blank" rel="noreferrer">View market ↗</a>
+        {market && <a href={market.eventUrl} target="_blank" rel="noreferrer">View market ↗</a>}
       </div>
       <table className="polymarket-table">
         <thead><tr><th>Outcome</th><th>Model</th><th>Market</th><th>Difference</th></tr></thead>
@@ -54,8 +61,8 @@ export function PolymarketDetail({ match }: { match: MatchPrediction }) {
             <tr key={row.label}>
               <th scope="row">{row.label}</th>
               <td>{formatPercent(row.model, 1)}</td>
-              <td>{formatPercent(row.market, 1)}</td>
-              <td>{formatDelta(row.market, row.model)}</td>
+              <td>{row.market !== undefined ? formatPercent(row.market, 1) : "—"}</td>
+              <td>{row.market !== undefined ? formatDelta(row.market, row.model) : "—"}</td>
             </tr>
           ))}
         </tbody>
@@ -65,15 +72,15 @@ export function PolymarketDetail({ match }: { match: MatchPrediction }) {
   );
 }
 
-export function PolymarketCardComparison({ match }: { match: MatchPrediction }) {
-  if (!match.polymarket || isMatchCompleted(match)) return null;
+export function PolymarketCardComparison({ match }: { match: PolymarketMatch }) {
+  if (isMatchCompleted(match)) return null;
   const market = match.polymarket;
   const rows = comparisonRows(match);
   return (
     <section className="polymarket-card-comparison" aria-label="Model versus Polymarket probabilities">
       <div className="polymarket-card-comparison__heading">
         <h3>Model vs Polymarket</h3>
-        <a href={market.eventUrl} target="_blank" rel="noreferrer">View market ↗</a>
+        {market && <a href={market.eventUrl} target="_blank" rel="noreferrer">View market ↗</a>}
       </div>
       <table className="polymarket-table polymarket-table--card">
         <thead><tr><th>Outcome</th><th>Model</th><th>Market</th><th>Difference</th></tr></thead>
@@ -82,8 +89,8 @@ export function PolymarketCardComparison({ match }: { match: MatchPrediction }) 
             <tr key={row.label}>
               <th scope="row">{row.label}</th>
               <td>{formatPercent(row.model, 1)}</td>
-              <td>{formatPercent(row.market, 1)}</td>
-              <td>{formatDelta(row.market, row.model)}</td>
+              <td>{row.market !== undefined ? formatPercent(row.market, 1) : "—"}</td>
+              <td>{row.market !== undefined ? formatDelta(row.market, row.model) : "—"}</td>
             </tr>
           ))}
         </tbody>

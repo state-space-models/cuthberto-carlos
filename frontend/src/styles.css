@@ -711,6 +711,36 @@ h2 {
   font-family: Georgia, serif;
 }
 
+.upcoming-playoff-flag {
+  display: inline-flex;
+  align-items: center;
+}
+
+.upcoming-playoff-flag .team-flag {
+  font-size: 2.2rem;
+  line-height: 1;
+}
+
+.upcoming-playoff-card--clickable {
+  cursor: pointer;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.upcoming-playoff-card--clickable:hover {
+  border-color: var(--green-dark);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.upcoming-playoff-row--clickable {
+  cursor: pointer;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.upcoming-playoff-row--clickable:hover {
+  border-color: var(--green-dark);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
 .score-comparison {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -2053,6 +2083,18 @@ h2 {
   color: var(--muted);
   font-size: 0.55rem;
   text-transform: uppercase;
+}
+
+.bracket-match__score--predicted {
+  color: var(--muted);
+  font-style: italic;
+  font-weight: 700;
+}
+
+.bracket-match__explore {
+  margin-top: 0.4rem;
+  font-size: 0.6rem;
+  padding: 0.15rem 0.4rem;
 }
 
 .bracket-mobile {
