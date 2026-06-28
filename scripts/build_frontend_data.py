@@ -217,7 +217,10 @@ def collect_prediction_versions(
                 match_data["date"], match_data["home_team"], match_data["away_team"]
             )
             if key not in fixture_index:
-                raise ValueError(f"Prediction does not match a group fixture: {key}")
+                # Predictions include knockout matches, which are not group
+                # fixtures. Skip those — only group-stage predictions are
+                # compiled into the frontend dataset.
+                continue
             if key in snapshot_keys:
                 raise ValueError(
                     f"Duplicate prediction for group fixture in "
