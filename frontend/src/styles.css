@@ -877,6 +877,84 @@ h2 {
   font-size: 2.1rem;
 }
 
+/* Vertical layout for knockout score comparison */
+.score-comparison--vertical {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: min(20rem, 48vw);
+}
+
+.score-comparison--vertical .score-comparison__row {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.2rem;
+}
+
+.score-comparison--vertical .score-comparison__label {
+  font-size: 0.62rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+}
+
+.score-comparison--vertical .score-comparison__score {
+  font-family: Georgia, serif;
+  font-size: 2.1rem;
+  font-weight: 700;
+  color: var(--green-dark);
+}
+
+.score-comparison--vertical .score-comparison__score small {
+  font-family: Inter, sans-serif;
+  font-size: 0.55rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  margin-left: 0.3rem;
+  color: var(--muted);
+}
+
+.score-comparison--vertical .score-comparison__divider {
+  width: 60%;
+  height: 1px;
+  background: var(--line);
+  margin: 0.3rem 0;
+}
+
+/* Goal scorers in vertical score comparison */
+.score-comparison__scorers {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  margin-top: 0.5rem;
+  font-size: 0.7rem;
+  color: var(--ink);
+}
+
+.score-comparison__scorer-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.score-comparison__scorer-list li {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.15rem 0;
+}
+
+.score-comparison__scorer-list--home {
+  color: var(--green-dark);
+}
+
+.score-comparison__scorer-list--away {
+  color: var(--green-dark);
+}
+
 .score-comparison--with-scorers {
   display: flex;
   width: clamp(24rem, 38vw, 34rem);
@@ -970,6 +1048,47 @@ h2 {
 
 .score-comparison--drawer .score-comparison__item .score-comparison__unavailable {
   font-size: 0.78rem;
+}
+
+/* Drawer with scorers - horizontal layout */
+.score-comparison--drawer.score-comparison--with-scorers {
+  width: 100%;
+  max-width: 28rem;
+  margin: 0 auto;
+}
+
+.score-comparison--drawer.score-comparison--with-scorers .score-comparison__prediction {
+  text-align: center;
+}
+
+.score-comparison--drawer.score-comparison--with-scorers .score-comparison__actual-row {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.score-comparison--drawer.score-comparison--with-scorers .score-comparison__actual {
+  text-align: center;
+  padding: 0 0.5rem;
+}
+
+.score-comparison--drawer.score-comparison--with-scorers .score-comparison__goals {
+  font-size: 0.65rem;
+}
+
+.score-comparison--drawer.score-comparison--with-scorers .score-comparison__goals:first-child {
+  align-items: flex-end;
+  text-align: right;
+}
+
+.score-comparison--drawer.score-comparison--with-scorers .score-comparison__goals:first-child li {
+  justify-content: flex-end;
+}
+
+.score-comparison--drawer.score-comparison--with-scorers .score-comparison__goals:last-child {
+  align-items: flex-start;
+  text-align: left;
 }
 
 .match-card__venue {

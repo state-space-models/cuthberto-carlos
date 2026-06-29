@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import type {
+  ActualGoal,
   KnockoutMatch,
   MatchPrediction,
   PredictionDetails,
@@ -95,6 +96,21 @@ interface KnockoutScoreComparisonProps {
   variant: "drawer" | "card" | "list";
 }
 
+function GoalList({ goals }: { goals: ActualGoal[] }) {
+  if (!goals.length) return <span className="score-comparison__goals-placeholder" aria-hidden="true" />;
+
+  return (
+    <ul className="score-comparison__goals" aria-label="Goal scorers">
+      {goals.map((goal, index) => (
+        <li key={`${goal.name}-${goal.minute}-${index}`}>
+          <span className="player-name">{goal.name}</span>
+          <span>{goal.minute}'</span>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
 function KnockoutScoreComparison({
   match,
   prediction,
@@ -110,19 +126,27 @@ function KnockoutScoreComparison({
   const hasPenalties = !!actualScore.penalties;
   const hasExtraTime = !!actualScore.extraTime && !hasPenalties;
 
+  const homeGoals = actualScore.homeGoals ?? [];
+  const awayGoals = actualScore.awayGoals ?? [];
+  const hasScorers = homeGoals.length > 0 || awayGoals.length > 0;
+
   return (
-    <div className={`score-comparison score-comparison--${variant}`}>
-      <div className="score-comparison__item">
-        <span>Actual score</span>
-        <strong>
-          {actualHome}–{actualAway}
-          {hasPenalties && <small> pens {actualScore.penalties![0]}–{actualScore.penalties![1]}</small>}
-          {hasExtraTime && <small> AET</small>}
-        </strong>
-      </div>
-      <div className="score-comparison__item">
+    <div className={`score-comparison score-comparison--${variant} ${hasScorers ? 'score-comparison--with-scorers' : ''}`}>
+      <div className="score-comparison__item score-comparison__prediction">
         <span>Predicted score</span>
         <strong>{predHome}–{predAway}</strong>
+      </div>
+      <div className="score-comparison__actual-row">
+        <GoalList goals={homeGoals} />
+        <div className="score-comparison__item score-comparison__actual">
+          <span>Actual score</span>
+          <strong>
+            {actualHome}–{actualAway}
+            {hasPenalties && <small> pens {actualScore.penalties![0]}–{actualScore.penalties![1]}</small>}
+            {hasExtraTime && <small> AET</small>}
+          </strong>
+        </div>
+        <GoalList goals={awayGoals} />
       </div>
     </div>
   );
@@ -483,9 +507,9 @@ export function MatchDetailDrawer({
           <p>{normalized.venue}</p>
           <div className="drawer-matchup">
             <TeamFlag team={home} />
-            {completed && !isKnockout ? (
+            {(completed || hasActualResult) && !isKnockout ? (
               <MatchScoreComparison match={match as MatchPrediction} variant="drawer" />
-            ) : completed && isKnockout ? (
+            ) : (completed || hasKnockoutScore) && isKnockout ? (
               <KnockoutScoreComparison
                 match={normalized}
                 prediction={selectedPrediction}
