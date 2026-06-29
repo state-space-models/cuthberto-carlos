@@ -944,6 +944,28 @@ def compile_dataset(
                 record["score"]["extraTime"] = source_score["et"]
             if source_score.get("p") is not None:
                 record["score"]["penalties"] = source_score["p"]
+            # Add goal scorers if available
+            team1 = fixture.get("team1")
+            team2 = fixture.get("team2")
+            if team1 and team2:
+                team1_goals = fixture.get("goals1", [])
+                team2_goals = fixture.get("goals2", [])
+                # Map goals to home/away based on team names
+                canonical_team1 = canonical_team(team1)
+                canonical_team2 = canonical_team(team2)
+                record_team1 = record.get("team1", team1)
+                record_team2 = record.get("team2", team2)
+                if canonical_team1 == canonical_team(record_team1):
+                    home_goals, away_goals = team1_goals, team2_goals
+                else:
+                    home_goals, away_goals = team2_goals, team1_goals
+                if home_goals or away_goals:
+                    record["score"]["homeGoals"] = _goal_records(
+                        home_goals, squad_players.get(record_team1, [])
+                    )
+                    record["score"]["awayGoals"] = _goal_records(
+                        away_goals, squad_players.get(record_team2, [])
+                    )
 
         # Attach prediction + Polymarket when the knockout fixture has
         # resolved teams and a matching prediction exists.

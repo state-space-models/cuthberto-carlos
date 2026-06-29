@@ -145,6 +145,8 @@ export interface KnockoutScore {
   fullTime: [number, number];
   extraTime?: [number, number];
   penalties?: [number, number];
+  homeGoals?: ActualGoal[];
+  awayGoals?: ActualGoal[];
 }
 
 export interface TournamentDataset {

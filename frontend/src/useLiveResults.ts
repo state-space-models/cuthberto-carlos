@@ -207,6 +207,8 @@ function knockoutScore(fixture: OpenFootballFixture): KnockoutScore | undefined 
     fullTime: fixture.score.ft,
     ...(fixture.score.et ? { extraTime: fixture.score.et } : {}),
     ...(fixture.score.p ? { penalties: fixture.score.p } : {}),
+    ...(fixture.goals1?.length ? { homeGoals: convertGoals(fixture.goals1, undefined) } : {}),
+    ...(fixture.goals2?.length ? { awayGoals: convertGoals(fixture.goals2, undefined) } : {}),
   };
 }
 
