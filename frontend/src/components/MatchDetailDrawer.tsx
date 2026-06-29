@@ -89,6 +89,45 @@ function formatMatchDate(date: string): string {
   }).format(new Date(`${date}T12:00:00Z`));
 }
 
+interface KnockoutScoreComparisonProps {
+  match: DrawerMatch;
+  prediction: PredictionDetails;
+  variant: "drawer" | "card" | "list";
+}
+
+function KnockoutScoreComparison({
+  match,
+  prediction,
+  variant,
+}: KnockoutScoreComparisonProps) {
+  const [predHome, predAway] = prediction.mostLikelyScore;
+  const actualScore = match.knockoutScore;
+
+  if (!actualScore) return null;
+
+  const actualHome = actualScore.extraTime?.[0] ?? actualScore.fullTime[0];
+  const actualAway = actualScore.extraTime?.[1] ?? actualScore.fullTime[1];
+  const hasPenalties = !!actualScore.penalties;
+  const hasExtraTime = !!actualScore.extraTime && !hasPenalties;
+
+  return (
+    <div className={`score-comparison score-comparison--${variant}`}>
+      <div className="score-comparison__item">
+        <span>Actual score</span>
+        <strong>
+          {actualHome}–{actualAway}
+          {hasPenalties && <small> pens {actualScore.penalties![0]}–{actualScore.penalties![1]}</small>}
+          {hasExtraTime && <small> AET</small>}
+        </strong>
+      </div>
+      <div className="score-comparison__item">
+        <span>Predicted score</span>
+        <strong>{predHome}–{predAway}</strong>
+      </div>
+    </div>
+  );
+}
+
 function ProbabilityRow({
   label,
   value,
@@ -446,6 +485,12 @@ export function MatchDetailDrawer({
             <TeamFlag team={home} />
             {completed && !isKnockout ? (
               <MatchScoreComparison match={match as MatchPrediction} variant="drawer" />
+            ) : completed && isKnockout ? (
+              <KnockoutScoreComparison
+                match={normalized}
+                prediction={selectedPrediction}
+                variant="drawer"
+              />
             ) : (
               <span className="drawer-score">
                 <small>{ongoing ? "Current score" : hasActualResult || hasKnockoutScore ? "Final score" : "Most likely"}</small>

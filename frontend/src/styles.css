@@ -2037,10 +2037,13 @@ h2 {
   flex-direction: column;
   color: var(--ink);
   background: #fffef9;
-  cursor: pointer;
   text-align: left;
   transition: border 150ms ease, transform 150ms ease, background 150ms ease;
   flex: 0 0 auto;
+}
+
+.bracket-match--clickable {
+  cursor: pointer;
 }
 
 .bracket-match:hover,
@@ -2052,45 +2055,139 @@ h2 {
   transform: translateY(-2px);
 }
 
+/* Header row with match number and score labels */
+.bracket-match__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.5rem;
+}
 
 .bracket-match__number {
-  position: absolute;
-  top: 0.45rem;
-  right: 0.55rem;
   color: var(--muted);
   font-size: 0.62rem;
   font-weight: 850;
 }
 
+.bracket-match__score-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.bracket-match__score-header-label {
+  font-size: 0.5rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  color: var(--muted);
+  min-width: 2.2rem;
+  text-align: center;
+}
+
 .bracket-slot {
   display: flex;
-  padding-right: 1.8rem;
   align-items: center;
+  justify-content: space-between;
   gap: 0.45rem;
 }
 
-.bracket-slot > span:last-child {
+.bracket-slot__info {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  flex: 1;
+  min-width: 0;
+}
+
+.bracket-slot__names {
   display: flex;
   min-width: 0;
   flex-direction: column;
 }
 
-.bracket-slot strong {
+.bracket-slot__names strong {
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-
-.bracket-slot--winner strong {
-  color: var(--green);
-}
-
-.bracket-slot strong {
   color: var(--green-dark);
   font-size: 0.78rem;
 }
 
+.bracket-slot__names small {
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 0.68rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.bracket-slot--winner .bracket-slot__names strong {
+  color: var(--green);
+}
+
+/* Scores displayed inline with team names */
+.bracket-slot__scores {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.35rem;
+  flex-shrink: 0;
+}
+
+.bracket-slot__score-col {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 2.2rem;
+}
+
+.bracket-slot__score-label {
+  font-size: 0.5rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  color: var(--muted);
+  margin-bottom: 0.1rem;
+  white-space: nowrap;
+}
+
+.bracket-slot__score-value {
+  font-size: 0.85rem;
+  font-weight: 850;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.bracket-slot__score-value--predicted {
+  color: var(--muted);
+  font-weight: 700;
+}
+
+.bracket-slot__score-value--actual {
+  color: var(--green-dark);
+}
+
+/* Legacy styles for backward compatibility */
+.bracket-slot__score {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.2rem;
+  font-size: 0.85rem;
+  font-weight: 850;
+}
+
+.bracket-slot__score--predicted {
+  color: var(--muted);
+  font-weight: 700;
+}
+
+.bracket-slot__score--actual {
+  color: var(--green-dark);
+}
+
+/* Legacy styles for backward compatibility */
 .bracket-slot small {
   overflow: hidden;
   color: var(--muted);
@@ -2139,8 +2236,12 @@ h2 {
 
 .bracket-match__explore {
   margin-top: 0.4rem;
-  font-size: 0.6rem;
-  padding: 0.15rem 0.4rem;
+  padding: 0.15rem 0;
+  color: var(--green-dark);
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-align: center;
+  transition: color 150ms ease;
 }
 
 .bracket-mobile {
