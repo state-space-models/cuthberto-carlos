@@ -52,6 +52,10 @@ def compute_ou_dynamics(
     mean = INIT_MEAN + phi * (state_team - INIT_MEAN)
     # phi is a scalar, so phi * INIT_COV @ phi.T = phi^2 * INIT_COV
     cov = INIT_COV - phi**2 * INIT_COV
+    # When time_delta == 0, phi == 1 and cov becomes a zero matrix.
+    # jax.random.multivariate_normal returns NaN for a zero covariance matrix,
+    # so add a tiny jitter to the diagonal to keep it positive-definite.
+    cov = cov + jnp.eye(2) * 1e-8
     return mean, cov
 
 def propagate_sample(

@@ -228,3 +228,6 @@ __marimo__/
 
 # Local uv cache used when sandboxing blocks the global cache
 .uv-cache/
+
+# SMC output files
+*.npz
