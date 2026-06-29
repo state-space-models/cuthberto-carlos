@@ -43,21 +43,114 @@ function winnerSide(match: KnockoutMatch): 1 | 2 | null {
 function Participant({ match, side, teams }: { match: KnockoutMatch; side: 1 | 2; teams?: Record<string, Team> }) {
   const value = participant(match, side);
   const winner = winnerSide(match) === side;
+  const score = finalScore(match);
+  const hasPrediction = !!match.prediction;
+  const isHome = side === 1;
+
+  // Get scores
+  const predScore = match.prediction?.mostLikelyScore;
+  const actualScore = score ? ([score[0], score[1]] as [number, number]) : undefined;
+
+  // Get goals for this side
+  const predGoals = predScore ? (isHome ? predScore[0] : predScore[1]) : null;
+  const actualGoals = actualScore ? (isHome ? actualScore[0] : actualScore[1]) : null;
+
+  // Determine what to show
+  const showPredicted = hasPrediction;
+  const showActual = actualGoals !== null;
+
   return (
     <span className={`bracket-slot${winner ? " bracket-slot--winner" : ""}`}>
-      {value.name && teams?.[value.name] && (
-        <span className={`team-flag ${flagClassNames[teams[value.name].flagCode] || "fi fi-unknown"}`} aria-hidden="true" />
-      )}
-      <span>
-        <strong>{value.name ?? value.slot}{winner ? " · Winner" : ""}</strong>
-        <small>{describeBracketSlot(value.slot)}</small>
+      <span className="bracket-slot__info">
+        {value.name && teams?.[value.name] && (
+          <span
+            className={`team-flag ${flagClassNames[teams[value.name].flagCode] || "fi fi-unknown"}`}
+            aria-hidden="true"
+          />
+        )}
+        <span className="bracket-slot__names">
+          <strong>{value.name ?? value.slot}{winner ? " · Winner" : ""}</strong>
+          <small>{describeBracketSlot(value.slot)}</small>
+        </span>
       </span>
+      <span className="bracket-slot__scores">
+        {showPredicted && (
+          <span className="bracket-slot__score-col" aria-label="Predicted">
+            <span className="bracket-slot__score-value bracket-slot__score-value--predicted">{predGoals ?? "-"}</span>
+          </span>
+        )}
+        {showActual && (
+          <span className="bracket-slot__score-col" aria-label="Actual">
+            <span className="bracket-slot__score-value bracket-slot__score-value--actual">{actualGoals}</span>
+          </span>
+        )}
+      </span>
+    </span>
+  );
+}
+
+function ParticipantWithScore({
+  match,
+  side,
+  teams,
+  predictedScore,
+  actualScore,
+}: {
+  match: KnockoutMatch;
+  side: 1 | 2;
+  teams?: Record<string, Team>;
+  predictedScore?: [number, number];
+  actualScore?: [number, number];
+}) {
+  const value = participant(match, side);
+  const winner = winnerSide(match) === side;
+  const isHome = side === 1;
+
+  // Get the specific score for this side
+  const predGoals = predictedScore ? (isHome ? predictedScore[0] : predictedScore[1]) : null;
+  const actualGoals = actualScore ? (isHome ? actualScore[0] : actualScore[1]) : null;
+  const hasBothScores = predGoals !== null && actualGoals !== null;
+
+  return (
+    <span className={`bracket-slot${winner ? " bracket-slot--winner" : ""}`}>
+      <span className="bracket-slot__info">
+        {value.name && teams?.[value.name] && (
+          <span
+            className={`team-flag ${flagClassNames[teams[value.name].flagCode] || "fi fi-unknown"}`}
+            aria-hidden="true"
+          />
+        )}
+        <span className="bracket-slot__names">
+          <strong>{value.name ?? value.slot}{winner ? " · Winner" : ""}</strong>
+          <small>{describeBracketSlot(value.slot)}</small>
+        </span>
+      </span>
+      {hasBothScores ? (
+        <span className="bracket-slot__scores">
+          <span className="bracket-slot__score bracket-slot__score--predicted" aria-label="Predicted">
+            {predGoals}
+          </span>
+          <span className="bracket-slot__score bracket-slot__score--actual" aria-label="Actual">
+            {actualGoals}
+          </span>
+        </span>
+      ) : actualGoals !== null ? (
+        <span className="bracket-slot__scores">
+          <span className="bracket-slot__score bracket-slot__score--actual">{actualGoals}</span>
+        </span>
+      ) : predGoals !== null ? (
+        <span className="bracket-slot__scores">
+          <span className="bracket-slot__score bracket-slot__score--predicted">{predGoals}</span>
+        </span>
+      ) : null}
     </span>
   );
 }
 
 function Score({ match }: { match: KnockoutMatch }) {
   const score = finalScore(match);
+
+  // Show only actual score (for matches without predictions)
   if (score) {
     return (
       <span className="bracket-match__score">
@@ -67,6 +160,8 @@ function Score({ match }: { match: KnockoutMatch }) {
       </span>
     );
   }
+
+  // Show only predicted score (for upcoming matches)
   if (match.prediction) {
     const [home, away] = match.prediction.mostLikelyScore;
     return (
@@ -84,22 +179,52 @@ function BracketMatchCard({ match, teams, onOpen }: {
   teams?: Record<string, Team>;
   onOpen?: (match: KnockoutMatch, trigger: HTMLElement) => void;
 }) {
-  return (
-    <article className="bracket-match" data-match-number={match.matchNumber}>
-      <span className="bracket-match__number">M{match.matchNumber}</span>
+  const isClickable = match.prediction && onOpen;
+  const score = finalScore(match);
+  const isCompleted = !!score;
+  const hasPrediction = !!match.prediction;
+
+  // Determine which score columns to show
+  const showPredicted = hasPrediction;
+  const showActual = isCompleted;
+
+  const cardContent = (
+    <>
+      <span className="bracket-match__header">
+        <span className="bracket-match__number">M{match.matchNumber}</span>
+        {(showPredicted || showActual) && (
+          <span className="bracket-match__score-header">
+            {showPredicted && <span className="bracket-match__score-header-label">Predicted</span>}
+            {showActual && <span className="bracket-match__score-header-label">Actual</span>}
+          </span>
+        )}
+      </span>
       <Participant match={match} side={1} teams={teams} />
       <span className="bracket-match__divider" />
       <Participant match={match} side={2} teams={teams} />
       <span className="bracket-match__footer">
         <span>{formatKickoff(match.kickoffUtc)}</span>
-        <Score match={match} />
       </span>
-      {match.prediction && onOpen && (
-        <button className="text-button bracket-match__explore" type="button"
-          onClick={(event) => onOpen(match, event.currentTarget)}>
-          Explore prediction
-        </button>
-      )}
+    </>
+  );
+
+  if (isClickable) {
+    return (
+      <button
+        className="bracket-match bracket-match--clickable"
+        data-match-number={match.matchNumber}
+        type="button"
+        onClick={(event) => onOpen!(match, event.currentTarget)}
+        aria-label={`Match ${match.matchNumber}: ${match.team1 ?? match.team1Slot} vs ${match.team2 ?? match.team2Slot}${isCompleted ? ", completed" : ", upcoming"}`}
+      >
+        {cardContent}
+      </button>
+    );
+  }
+
+  return (
+    <article className="bracket-match" data-match-number={match.matchNumber}>
+      {cardContent}
     </article>
   );
 }
