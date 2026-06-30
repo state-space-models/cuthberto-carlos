@@ -126,6 +126,10 @@ function KnockoutScoreComparison({
   const hasPenalties = !!actualScore.penalties;
   const hasExtraTime = !!actualScore.extraTime && !hasPenalties;
 
+  // Determine winner: check penalties first, then final score
+  const finalScore = actualScore.penalties ?? actualScore.extraTime ?? actualScore.fullTime;
+  const winner = finalScore[0] > finalScore[1] ? match.homeTeam : match.awayTeam;
+
   const homeGoals = actualScore.homeGoals ?? [];
   const awayGoals = actualScore.awayGoals ?? [];
   const hasScorers = homeGoals.length > 0 || awayGoals.length > 0;
@@ -142,9 +146,16 @@ function KnockoutScoreComparison({
           <span>Actual score</span>
           <strong>
             {actualHome}–{actualAway}
-            {hasPenalties && <small> pens {actualScore.penalties![0]}–{actualScore.penalties![1]}</small>}
             {hasExtraTime && <small> AET</small>}
           </strong>
+          {hasPenalties && (
+            <small className="score-comparison__penalty-score">
+              ({actualScore.penalties![0]}–{actualScore.penalties![1]})
+            </small>
+          )}
+          <small className="score-comparison__winner">
+            {winner} wins
+          </small>
         </div>
         <GoalList goals={awayGoals} />
       </div>
@@ -520,10 +531,7 @@ export function MatchDetailDrawer({
                 <small>{ongoing ? "Current score" : hasActualResult || hasKnockoutScore ? "Final score" : "Most likely"}</small>
                 {displayHomeScore}–{displayAwayScore}
                 {!ongoing && !hasActualResult && !hasKnockoutScore && <em>{formatPercent(selectedPrediction.mostLikelyScoreProbability, 1)}</em>}
-                {hasKnockoutScore && normalized.knockoutScore?.penalties && (
-                  <em>pens {normalized.knockoutScore.penalties[0]}–{normalized.knockoutScore.penalties[1]}</em>
-                )}
-                {hasKnockoutScore && !normalized.knockoutScore?.penalties && normalized.knockoutScore?.extraTime && (
+                {hasKnockoutScore && normalized.knockoutScore?.extraTime && !normalized.knockoutScore?.penalties && (
                   <em>AET</em>
                 )}
               </span>

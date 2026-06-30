@@ -794,6 +794,26 @@ h2 {
   white-space: nowrap;
 }
 
+.score-comparison__winner {
+  display: block;
+  margin-top: 0.25rem;
+  color: var(--muted);
+  font-size: 0.65rem;
+  font-weight: 600;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.score-comparison__penalty-score {
+  display: block;
+  margin-top: 0.15rem;
+  color: var(--muted);
+  font-size: 0.65rem;
+  font-weight: 600;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
 .score-comparison__item .score-comparison__unavailable {
   max-width: 7.5rem;
   font-family: inherit;
@@ -875,6 +895,14 @@ h2 {
 
 .score-comparison--drawer .score-comparison__item > strong {
   font-size: 2.1rem;
+}
+
+.score-comparison--drawer .score-comparison__winner {
+  font-size: 0.85rem;
+}
+
+.score-comparison--drawer .score-comparison__penalty-score {
+  font-size: 0.85rem;
 }
 
 /* Vertical layout for knockout score comparison */
@@ -2285,6 +2313,14 @@ h2 {
 
 .bracket-slot__score-value--actual {
   color: var(--green-dark);
+}
+
+.bracket-slot__penalty-value {
+  color: var(--green-dark);
+  font-size: 0.85rem;
+  font-weight: 850;
+  margin-left: 0.15rem;
+  opacity: 0.8;
 }
 
 /* Legacy styles for backward compatibility */
