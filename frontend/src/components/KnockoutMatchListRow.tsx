@@ -30,10 +30,11 @@ export function KnockoutMatchListRow({
   const ongoing = isMatchOngoing(match);
   const hasScore = !!match.score;
 
-  // Get actual final score (for display in simple mode)
-  const finalScore = match.score?.penalties ?? match.score?.extraTime ?? match.score?.fullTime;
-  const displayHomeScore = finalScore ? finalScore[0] : predictedScore?.[0] ?? 0;
-  const displayAwayScore = finalScore ? finalScore[1] : predictedScore?.[1] ?? 0;
+  // Get actual score (full time only) for display
+  // Penalties/extra time shown separately if needed
+  const fullTimeScore = match.score?.fullTime;
+  const displayHomeScore = fullTimeScore ? fullTimeScore[0] : predictedScore?.[0] ?? 0;
+  const displayAwayScore = fullTimeScore ? fullTimeScore[1] : predictedScore?.[1] ?? 0;
 
   // Get team names
   const homeTeam = match.team1 ?? match.team1Slot;

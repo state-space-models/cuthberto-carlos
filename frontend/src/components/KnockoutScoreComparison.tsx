@@ -52,23 +52,21 @@ export function KnockoutScoreComparison({
   const predictedHomeScore = predictedScore?.[0] ?? 0;
   const predictedAwayScore = predictedScore?.[1] ?? 0;
 
-  // Get actual score - use penalties if available, then extra time, then full time
+  // Get actual score - ALWAYS show full time score as "Actual score"
+  // Penalties and extra time are shown separately
   const actualFullTime = match.score?.fullTime;
   const actualExtraTime = match.score?.extraTime;
   const actualPenalties = match.score?.penalties;
   
-  // For display: if penalties exist, show the final score after penalties
-  // If extra time exists (but no penalties), show extra time score
-  // Otherwise show full time score
-  const displayScore = actualPenalties ?? actualExtraTime ?? actualFullTime;
-  const actualHomeScore = displayScore?.[0];
-  const actualAwayScore = displayScore?.[1];
+  // Actual score is always the full time score (90 minutes)
+  const actualHomeScore = actualFullTime?.[0];
+  const actualAwayScore = actualFullTime?.[1];
   
   const hasActualScore = actualFullTime !== undefined;
   const hasPenalties = actualPenalties !== undefined;
   const hasExtraTime = actualExtraTime !== undefined;
 
-  // Determine winner
+  // Determine winner (uses penalties > extra time > full time)
   const winner = hasActualScore ? getKnockoutWinner(match) : null;
 
   // Format actual score display with penalty/extra time indicators
