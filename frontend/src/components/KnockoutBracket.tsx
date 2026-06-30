@@ -46,6 +46,7 @@ function Participant({ match, side, teams }: { match: KnockoutMatch; side: 1 | 2
   const score = finalScore(match);
   const hasPrediction = !!match.prediction;
   const isHome = side === 1;
+  const hasPenalties = !!match.score?.penalties;
 
   // Get scores
   const predScore = match.prediction?.mostLikelyScore;
@@ -54,6 +55,7 @@ function Participant({ match, side, teams }: { match: KnockoutMatch; side: 1 | 2
   // Get goals for this side
   const predGoals = predScore ? (isHome ? predScore[0] : predScore[1]) : null;
   const actualGoals = actualScore ? (isHome ? actualScore[0] : actualScore[1]) : null;
+  const penaltyGoals = hasPenalties ? (isHome ? match.score!.penalties![0] : match.score!.penalties![1]) : null;
 
   // Determine what to show
   const showPredicted = hasPrediction;
@@ -81,7 +83,10 @@ function Participant({ match, side, teams }: { match: KnockoutMatch; side: 1 | 2
         )}
         {showActual && (
           <span className="bracket-slot__score-col" aria-label="Actual">
-            <span className="bracket-slot__score-value bracket-slot__score-value--actual">{actualGoals}</span>
+            <span className="bracket-slot__score-value bracket-slot__score-value--actual">
+              {actualGoals}
+              {hasPenalties && <span className="bracket-slot__penalty-value">({penaltyGoals})</span>}
+            </span>
           </span>
         )}
       </span>
@@ -187,6 +192,7 @@ function BracketMatchCard({ match, teams, onOpen }: {
   // Determine which score columns to show
   const showPredicted = hasPrediction;
   const showActual = isCompleted;
+  const hasPenalties = !!match.score?.penalties;
 
   const cardContent = (
     <>
