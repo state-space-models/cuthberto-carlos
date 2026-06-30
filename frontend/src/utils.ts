@@ -1,5 +1,6 @@
 import type {
   GroupActualStats,
+  KnockoutMatch,
   KnockoutRound,
   MatchPrediction,
   ResultProbabilities,
@@ -118,6 +119,19 @@ export function getCompletedMatches(
 ): MatchPrediction[] {
   return [...matches]
     .filter((match) => isMatchCompleted(match, now))
+    .sort(
+      (left, right) =>
+        new Date(right.kickoffUtc).getTime() -
+        new Date(left.kickoffUtc).getTime(),
+    );
+}
+
+export function getCompletedKnockoutMatches(
+  matches: KnockoutMatch[],
+  now = new Date(),
+): KnockoutMatch[] {
+  return [...matches]
+    .filter((match) => isMatchCompleted(match, now) && match.score)
     .sort(
       (left, right) =>
         new Date(right.kickoffUtc).getTime() -
@@ -270,4 +284,22 @@ export function describeBracketSlot(slot: string): string {
     return `${feeder[1] === "W" ? "Winner" : "Loser"} Match ${feeder[2]}`;
   }
   return slot;
+}
+
+export function getKnockoutWinner(match: KnockoutMatch): string | null {
+  if (!match.score) return null;
+  
+  // Use penalties if available, then extra time, then full time
+  const finalScore = match.score.penalties ?? match.score.extraTime ?? match.score.fullTime;
+  if (!finalScore) return null;
+  
+  const [homeScore, awayScore] = finalScore;
+  const homeTeam = match.team1;
+  const awayTeam = match.team2;
+  
+  if (!homeTeam || !awayTeam) return null;
+  
+  if (homeScore > awayScore) return homeTeam;
+  if (awayScore > homeScore) return awayTeam;
+  return null; // Draw (shouldn't happen in knockout)
 }

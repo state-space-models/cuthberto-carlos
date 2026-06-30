@@ -130,7 +130,7 @@ function App() {
 
         <UpcomingMatches matches={matches} knockoutMatches={enrichedKnockoutMatches} teams={data.teams} onOpen={openMatch} />
         <KnockoutBracket matches={enrichedKnockoutMatches} teams={data.teams} onOpen={openMatch} />
-        <CompletedMatches matches={matches} teams={data.teams} onOpen={openMatch} />
+        <CompletedMatches matches={matches} knockoutMatches={enrichedKnockoutMatches} teams={data.teams} onOpen={openMatch} />
         <GroupStage groups={data.groups} matches={matches} teams={data.teams} onOpen={openMatch} />
       </main>
 

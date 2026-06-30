@@ -43,7 +43,13 @@ export function MatchListRow({
   }
 
   return (
-    <article className={`match-list-row ${showScoreComparison ? "match-list-row--comparison" : ""} ${hidePredictionDetails ? "match-list-row--without-prediction" : ""} ${ongoing ? "match-list-row--ongoing" : ""}`}>
+    <article 
+      className={`match-list-row ${showScoreComparison ? "match-list-row--comparison" : ""} ${hidePredictionDetails ? "match-list-row--without-prediction" : ""} ${ongoing ? "match-list-row--ongoing" : ""}`}
+      onClick={handleOpen}
+      tabIndex={0}
+      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleOpen(e as unknown as MouseEvent<HTMLButtonElement>); } }}
+      style={{ cursor: 'pointer' }}
+    >
       <div className="match-list-row__kickoff">
         <span className="eyebrow">Group {match.group}</span>
         <strong>{kickoff.date}</strong>
@@ -87,25 +93,6 @@ export function MatchListRow({
         </div>
       )}
       <span className="match-list-row__venue">{match.venue}</span>
-      <span className="match-list-row__actions">
-        <button
-          className="text-button match-list-row__action"
-          type="button"
-          onClick={handleOpen}
-          aria-label={`Explore prediction for ${match.homeTeam} versus ${match.awayTeam}`}
-        >
-          Explore
-        </button>
-        <a
-          className="text-link"
-          href={match.sourceUrl}
-          target="_blank"
-          rel="noreferrer"
-          aria-label={`View source data for ${match.homeTeam} versus ${match.awayTeam}`}
-        >
-          Source <span aria-hidden="true">↗</span>
-        </a>
-      </span>
     </article>
   );
 }

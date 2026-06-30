@@ -131,7 +131,10 @@ describe("App interactions", () => {
       expect(within(firstListRow).getByText(new RegExp(`^${expectedMatches[0].awayTeam} \\d+%$`))).toBeInTheDocument();
       expect(within(viewToggle).getByRole("button", { name: "List" })).toHaveAttribute("aria-pressed", "true");
 
-      fireEvent.click(within(listView).getByRole("button", { name: /Explore prediction for Mexico versus South Korea/i }));
+      const mexicoKoreaMatch = within(listView).getAllByRole("article").find((article) =>
+        article.textContent?.includes("Mexico") && article.textContent?.includes("South Korea")
+      )!;
+      fireEvent.click(mexicoKoreaMatch);
       expect(screen.getByRole("dialog", { name: /Mexico vs South Korea/i })).toBeInTheDocument();
     } finally {
       vi.useRealTimers();
@@ -205,11 +208,10 @@ describe("App interactions", () => {
     try {
       render(<App />);
       const completed = screen.getByTestId("completed-list-view");
-      fireEvent.click(
-        within(completed).getByRole("button", {
-          name: /Explore prediction for Mexico versus South Africa/i,
-        }),
-      );
+      const mexicoSaMatch = within(completed).getAllByRole("article").find((article) =>
+        article.textContent?.includes("Mexico") && article.textContent?.includes("South Africa")
+      )!;
+      fireEvent.click(mexicoSaMatch);
       const drawer = screen.getByRole("dialog", { name: /Mexico vs South Africa/i });
       expect(within(drawer).getByText("2–0")).toBeInTheDocument();
 
