@@ -285,3 +285,21 @@ export function describeBracketSlot(slot: string): string {
   }
   return slot;
 }
+
+export function getKnockoutWinner(match: KnockoutMatch): string | null {
+  if (!match.score) return null;
+  
+  // Use penalties if available, then extra time, then full time
+  const finalScore = match.score.penalties ?? match.score.extraTime ?? match.score.fullTime;
+  if (!finalScore) return null;
+  
+  const [homeScore, awayScore] = finalScore;
+  const homeTeam = match.team1;
+  const awayTeam = match.team2;
+  
+  if (!homeTeam || !awayTeam) return null;
+  
+  if (homeScore > awayScore) return homeTeam;
+  if (awayScore > homeScore) return awayTeam;
+  return null; // Draw (shouldn't happen in knockout)
+}

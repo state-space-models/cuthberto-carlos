@@ -1,6 +1,6 @@
 import type { MouseEvent } from "react";
 import type { KnockoutMatch, Team } from "../types";
-import { formatKickoffParts, formatPercent, isMatchOngoing, mostLikelyOutcome, ROUND_LABELS } from "../utils";
+import { formatKickoffParts, formatPercent, getKnockoutWinner, isMatchOngoing, mostLikelyOutcome, ROUND_LABELS } from "../utils";
 import { TeamFlag } from "./TeamFlag";
 import { KnockoutScoreComparison } from "./KnockoutScoreComparison";
 import { PolymarketCompact } from "./PolymarketComparison";
@@ -39,6 +39,9 @@ export function KnockoutMatchListRow({
   const homeTeam = match.team1 ?? match.team1Slot;
   const awayTeam = match.team2 ?? match.team2Slot;
 
+  // Determine winner for display
+  const winner = hasScore ? getKnockoutWinner(match) : null;
+
   function handleOpen(event: MouseEvent<HTMLButtonElement>) {
     onOpen(match, event.currentTarget);
   }
@@ -68,12 +71,19 @@ export function KnockoutMatchListRow({
         {showScoreComparison ? (
           <KnockoutScoreComparison match={match} teams={teams} variant="list" showScorers />
         ) : (
-          <strong
-            className={`match-list-row__score ${hasScore ? "match-list-row__score--actual" : ""}`}
-            aria-label={hasScore ? "Final score" : "Most likely score"}
-          >
-            {displayHomeScore}–{displayAwayScore}
-          </strong>
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.2rem' }}>
+            <strong
+              className={`match-list-row__score ${hasScore ? "match-list-row__score--actual" : ""}`}
+              aria-label={hasScore ? "Final score" : "Most likely score"}
+            >
+              {displayHomeScore}–{displayAwayScore}
+            </strong>
+            {winner && (
+              <span style={{ fontSize: '0.7rem', color: 'var(--muted)', fontWeight: 600 }}>
+                {winner} wins
+              </span>
+            )}
+          </div>
         )}
         <div className="match-list-row__team match-list-row__team--second">
           <TeamFlag team={teams[awayTeam]} compact />

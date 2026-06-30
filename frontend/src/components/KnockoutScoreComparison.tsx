@@ -1,4 +1,5 @@
 import type { KnockoutMatch, Team, ActualGoal } from "../types";
+import { getKnockoutWinner } from "../utils";
 import { PlayerName } from "./PlayerName";
 
 interface KnockoutScoreComparisonProps {
@@ -67,6 +68,9 @@ export function KnockoutScoreComparison({
   const hasPenalties = actualPenalties !== undefined;
   const hasExtraTime = actualExtraTime !== undefined;
 
+  // Determine winner
+  const winner = hasActualScore ? getKnockoutWinner(match) : null;
+
   // Format actual score display with penalty/extra time indicators
   let actualScoreDisplay: string;
   if (!hasActualScore) {
@@ -104,6 +108,9 @@ export function KnockoutScoreComparison({
                 <small className="score-comparison__aet-indicator">AET</small>
               )}
             </strong>
+            {winner && (
+              <span className="score-comparison__winner">{winner} wins</span>
+            )}
           </div>
           <GoalList goals={awayGoals} team={awayTeam} />
         </div>
@@ -126,6 +133,9 @@ export function KnockoutScoreComparison({
             <small className="score-comparison__aet-indicator">AET</small>
           )}
         </strong>
+        {winner && (
+          <span className="score-comparison__winner">{winner} wins</span>
+        )}
       </div>
       <div className="score-comparison__item">
         <span>Predicted score</span>

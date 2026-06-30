@@ -3,6 +3,7 @@ import type { KnockoutMatch, Team } from "../types";
 import {
   formatKickoffParts,
   formatPercent,
+  getKnockoutWinner,
   isMatchOngoing,
   mostLikelyOutcome,
   ROUND_LABELS,
@@ -45,6 +46,9 @@ export function KnockoutMatchCard({
   const homeTeam = match.team1 ?? match.team1Slot;
   const awayTeam = match.team2 ?? match.team2Slot;
 
+  // Determine winner for display
+  const winner = hasScore ? getKnockoutWinner(match) : null;
+
   function handleOpen(event: MouseEvent<HTMLElement>) {
     onOpen(match, event.currentTarget);
   }
@@ -86,6 +90,11 @@ export function KnockoutMatchCard({
             >
               {displayHomeScore}–{displayAwayScore}
             </span>
+            {winner && (
+              <span className="match-card__outcome" style={{ marginTop: '0.3rem', fontSize: '0.75rem' }}>
+                {winner} wins
+              </span>
+            )}
           </div>
         )}
         <div className="match-card__team match-card__team--second">
