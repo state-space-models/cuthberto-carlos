@@ -1,5 +1,6 @@
 import type {
   GroupActualStats,
+  KnockoutMatch,
   KnockoutRound,
   MatchPrediction,
   ResultProbabilities,
@@ -118,6 +119,19 @@ export function getCompletedMatches(
 ): MatchPrediction[] {
   return [...matches]
     .filter((match) => isMatchCompleted(match, now))
+    .sort(
+      (left, right) =>
+        new Date(right.kickoffUtc).getTime() -
+        new Date(left.kickoffUtc).getTime(),
+    );
+}
+
+export function getCompletedKnockoutMatches(
+  matches: KnockoutMatch[],
+  now = new Date(),
+): KnockoutMatch[] {
+  return [...matches]
+    .filter((match) => isMatchCompleted(match, now) && match.score)
     .sort(
       (left, right) =>
         new Date(right.kickoffUtc).getTime() -

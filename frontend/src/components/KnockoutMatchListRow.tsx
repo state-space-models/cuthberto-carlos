@@ -1,42 +1,43 @@
 import type { MouseEvent } from "react";
-import type { MatchPrediction, Team } from "../types";
-import { formatKickoffParts, formatPercent, isMatchOngoing, mostLikelyOutcome } from "../utils";
+import type { KnockoutMatch, Team } from "../types";
+import { formatKickoffParts, formatPercent, isMatchOngoing, mostLikelyOutcome, ROUND_LABELS } from "../utils";
 import { TeamFlag } from "./TeamFlag";
-import { MatchScoreComparison } from "./MatchScoreComparison";
+import { KnockoutScoreComparison } from "./KnockoutScoreComparison";
 import { PolymarketCompact } from "./PolymarketComparison";
 
-interface MatchListRowProps {
-  match: MatchPrediction;
+interface KnockoutMatchListRowProps {
+  match: KnockoutMatch;
   teams: Record<string, Team>;
-  onOpen: (match: MatchPrediction, trigger: HTMLElement) => void;
+  onOpen: (match: KnockoutMatch, trigger: HTMLElement) => void;
   showScoreComparison?: boolean;
   hidePredictionDetails?: boolean;
   showPolymarket?: boolean;
 }
 
-export function MatchListRow({
+export function KnockoutMatchListRow({
   match,
   teams,
   onOpen,
   showScoreComparison = false,
   hidePredictionDetails = false,
   showPolymarket = false,
-}: MatchListRowProps) {
+}: KnockoutMatchListRowProps) {
   const kickoff = formatKickoffParts(match.kickoffUtc);
-  const probabilities = match.prediction.probabilities;
-  const [predictedHomeScore, predictedAwayScore] = match.prediction.mostLikelyScore;
+  const probabilities = match.prediction?.probabilities;
+  const predictedScore = match.prediction?.mostLikelyScore;
 
   // Check match status
   const ongoing = isMatchOngoing(match);
-  const hasActualResult = !!match.actualResult;
+  const hasScore = !!match.score;
 
-  // Use actual result if available, otherwise show prediction
-  const displayHomeScore = hasActualResult
-    ? match.actualResult!.homeScore
-    : predictedHomeScore;
-  const displayAwayScore = hasActualResult
-    ? match.actualResult!.awayScore
-    : predictedAwayScore;
+  // Get actual final score (for display in simple mode)
+  const finalScore = match.score?.penalties ?? match.score?.extraTime ?? match.score?.fullTime;
+  const displayHomeScore = finalScore ? finalScore[0] : predictedScore?.[0] ?? 0;
+  const displayAwayScore = finalScore ? finalScore[1] : predictedScore?.[1] ?? 0;
+
+  // Get team names
+  const homeTeam = match.team1 ?? match.team1Slot;
+  const awayTeam = match.team2 ?? match.team2Slot;
 
   function handleOpen(event: MouseEvent<HTMLButtonElement>) {
     onOpen(match, event.currentTarget);
@@ -51,7 +52,7 @@ export function MatchListRow({
       style={{ cursor: 'pointer' }}
     >
       <div className="match-list-row__kickoff">
-        <span className="eyebrow">Group {match.group}</span>
+        <span className="eyebrow">{ROUND_LABELS[match.round]}</span>
         <strong>{kickoff.date}</strong>
         <div className="match-list-row__time-wrapper">
           <span>{kickoff.time}</span>
@@ -62,34 +63,34 @@ export function MatchListRow({
       </div>
       <div className="match-list-row__fixture">
         <div className="match-list-row__team match-list-row__team--first">
-          <TeamFlag team={teams[match.homeTeam]} compact />
+          <TeamFlag team={teams[homeTeam]} compact />
         </div>
         {showScoreComparison ? (
-          <MatchScoreComparison match={match} teams={teams} variant="list" showScorers />
+          <KnockoutScoreComparison match={match} teams={teams} variant="list" showScorers />
         ) : (
           <strong
-            className={`match-list-row__score ${hasActualResult ? "match-list-row__score--actual" : ""}`}
-            aria-label={hasActualResult ? "Final score" : "Most likely score"}
+            className={`match-list-row__score ${hasScore ? "match-list-row__score--actual" : ""}`}
+            aria-label={hasScore ? "Final score" : "Most likely score"}
           >
             {displayHomeScore}–{displayAwayScore}
           </strong>
         )}
         <div className="match-list-row__team match-list-row__team--second">
-          <TeamFlag team={teams[match.awayTeam]} compact />
+          <TeamFlag team={teams[awayTeam]} compact />
         </div>
       </div>
-      {!showScoreComparison && hasActualResult && !ongoing && (
+      {!showScoreComparison && hasScore && !ongoing && (
         <div className="match-list-row__result-badge">Final</div>
       )}
-      {!hidePredictionDetails && (
+      {!hidePredictionDetails && probabilities && (
         <div className="match-list-row__prediction">
-          <span>{mostLikelyOutcome(probabilities, match.homeTeam, match.awayTeam)}</span>
+          <span>{mostLikelyOutcome(probabilities, homeTeam, awayTeam)}</span>
           <div aria-label="Result probabilities">
-            <span>{match.homeTeam} {formatPercent(probabilities.homeWin)}</span>
+            <span>{homeTeam} {formatPercent(probabilities.homeWin)}</span>
             <span>Draw {formatPercent(probabilities.draw)}</span>
-            <span>{match.awayTeam} {formatPercent(probabilities.awayWin)}</span>
+            <span>{awayTeam} {formatPercent(probabilities.awayWin)}</span>
           </div>
-          {showPolymarket && <PolymarketCompact match={match} />}
+          {showPolymarket && <PolymarketCompact match={match as unknown as import("../types").MatchPrediction} />}
         </div>
       )}
       <span className="match-list-row__venue">{match.venue}</span>

@@ -1,47 +1,49 @@
 import type { MouseEvent } from "react";
-import type { MatchPrediction, Team } from "../types";
+import type { KnockoutMatch, Team } from "../types";
 import {
   formatKickoffParts,
   formatPercent,
   isMatchOngoing,
   mostLikelyOutcome,
+  ROUND_LABELS,
 } from "../utils";
 import { TeamFlag } from "./TeamFlag";
-import { MatchScoreComparison } from "./MatchScoreComparison";
+import { KnockoutScoreComparison } from "./KnockoutScoreComparison";
 import { PolymarketCardComparison } from "./PolymarketComparison";
 
-interface MatchCardProps {
-  match: MatchPrediction;
+interface KnockoutMatchCardProps {
+  match: KnockoutMatch;
   teams: Record<string, Team>;
-  onOpen: (match: MatchPrediction, trigger: HTMLElement) => void;
+  onOpen: (match: KnockoutMatch, trigger: HTMLElement) => void;
   showScoreComparison?: boolean;
   hidePredictionDetails?: boolean;
   showPolymarket?: boolean;
 }
 
-export function MatchCard({
+export function KnockoutMatchCard({
   match,
   teams,
   onOpen,
   showScoreComparison = false,
   hidePredictionDetails = false,
   showPolymarket = false,
-}: MatchCardProps) {
+}: KnockoutMatchCardProps) {
   const kickoff = formatKickoffParts(match.kickoffUtc);
-  const probabilities = match.prediction.probabilities;
-  const [predictedHomeScore, predictedAwayScore] = match.prediction.mostLikelyScore;
+  const probabilities = match.prediction?.probabilities;
+  const predictedScore = match.prediction?.mostLikelyScore;
 
   // Check match status
   const ongoing = isMatchOngoing(match);
-  const hasActualResult = !!match.actualResult;
+  const hasScore = !!match.score;
 
-  // Use actual result if available, otherwise show prediction
-  const displayHomeScore = hasActualResult
-    ? match.actualResult!.homeScore
-    : predictedHomeScore;
-  const displayAwayScore = hasActualResult
-    ? match.actualResult!.awayScore
-    : predictedAwayScore;
+  // Get actual final score (penalties > extra time > full time) for simple display
+  const finalScore = match.score?.penalties ?? match.score?.extraTime ?? match.score?.fullTime;
+  const displayHomeScore = finalScore ? finalScore[0] : predictedScore?.[0] ?? 0;
+  const displayAwayScore = finalScore ? finalScore[1] : predictedScore?.[1] ?? 0;
+
+  // Get team names (resolved or slot)
+  const homeTeam = match.team1 ?? match.team1Slot;
+  const awayTeam = match.team2 ?? match.team2Slot;
 
   function handleOpen(event: MouseEvent<HTMLElement>) {
     onOpen(match, event.currentTarget);
@@ -56,7 +58,7 @@ export function MatchCard({
       style={{ cursor: 'pointer' }}
     >
       <div className="match-card__meta">
-        <span className="eyebrow">Group {match.group}</span>
+        <span className="eyebrow">{ROUND_LABELS[match.round]}</span>
         <span>{kickoff.date}</span>
         <div className="match-card__time-wrapper">
           <strong>{kickoff.time}</strong>
@@ -67,42 +69,42 @@ export function MatchCard({
       </div>
       <div className="match-card__teams">
         <div className="match-card__team match-card__team--first">
-          <TeamFlag team={teams[match.homeTeam]} />
+          <TeamFlag team={teams[homeTeam]} />
         </div>
         {showScoreComparison ? (
-          <MatchScoreComparison match={match} teams={teams} variant="card" showScorers />
+          <KnockoutScoreComparison match={match} teams={teams} variant="card" showScorers />
         ) : (
           <div className="match-card__score-block">
-            {!hidePredictionDetails && (
+            {!hidePredictionDetails && probabilities && (
               <span className="match-card__outcome">
-                {mostLikelyOutcome(probabilities, match.homeTeam, match.awayTeam)}
+                {mostLikelyOutcome(probabilities, homeTeam, awayTeam)}
               </span>
             )}
             <span
-              className={`match-card__score ${hasActualResult ? "match-card__score--actual" : ""}`}
-              aria-label={hasActualResult ? "Final score" : "Most likely score"}
+              className={`match-card__score ${hasScore ? "match-card__score--actual" : ""}`}
+              aria-label={hasScore ? "Final score" : "Most likely score"}
             >
               {displayHomeScore}–{displayAwayScore}
             </span>
           </div>
         )}
         <div className="match-card__team match-card__team--second">
-          <TeamFlag team={teams[match.awayTeam]} />
+          <TeamFlag team={teams[awayTeam]} />
         </div>
       </div>
-      {!showScoreComparison && hasActualResult && !ongoing && (
+      {!showScoreComparison && hasScore && !ongoing && (
         <div className="match-card__result-badge">Final</div>
       )}
       <p className="match-card__venue">{match.venue}</p>
       {!hidePredictionDetails && showPolymarket && match.polymarket ? (
-        <PolymarketCardComparison match={match} />
-      ) : !hidePredictionDetails ? (
+        <PolymarketCardComparison match={match as unknown as import("../types").MatchPrediction} />
+      ) : !hidePredictionDetails && probabilities ? (
         <>
           <div className="probability-strip" aria-label="Result probabilities">
             <span
               className="probability-strip__first-team"
               style={{ width: `${probabilities.homeWin * 100}%` }}
-              title={`${match.homeTeam} ${formatPercent(probabilities.homeWin, 1)}`}
+              title={`${homeTeam} ${formatPercent(probabilities.homeWin, 1)}`}
             />
             <span
               className="probability-strip__draw"
@@ -112,13 +114,13 @@ export function MatchCard({
             <span
               className="probability-strip__second-team"
               style={{ width: `${probabilities.awayWin * 100}%` }}
-              title={`${match.awayTeam} ${formatPercent(probabilities.awayWin, 1)}`}
+              title={`${awayTeam} ${formatPercent(probabilities.awayWin, 1)}`}
             />
           </div>
           <div className="match-card__probabilities">
-            <span>{match.homeTeam} {formatPercent(probabilities.homeWin)}</span>
+            <span>{homeTeam} {formatPercent(probabilities.homeWin)}</span>
             <span>Draw {formatPercent(probabilities.draw)}</span>
-            <span>{match.awayTeam} {formatPercent(probabilities.awayWin)}</span>
+            <span>{awayTeam} {formatPercent(probabilities.awayWin)}</span>
           </div>
         </>
       ) : null}

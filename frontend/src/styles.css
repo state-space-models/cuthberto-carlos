@@ -827,17 +827,18 @@ h2 {
 }
 
 [data-testid="completed-card-view"] .match-card__teams {
-  grid-template-columns: minmax(5.5rem, 0.85fr) minmax(13rem, 2fr) minmax(5.5rem, 0.85fr);
-  gap: 0.8rem;
+  grid-template-columns: minmax(0, 1fr) minmax(10rem, 1.5fr) minmax(0, 1fr);
+  gap: 0.6rem;
 }
 
 [data-testid="completed-card-view"] .match-card__team--first {
   min-width: 0;
+  justify-content: flex-end;
 }
 
 [data-testid="completed-card-view"] .match-card__team--second {
   min-width: 0;
-  justify-self: end;
+  justify-content: flex-start;
 }
 
 [data-testid="completed-card-view"] .score-comparison--card {
@@ -850,13 +851,52 @@ h2 {
   max-width: 100%;
 }
 
+[data-testid="completed-card-view"] .match-card__team--first .team-identity {
+  justify-content: flex-end;
+  text-align: right;
+}
+
 [data-testid="completed-card-view"] .match-card__team--second .team-identity {
   justify-content: flex-start;
+  text-align: left;
 }
 
 [data-testid="completed-card-view"] .match-card__team .team-identity > span:last-child {
   min-width: 0;
-  overflow-wrap: anywhere;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+
+/* Vertically center teams with the actual score row */
+[data-testid="completed-card-view"] .match-card__teams {
+  align-items: center;
+}
+
+[data-testid="completed-card-view"] .match-card__team {
+  align-self: center;
+}
+
+/* Position teams to align with the actual score (center of the actual-row) */
+[data-testid="completed-card-view"] .match-card__team--first,
+[data-testid="completed-card-view"] .match-card__team--second {
+  margin-top: 1.5rem;
+}
+
+/* Fix score comparison width for single-column completed cards */
+[data-testid="completed-card-view"] .score-comparison--with-scorers {
+  width: 100%;
+  max-width: 100%;
+}
+
+[data-testid="completed-card-view"] .score-comparison__actual-row {
+  gap: 0.5rem;
+}
+
+[data-testid="completed-card-view"] .score-comparison--with-scorers .score-comparison__actual {
+  min-width: 5rem;
+  padding: 0 0.4rem;
 }
 
 .score-comparison--list {
@@ -1060,6 +1100,20 @@ h2 {
   flex: 0 0 auto;
   color: var(--muted);
   font-variant-numeric: tabular-nums;
+}
+
+/* Hide football emoji and time when card is narrow to prevent overlap with team names */
+.score-comparison--card .score-comparison__goals li > span[aria-hidden="true"],
+.score-comparison--card .score-comparison__goals li > span:last-child {
+  display: none;
+}
+
+/* Show emoji and time when there's enough space */
+@media (min-width: 420px) {
+  .score-comparison--card .score-comparison__goals li > span[aria-hidden="true"],
+  .score-comparison--card .score-comparison__goals li > span:last-child {
+    display: inline;
+  }
 }
 
 .score-comparison--group .score-comparison__goals {
@@ -1441,6 +1495,24 @@ h2 {
 
 .match-list-row--comparison .match-list-row__fixture {
   grid-area: fixture;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.7rem;
+}
+
+.match-list-row--comparison .match-list-row__team {
+  flex: 1;
+  display: flex;
+  align-items: center;
+}
+
+.match-list-row--comparison .match-list-row__team--first {
+  justify-content: flex-end;
+}
+
+.match-list-row--comparison .match-list-row__team--second {
+  justify-content: flex-start;
 }
 
 .match-list-row--comparison .match-list-row__prediction {
@@ -3254,6 +3326,11 @@ h2 {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
+  /* Switch completed cards to single column earlier to prevent overlap */
+  [data-testid="completed-card-view"] {
+    grid-template-columns: 1fr;
+  }
+
   .match-list-row {
     grid-template-columns: 7.5rem minmax(14rem, 1fr) minmax(11rem, 0.8fr) auto;
   }
@@ -3465,18 +3542,22 @@ h2 {
     grid-template-areas:
       "home away"
       "comparison comparison";
+    gap: 0.6rem;
   }
 
   [data-testid="completed-card-view"] .match-card__team--first {
     grid-area: home;
+    justify-content: flex-end;
   }
 
   [data-testid="completed-card-view"] .match-card__team--second {
     grid-area: away;
+    justify-content: flex-start;
   }
 
   [data-testid="completed-card-view"] .score-comparison--card {
     grid-area: comparison;
+    width: 100%;
   }
 
   .match-list-row {
