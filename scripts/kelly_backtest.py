@@ -32,8 +32,9 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from cuthberto_carlos.data import download_data
 
 
-DEFAULT_PREDICTION_ROOT = Path("outputs/predictions/2026-06-11")
-DEFAULT_OUTPUT_ROOT = Path("outputs/kelly_backtest/2026-06-11")
+DEFAULT_PREDICTION_PARENT = Path("outputs/predictions")
+DEFAULT_OUTPUT_PARENT = Path("outputs/kelly_backtest")
+DEFAULT_COMBINED_OUTPUT_ROOT = DEFAULT_OUTPUT_PARENT / "combined"
 DEFAULT_FOTMOB_CCODE3 = "GBR"
 RESULT_ORDER = ("draw", "home", "away")
 
@@ -142,6 +143,44 @@ def parse_scales(raw: str) -> list[float]:
     return [float(part.strip()) for part in raw.split(",") if part.strip()]
 
 
+def latest_prediction_root(prediction_parent: Path = DEFAULT_PREDICTION_PARENT) -> Path:
+    candidates = [
+        path
+        for path in prediction_parent.iterdir()
+        if path.is_dir() and any(path.glob("*/predictions.json"))
+    ]
+    if not candidates:
+        raise FileNotFoundError(
+            f"No prediction batches found under {prediction_parent}"
+        )
+    return sorted(candidates, key=lambda path: path.name)[-1]
+
+
+def prediction_roots(prediction_parent: Path = DEFAULT_PREDICTION_PARENT) -> list[Path]:
+    roots = [
+        path
+        for path in prediction_parent.iterdir()
+        if path.is_dir() and any(path.glob("*/predictions.json"))
+    ]
+    if not roots:
+        raise FileNotFoundError(
+            f"No prediction batches found under {prediction_parent}"
+        )
+    return sorted(roots, key=lambda path: path.name)
+
+
+def prediction_batch_date(prediction: Prediction) -> pd.Timestamp:
+    return pd.to_datetime(prediction.prediction_path.parents[1].name)
+
+
+def prediction_fixture_key(prediction: Prediction) -> tuple[str, tuple[str, str]]:
+    home_team, away_team = sorted(
+        (canonical_team(prediction.home_team), canonical_team(prediction.away_team))
+    )
+    teams = (home_team, away_team)
+    return prediction.date, teams
+
+
 def load_predictions(prediction_root: Path) -> list[Prediction]:
     predictions: list[Prediction] = []
     for predictions_path in sorted(prediction_root.glob("*/predictions.json")):
@@ -168,6 +207,42 @@ def load_predictions(prediction_root: Path) -> list[Prediction]:
             )
         )
     return predictions
+
+
+def load_combined_predictions(
+    prediction_parent: Path = DEFAULT_PREDICTION_PARENT,
+) -> tuple[list[Prediction], list[Path]]:
+    roots = prediction_roots(prediction_parent)
+    by_fixture: dict[tuple[str, tuple[str, str]], Prediction] = {}
+    for prediction_root in roots:
+        for prediction in load_predictions(prediction_root):
+            key = prediction_fixture_key(prediction)
+            existing = by_fixture.get(key)
+            if existing is None:
+                by_fixture[key] = prediction
+                continue
+
+            prediction_match_date = pd.to_datetime(prediction.date)
+            prediction_batch = prediction_batch_date(prediction)
+            existing_batch = prediction_batch_date(existing)
+            prediction_is_available = prediction_batch <= prediction_match_date
+            existing_is_available = existing_batch <= prediction_match_date
+            if prediction_is_available != existing_is_available:
+                if prediction_is_available:
+                    by_fixture[key] = prediction
+                continue
+            if prediction_batch > existing_batch:
+                by_fixture[key] = prediction
+
+    predictions = sorted(
+        by_fixture.values(),
+        key=lambda prediction: (
+            prediction.date,
+            prediction.home_team,
+            prediction.away_team,
+        ),
+    )
+    return predictions, roots
 
 
 def load_results() -> list[MatchResult]:
@@ -238,17 +313,25 @@ def result_for_prediction(
     )
 
 
-def cached_json_request(url: str, cache_path: Path, timeout: float = 5.0) -> Any:
-    if cache_path.exists():
+def cached_json_request(
+    url: str, cache_path: Path, timeout: float = 5.0, refresh: bool = False
+) -> Any:
+    if cache_path.exists() and not refresh:
         return json.loads(cache_path.read_text())
     cache_path.parent.mkdir(parents=True, exist_ok=True)
     request = urllib.request.Request(
         url, headers={"User-Agent": "cuthberto-carlos/1.0"}
     )
-    with urllib.request.urlopen(request, timeout=timeout) as response:
-        payload = json.loads(response.read().decode())
-    cache_path.write_text(json.dumps(payload, indent=2, sort_keys=True))
-    return payload
+    try:
+        with urllib.request.urlopen(request, timeout=timeout) as response:
+            payload = json.loads(response.read().decode())
+    except Exception:
+        if cache_path.exists():
+            return json.loads(cache_path.read_text())
+        raise
+    else:
+        cache_path.write_text(json.dumps(payload, indent=2, sort_keys=True))
+        return payload
 
 
 def fotmob_match_list_payload(
@@ -259,7 +342,7 @@ def fotmob_match_list_payload(
     url = f"https://www.fotmob.com/api/data/matches?{params}"
     cache_path = cache_dir / "fotmob" / "match_lists" / f"{date_param}_{ccode3}.json"
     try:
-        payload = cached_json_request(url, cache_path, timeout=20.0)
+        payload = cached_json_request(url, cache_path, timeout=20.0, refresh=True)
     except Exception as exc:
         print(f"Skipping FotMob match list for {date_param}: {exc}")
         return None
@@ -268,7 +351,7 @@ def fotmob_match_list_payload(
 
 def fotmob_match_list_metadata(
     predictions: Iterable[Prediction], cache_dir: Path, ccode3: str
-) -> list[dict[str, str]]:
+) -> list[dict[str, Any]]:
     query_dates: set[str] = set()
     for prediction in predictions:
         prediction_date = pd.to_datetime(prediction.date)
@@ -277,7 +360,7 @@ def fotmob_match_list_metadata(
                 (prediction_date + pd.Timedelta(days=offset)).strftime("%Y-%m-%d")
             )
 
-    matches: list[dict[str, str]] = []
+    matches: list[dict[str, Any]] = []
     seen_match_ids: set[int] = set()
     for query_date in sorted(query_dates):
         payload = fotmob_match_list_payload(query_date, cache_dir, ccode3)
@@ -309,10 +392,68 @@ def fotmob_match_list_metadata(
                         "date": date_str(utc_time),
                         "home_team": str(home_team),
                         "away_team": str(away_team),
+                        "home_score": home.get("score"),
+                        "away_score": away.get("score"),
+                        "finished": bool(status.get("finished")),
                         "url": f"https://www.fotmob.com/match/{match_id}",
                     }
                 )
     return matches
+
+
+def prediction_for_fotmob_metadata(
+    metadata: dict[str, Any], predictions: Iterable[Prediction]
+) -> Prediction | None:
+    metadata_home = canonical_team(metadata["home_team"])
+    metadata_away = canonical_team(metadata["away_team"])
+    metadata_date = pd.to_datetime(metadata["date"]).date()
+    for prediction in predictions:
+        prediction_home = canonical_team(prediction.home_team)
+        prediction_away = canonical_team(prediction.away_team)
+        same_teams = (
+            prediction_home == metadata_home and prediction_away == metadata_away
+        ) or (prediction_home == metadata_away and prediction_away == metadata_home)
+        if not same_teams:
+            continue
+        prediction_date = pd.to_datetime(prediction.date).date()
+        if abs((prediction_date - metadata_date).days) <= 1:
+            return prediction
+    return None
+
+
+def load_fotmob_results(
+    predictions: Iterable[Prediction], cache_dir: Path, ccode3: str
+) -> list[MatchResult]:
+    prediction_rows = list(predictions)
+    results: list[MatchResult] = []
+    for metadata in fotmob_match_list_metadata(prediction_rows, cache_dir, ccode3):
+        prediction = prediction_for_fotmob_metadata(metadata, prediction_rows)
+        if prediction is None or not metadata.get("finished"):
+            continue
+        if not is_number(metadata.get("home_score")) or not is_number(
+            metadata.get("away_score")
+        ):
+            continue
+        home_score = int(metadata["home_score"])
+        away_score = int(metadata["away_score"])
+        if home_score == away_score:
+            result = "draw"
+        elif home_score > away_score:
+            result = "home"
+        else:
+            result = "away"
+        results.append(
+            MatchResult(
+                date=prediction.date,
+                home_team=str(metadata["home_team"]),
+                away_team=str(metadata["away_team"]),
+                home_score=home_score,
+                away_score=away_score,
+                result=result,
+                source=f"fotmob:{metadata['match_id']}:{metadata['url']}",
+            )
+        )
+    return results
 
 
 def fotmob_odds_payload(
@@ -324,7 +465,7 @@ def fotmob_odds_payload(
     url = f"https://www.fotmob.com/api/data/matchOdds?{params}"
     cache_path = cache_dir / "fotmob" / "odds" / f"{match_id}_{ccode3}.json"
     try:
-        payload = cached_json_request(url, cache_path, timeout=20.0)
+        payload = cached_json_request(url, cache_path, timeout=20.0, refresh=True)
     except Exception as exc:
         print(f"Skipping FotMob odds for match {match_id}: {exc}")
         return None
@@ -335,28 +476,10 @@ def odds_from_fotmob(
     predictions: Iterable[Prediction], cache_dir: Path, ccode3: str
 ) -> list[Odds]:
     prediction_rows = list(predictions)
-
-    def matching_prediction(metadata: dict[str, str]) -> Prediction | None:
-        metadata_home = canonical_team(metadata["home_team"])
-        metadata_away = canonical_team(metadata["away_team"])
-        metadata_date = pd.to_datetime(metadata["date"]).date()
-        for prediction in prediction_rows:
-            prediction_home = canonical_team(prediction.home_team)
-            prediction_away = canonical_team(prediction.away_team)
-            same_teams = (
-                prediction_home == metadata_home and prediction_away == metadata_away
-            ) or (prediction_home == metadata_away and prediction_away == metadata_home)
-            if not same_teams:
-                continue
-            prediction_date = pd.to_datetime(prediction.date).date()
-            if abs((prediction_date - metadata_date).days) <= 1:
-                return prediction
-        return None
-
     odds_rows: list[Odds] = []
     for metadata in fotmob_match_list_metadata(prediction_rows, cache_dir, ccode3):
         match_id = int(metadata["match_id"])
-        prediction = matching_prediction(metadata)
+        prediction = prediction_for_fotmob_metadata(metadata, prediction_rows)
         if prediction is None:
             continue
 
@@ -712,8 +835,22 @@ def build_backtest_matches(
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--prediction-root", type=Path, default=DEFAULT_PREDICTION_ROOT)
-    parser.add_argument("--output-dir", type=Path, default=DEFAULT_OUTPUT_ROOT)
+    parser.add_argument(
+        "--prediction-root",
+        type=Path,
+        help=(
+            "Single prediction batch to backtest. If omitted, combines all "
+            "batches under outputs/predictions into one de-duplicated trajectory."
+        ),
+    )
+    parser.add_argument(
+        "--output-dir",
+        type=Path,
+        help=(
+            "Output directory. Defaults to outputs/kelly_backtest/combined, "
+            "or outputs/kelly_backtest/<prediction batch> with --prediction-root."
+        ),
+    )
     parser.add_argument(
         "--scales",
         default="0,0.05,0.1,0.2,0.3,0.5,0.75,1.0",
@@ -732,14 +869,37 @@ def parse_args() -> argparse.Namespace:
 
 def main() -> None:
     args = parse_args()
+    if args.prediction_root:
+        prediction_root = args.prediction_root
+        predictions = load_predictions(prediction_root)
+        prediction_source = str(prediction_root)
+        output_dir = args.output_dir or DEFAULT_OUTPUT_PARENT / prediction_root.name
+    else:
+        predictions, roots = load_combined_predictions()
+        prediction_source = "combined: " + ", ".join(str(root) for root in roots)
+        output_dir = args.output_dir or DEFAULT_COMBINED_OUTPUT_ROOT
+    args.output_dir = output_dir
     scales = parse_scales(args.scales)
     if args.starting_bankroll <= 0:
         raise ValueError("--starting-bankroll must be positive.")
     if not (0 < args.max_total_stake_fraction <= 1):
         raise ValueError("--max-total-stake-fraction must be in (0, 1].")
 
-    predictions = load_predictions(args.prediction_root)
-    results = load_results()
+    primary_results = load_results()
+    primary_result_index = build_result_index(primary_results)
+    missing_result_predictions = [
+        prediction
+        for prediction in predictions
+        if result_for_prediction(prediction, primary_result_index) is None
+    ]
+    results = [
+        *primary_results,
+        *load_fotmob_results(
+            missing_result_predictions,
+            output_dir / "cache",
+            args.fotmob_ccode3,
+        ),
+    ]
     result_index = build_result_index(results)
     completed_predictions = [
         prediction
@@ -757,28 +917,29 @@ def main() -> None:
         max_total_stake_fraction=args.max_total_stake_fraction,
     )
 
-    write_csv(args.output_dir / "matches.csv", match_rows)
-    write_csv(args.output_dir / "bets.csv", bet_rows)
-    write_csv(args.output_dir / "summary.csv", summary_rows)
-    write_csv(args.output_dir / "bankroll_trajectory.csv", trajectory_rows)
-    write_bankroll_plot(args.output_dir / "bankroll_plot.png", trajectory_rows)
+    write_csv(output_dir / "matches.csv", match_rows)
+    write_csv(output_dir / "bets.csv", bet_rows)
+    write_csv(output_dir / "summary.csv", summary_rows)
+    write_csv(output_dir / "bankroll_trajectory.csv", trajectory_rows)
+    write_bankroll_plot(output_dir / "bankroll_plot.png", trajectory_rows)
 
     ok_count = sum(1 for row in match_rows if row["status"] == "ok")
     completed_count = sum("missing_result" not in row["status"] for row in match_rows)
     missing_result_count = sum("missing_result" in row["status"] for row in match_rows)
     missing_odds_count = sum("missing_odds" in row["status"] for row in match_rows)
     print(f"Loaded predictions: {len(predictions)}")
+    print(f"Prediction source: {prediction_source}")
     print(f"Loaded completed results: {len(results)}")
     print(f"Loaded odds rows: {len(odds_rows)}")
     print(f"Completed predicted matches: {completed_count}")
     print(f"Completed matches with odds: {ok_count}")
     print(f"Missing results: {missing_result_count}")
     print(f"Missing odds: {missing_odds_count}")
-    print(f"Wrote: {args.output_dir / 'matches.csv'}")
-    print(f"Wrote: {args.output_dir / 'bets.csv'}")
-    print(f"Wrote: {args.output_dir / 'summary.csv'}")
-    print(f"Wrote: {args.output_dir / 'bankroll_trajectory.csv'}")
-    print(f"Wrote: {args.output_dir / 'bankroll_plot.png'}")
+    print(f"Wrote: {output_dir / 'matches.csv'}")
+    print(f"Wrote: {output_dir / 'bets.csv'}")
+    print(f"Wrote: {output_dir / 'summary.csv'}")
+    print(f"Wrote: {output_dir / 'bankroll_trajectory.csv'}")
+    print(f"Wrote: {output_dir / 'bankroll_plot.png'}")
 
     if summary_rows:
         best = max(summary_rows, key=lambda row: row["final_bankroll"])
