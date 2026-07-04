@@ -1,11 +1,11 @@
 {
   "schemaVersion": 7,
   "repositoryUrl": "https://github.com/state-space-models/cuthberto-carlos",
-  "snapshotDate": "2026-07-03",
-  "snapshotPath": "outputs/predictions/2026-07-03",
-  "snapshotUrl": "https://github.com/state-space-models/cuthberto-carlos/tree/main/outputs/predictions/2026-07-03",
-  "generatedAt": "2026-07-03T11:24:54.378817Z",
-  "sourceCommit": "9b6f633d3883",
+  "snapshotDate": "2026-07-04",
+  "snapshotPath": "outputs/predictions/2026-07-04",
+  "snapshotUrl": "https://github.com/state-space-models/cuthberto-carlos/tree/main/outputs/predictions/2026-07-04",
+  "generatedAt": "2026-07-04T10:48:20.732833Z",
+  "sourceCommit": "f98d7efd3487",
   "model": {
     "name": "Cuthberto Carlos bivariate Poisson model",
     "resultProbabilityOrder": [
@@ -86294,13 +86294,13 @@
             "penalty": null
           },
           {
-            "name": "Bradley Barcola",
-            "minute": "53",
+            "name": "Kylian Mbappé",
+            "minute": "74",
             "penalty": null
           },
           {
-            "name": "Kylian Mbappé",
-            "minute": "74",
+            "name": "Bradley Barcola",
+            "minute": "53",
             "penalty": null
           }
         ],
@@ -89271,13 +89271,13 @@
             "penalty": null
           },
           {
-            "name": "Pedro Porro",
-            "minute": "66",
+            "name": "Mikel Oyarzabal",
+            "minute": "89",
             "penalty": null
           },
           {
-            "name": "Mikel Oyarzabal",
-            "minute": "89",
+            "name": "Pedro Porro",
+            "minute": "66",
             "penalty": null
           }
         ],
@@ -90470,6 +90470,45 @@
       "team2Slot": "2H",
       "team1": "Argentina",
       "team2": "Cape Verde",
+      "score": {
+        "fullTime": [
+          1,
+          1
+        ],
+        "extraTime": [
+          3,
+          2
+        ],
+        "homeGoals": [
+          {
+            "name": "Lionel Messi",
+            "minute": "29",
+            "penalty": null
+          },
+          {
+            "name": "Lisandro Martínez",
+            "minute": "92",
+            "penalty": null
+          },
+          {
+            "name": "Diney Borges",
+            "minute": "111",
+            "penalty": null
+          }
+        ],
+        "awayGoals": [
+          {
+            "name": "Deroy Duarte",
+            "minute": "59",
+            "penalty": null
+          },
+          {
+            "name": "Sidny Lopes Cabral",
+            "minute": "103",
+            "penalty": null
+          }
+        ]
+      },
       "predictionDate": "2026-07-03",
       "sourceUrl": "https://github.com/state-space-models/cuthberto-carlos/tree/main/outputs/predictions/2026-07-03/2026-07-03_Argentina_Cape Verde",
       "predictionHistory": [
@@ -91184,13 +91223,6 @@
             }
           }
         }
-      },
-      "polymarket": {
-        "homeWin": 0.845,
-        "draw": 0.105,
-        "awayWin": 0.0395,
-        "eventUrl": "https://polymarket.com/event/fifwc-arg-cvi-2026-07-03",
-        "updatedAt": "2026-07-03T11:21:19.872917Z"
       }
     },
     {
@@ -91204,6 +91236,20 @@
       "team2Slot": "3D/E/I/J/L",
       "team1": "Colombia",
       "team2": "Ghana",
+      "score": {
+        "fullTime": [
+          1,
+          0
+        ],
+        "homeGoals": [
+          {
+            "name": "Jhon Arias",
+            "minute": "14",
+            "penalty": null
+          }
+        ],
+        "awayGoals": []
+      },
       "predictionDate": "2026-07-03",
       "sourceUrl": "https://github.com/state-space-models/cuthberto-carlos/tree/main/outputs/predictions/2026-07-03/2026-07-03_Colombia_Ghana",
       "predictionHistory": [
@@ -91918,13 +91964,6 @@
             }
           }
         }
-      },
-      "polymarket": {
-        "homeWin": 0.685,
-        "draw": 0.215,
-        "awayWin": 0.095,
-        "eventUrl": "https://polymarket.com/event/fifwc-col-gha-2026-07-03",
-        "updatedAt": "2026-07-03T11:21:19.872917Z"
       }
     },
     {
@@ -91938,6 +91977,34 @@
       "team2Slot": "2G",
       "team1": "Australia",
       "team2": "Egypt",
+      "score": {
+        "fullTime": [
+          1,
+          1
+        ],
+        "extraTime": [
+          1,
+          1
+        ],
+        "penalties": [
+          2,
+          4
+        ],
+        "homeGoals": [
+          {
+            "name": "Mohamed Hany",
+            "minute": "55",
+            "penalty": null
+          }
+        ],
+        "awayGoals": [
+          {
+            "name": "Emam Ashour",
+            "minute": "13",
+            "penalty": null
+          }
+        ]
+      },
       "predictionDate": "2026-07-03",
       "sourceUrl": "https://github.com/state-space-models/cuthberto-carlos/tree/main/outputs/predictions/2026-07-03/2026-07-03_Australia_Egypt",
       "predictionHistory": [
@@ -92652,13 +92719,6 @@
             }
           }
         }
-      },
-      "polymarket": {
-        "homeWin": 0.265,
-        "draw": 0.335,
-        "awayWin": 0.405,
-        "eventUrl": "https://polymarket.com/event/fifwc-aus-egy-2026-07-03",
-        "updatedAt": "2026-07-03T11:21:19.872917Z"
       }
     },
     {
@@ -92672,9 +92732,152 @@
       "team2Slot": "W77",
       "team1": "Paraguay",
       "team2": "France",
-      "predictionDate": "2026-07-03",
-      "sourceUrl": "https://github.com/state-space-models/cuthberto-carlos/tree/main/outputs/predictions/2026-07-03/2026-07-04_Paraguay_France",
+      "predictionDate": "2026-07-04",
+      "sourceUrl": "https://github.com/state-space-models/cuthberto-carlos/tree/main/outputs/predictions/2026-07-04/2026-07-04_Paraguay_France",
       "predictionHistory": [
+        {
+          "predictionDate": "2026-07-03",
+          "sourceUrl": "https://github.com/state-space-models/cuthberto-carlos/tree/main/outputs/predictions/2026-07-03/2026-07-04_Paraguay_France",
+          "prediction": {
+            "probabilities": {
+              "homeWin": 0.15375151,
+              "draw": 0.22485044,
+              "awayWin": 0.62139805
+            },
+            "scoreGrid": [
+              [
+                0.08492803,
+                0.14390831,
+                0.12651723,
+                0.07693862,
+                0.03640701,
+                0.01429753,
+                0.00485355,
+                0.00146479,
+                0.00040116
+              ],
+              [
+                0.06122635,
+                0.10222573,
+                0.08854097,
+                0.05303913,
+                0.02471925,
+                0.00955992,
+                0.00319554,
+                0.00094952,
+                0.000256
+              ],
+              [
+                0.02311475,
+                0.0380174,
+                0.0324322,
+                0.0191329,
+                0.00878047,
+                0.00334336,
+                0.0011002,
+                0.0003218,
+                8.54e-05
+              ],
+              [
+                0.00609277,
+                0.00986894,
+                0.00829031,
+                0.00481535,
+                0.00217554,
+                0.00081544,
+                0.00026411,
+                7.603e-05,
+                1.985e-05
+              ],
+              [
+                0.00126136,
+                0.00201166,
+                0.00166365,
+                0.00095122,
+                0.00042299,
+                0.00015604,
+                4.973e-05,
+                1.409e-05,
+                3.62e-06
+              ],
+              [
+                0.00021875,
+                0.00034343,
+                0.00027955,
+                0.00015731,
+                6.884e-05,
+                2.499e-05,
+                7.84e-06,
+                2.18e-06,
+                5.5e-07
+              ],
+              [
+                3.31e-05,
+                5.115e-05,
+                4.097e-05,
+                2.269e-05,
+                9.77e-06,
+                3.49e-06,
+                1.08e-06,
+                2.9e-07,
+                7e-08
+              ],
+              [
+                4.5e-06,
+                6.83e-06,
+                5.39e-06,
+                2.93e-06,
+                1.24e-06,
+                4.4e-07,
+                1.3e-07,
+                4e-08,
+                1e-08
+              ],
+              [
+                5.6e-07,
+                8.4e-07,
+                6.5e-07,
+                3.5e-07,
+                1.4e-07,
+                5e-08,
+                1e-08,
+                0.0,
+                0.0
+              ]
+            ],
+            "mostLikelyScore": [
+              0,
+              1
+            ],
+            "mostLikelyScoreProbability": 0.14390831,
+            "expectedGoals": {
+              "home": 0.7264,
+              "away": 1.7913
+            },
+            "skills": {
+              "home": {
+                "attack": {
+                  "mean": 0.095805,
+                  "sd": 0.158489
+                },
+                "defence": {
+                  "mean": 0.791363,
+                  "sd": 0.148949
+                }
+              },
+              "away": {
+                "attack": {
+                  "mean": 0.695344,
+                  "sd": 0.132966
+                },
+                "defence": {
+                  "mean": 1.104575,
+                  "sd": 0.153463
+                }
+              }
+            }
+          }
+        },
         {
           "predictionDate": "2026-07-02",
           "sourceUrl": "https://github.com/state-space-models/cuthberto-carlos/tree/main/outputs/predictions/2026-07-02/2026-07-04_Paraguay_France",
@@ -92972,7 +93175,7 @@
           [
             0.08492803,
             0.14390831,
-            0.12651723,
+            0.12651722,
             0.07693862,
             0.03640701,
             0.01429753,
@@ -92981,11 +93184,11 @@
             0.00040116
           ],
           [
-            0.06122635,
+            0.06122636,
             0.10222573,
-            0.08854097,
+            0.08854096,
             0.05303913,
-            0.02471925,
+            0.02471926,
             0.00955992,
             0.00319554,
             0.00094952,
@@ -93106,7 +93309,7 @@
         "draw": 0.125,
         "awayWin": 0.835,
         "eventUrl": "https://polymarket.com/event/fifwc-par-fra-2026-07-04",
-        "updatedAt": "2026-07-03T11:21:19.872917Z"
+        "updatedAt": "2026-07-04T10:45:51.866388Z"
       }
     },
     {
@@ -93120,9 +93323,152 @@
       "team2Slot": "W75",
       "team1": "Canada",
       "team2": "Morocco",
-      "predictionDate": "2026-07-03",
-      "sourceUrl": "https://github.com/state-space-models/cuthberto-carlos/tree/main/outputs/predictions/2026-07-03/2026-07-04_Canada_Morocco",
+      "predictionDate": "2026-07-04",
+      "sourceUrl": "https://github.com/state-space-models/cuthberto-carlos/tree/main/outputs/predictions/2026-07-04/2026-07-04_Canada_Morocco",
       "predictionHistory": [
+        {
+          "predictionDate": "2026-07-03",
+          "sourceUrl": "https://github.com/state-space-models/cuthberto-carlos/tree/main/outputs/predictions/2026-07-03/2026-07-04_Canada_Morocco",
+          "prediction": {
+            "probabilities": {
+              "homeWin": 0.26308314,
+              "draw": 0.29646568,
+              "awayWin": 0.44045118
+            },
+            "scoreGrid": [
+              [
+                0.13473095,
+                0.1554137,
+                0.09281531,
+                0.03826279,
+                0.01224876,
+                0.00324767,
+                0.00074289,
+                0.00015078,
+                2.772e-05
+              ],
+              [
+                0.11085774,
+                0.12652032,
+                0.07474089,
+                0.03047077,
+                0.00964433,
+                0.00252776,
+                0.00057146,
+                0.00011461,
+                2.082e-05
+              ],
+              [
+                0.04750239,
+                0.05362239,
+                0.03132448,
+                0.01262573,
+                0.00395007,
+                0.00102316,
+                0.00022855,
+                4.529e-05,
+                8.12e-06
+              ],
+              [
+                0.01413291,
+                0.01577503,
+                0.00911017,
+                0.00362938,
+                0.0011221,
+                0.00028717,
+                6.337e-05,
+                1.24e-05,
+                2.2e-06
+              ],
+              [
+                0.0032843,
+                0.00362383,
+                0.00206837,
+                0.00081425,
+                0.00024872,
+                6.288e-05,
+                1.37e-05,
+                2.65e-06,
+                4.6e-07
+              ],
+              [
+                0.00063585,
+                0.00069335,
+                0.00039103,
+                0.00015207,
+                4.588e-05,
+                1.146e-05,
+                2.47e-06,
+                4.7e-07,
+                8e-08
+              ],
+              [
+                0.00010682,
+                0.00011509,
+                6.412e-05,
+                2.463e-05,
+                7.34e-06,
+                1.81e-06,
+                3.8e-07,
+                7e-08,
+                1e-08
+              ],
+              [
+                1.602e-05,
+                1.705e-05,
+                9.38e-06,
+                3.56e-06,
+                1.05e-06,
+                2.5e-07,
+                5e-08,
+                1e-08,
+                0.0
+              ],
+              [
+                2.19e-06,
+                2.3e-06,
+                1.25e-06,
+                4.7e-07,
+                1.4e-07,
+                3e-08,
+                1e-08,
+                0.0,
+                0.0
+              ]
+            ],
+            "mostLikelyScore": [
+              0,
+              1
+            ],
+            "mostLikelyScoreProbability": 0.1554137,
+            "expectedGoals": {
+              "home": 0.841,
+              "away": 1.1922
+            },
+            "skills": {
+              "home": {
+                "attack": {
+                  "mean": 0.313543,
+                  "sd": 0.13791
+                },
+                "defence": {
+                  "mean": 0.830846,
+                  "sd": 0.148904
+                }
+              },
+              "away": {
+                "attack": {
+                  "mean": 0.326705,
+                  "sd": 0.120235
+                },
+                "defence": {
+                  "mean": 1.171701,
+                  "sd": 0.15337
+                }
+              }
+            }
+          }
+        },
         {
           "predictionDate": "2026-07-02",
           "sourceUrl": "https://github.com/state-space-models/cuthberto-carlos/tree/main/outputs/predictions/2026-07-02/2026-07-04_Canada_Morocco",
@@ -93555,15 +93901,15 @@
       ],
       "prediction": {
         "probabilities": {
-          "homeWin": 0.26308314,
-          "draw": 0.29646568,
-          "awayWin": 0.44045118
+          "homeWin": 0.26308315,
+          "draw": 0.29646569,
+          "awayWin": 0.44045116
         },
         "scoreGrid": [
           [
             0.13473095,
-            0.1554137,
-            0.09281531,
+            0.15541368,
+            0.0928153,
             0.03826279,
             0.01224876,
             0.00324767,
@@ -93572,7 +93918,7 @@
             2.772e-05
           ],
           [
-            0.11085774,
+            0.11085775,
             0.12652032,
             0.07474089,
             0.03047077,
@@ -93583,7 +93929,7 @@
             2.082e-05
           ],
           [
-            0.04750239,
+            0.0475024,
             0.05362239,
             0.03132448,
             0.01262573,
@@ -93664,7 +94010,7 @@
           0,
           1
         ],
-        "mostLikelyScoreProbability": 0.1554137,
+        "mostLikelyScoreProbability": 0.15541368,
         "expectedGoals": {
           "home": 0.841,
           "away": 1.1922
@@ -93694,10 +94040,10 @@
       },
       "polymarket": {
         "homeWin": 0.175,
-        "draw": 0.275,
+        "draw": 0.285,
         "awayWin": 0.555,
         "eventUrl": "https://polymarket.com/event/fifwc-can-mar-2026-07-04",
-        "updatedAt": "2026-07-03T11:21:19.872917Z"
+        "updatedAt": "2026-07-04T10:45:51.866388Z"
       }
     },
     {
@@ -93711,9 +94057,152 @@
       "team2Slot": "W78",
       "team1": "Brazil",
       "team2": "Norway",
-      "predictionDate": "2026-07-03",
-      "sourceUrl": "https://github.com/state-space-models/cuthberto-carlos/tree/main/outputs/predictions/2026-07-03/2026-07-05_Brazil_Norway",
+      "predictionDate": "2026-07-04",
+      "sourceUrl": "https://github.com/state-space-models/cuthberto-carlos/tree/main/outputs/predictions/2026-07-04/2026-07-05_Brazil_Norway",
       "predictionHistory": [
+        {
+          "predictionDate": "2026-07-03",
+          "sourceUrl": "https://github.com/state-space-models/cuthberto-carlos/tree/main/outputs/predictions/2026-07-03/2026-07-05_Brazil_Norway",
+          "prediction": {
+            "probabilities": {
+              "homeWin": 0.53748773,
+              "draw": 0.22749955,
+              "awayWin": 0.23501272
+            },
+            "scoreGrid": [
+              [
+                0.05965377,
+                0.06321669,
+                0.03495903,
+                0.01345012,
+                0.00404996,
+                0.00101794,
+                0.00022245,
+                4.347e-05,
+                7.75e-06
+              ],
+              [
+                0.10157401,
+                0.10599522,
+                0.057711,
+                0.02185793,
+                0.00647827,
+                0.00160253,
+                0.00034462,
+                6.626e-05,
+                1.163e-05
+              ],
+              [
+                0.08992115,
+                0.09239084,
+                0.04952247,
+                0.01846271,
+                0.00538559,
+                0.00131104,
+                0.00027742,
+                5.248e-05,
+                9.06e-06
+              ],
+              [
+                0.05517867,
+                0.05581596,
+                0.02945049,
+                0.01080664,
+                0.00310228,
+                0.00074314,
+                0.00015472,
+                2.88e-05,
+                4.89e-06
+              ],
+              [
+                0.02640089,
+                0.02628972,
+                0.01365348,
+                0.00493073,
+                0.00139291,
+                0.00032831,
+                6.725e-05,
+                1.231e-05,
+                2.06e-06
+              ],
+              [
+                0.01050475,
+                0.01029667,
+                0.00526312,
+                0.00187046,
+                0.00051993,
+                0.00012057,
+                2.43e-05,
+                4.38e-06,
+                7.2e-07
+              ],
+              [
+                0.00362037,
+                0.0034928,
+                0.00175703,
+                0.00061446,
+                0.00016806,
+                3.834e-05,
+                7.6e-06,
+                1.35e-06,
+                2.2e-07
+              ],
+              [
+                0.00111149,
+                0.00105537,
+                0.00052244,
+                0.00017978,
+                4.838e-05,
+                1.086e-05,
+                2.12e-06,
+                3.7e-07,
+                6e-08
+              ],
+              [
+                0.00031028,
+                0.00028993,
+                0.00014123,
+                4.782e-05,
+                1.266e-05,
+                2.8e-06,
+                5.4e-07,
+                9e-08,
+                1e-08
+              ]
+            ],
+            "mostLikelyScore": [
+              1,
+              1
+            ],
+            "mostLikelyScoreProbability": 0.10599522,
+            "expectedGoals": {
+              "home": 1.7967,
+              "away": 1.0803
+            },
+            "skills": {
+              "home": {
+                "attack": {
+                  "mean": 0.705124,
+                  "sd": 0.136918
+                },
+                "defence": {
+                  "mean": 1.146167,
+                  "sd": 0.159869
+                }
+              },
+              "away": {
+                "attack": {
+                  "mean": 0.538508,
+                  "sd": 0.141395
+                },
+                "defence": {
+                  "mean": 0.799325,
+                  "sd": 0.153792
+                }
+              }
+            }
+          }
+        },
         {
           "predictionDate": "2026-07-02",
           "sourceUrl": "https://github.com/state-space-models/cuthberto-carlos/tree/main/outputs/predictions/2026-07-02/2026-07-05_Brazil_Norway",
@@ -94003,16 +94492,16 @@
       ],
       "prediction": {
         "probabilities": {
-          "homeWin": 0.53748773,
-          "draw": 0.22749955,
-          "awayWin": 0.23501272
+          "homeWin": 0.53748775,
+          "draw": 0.22749951,
+          "awayWin": 0.23501275
         },
         "scoreGrid": [
           [
-            0.05965377,
-            0.06321669,
-            0.03495903,
-            0.01345012,
+            0.05965376,
+            0.0632167,
+            0.03495904,
+            0.01345013,
             0.00404996,
             0.00101794,
             0.00022245,
@@ -94020,22 +94509,22 @@
             7.75e-06
           ],
           [
-            0.10157401,
-            0.10599522,
+            0.101574,
+            0.10599521,
             0.057711,
             0.02185793,
-            0.00647827,
+            0.00647828,
             0.00160253,
             0.00034462,
             6.626e-05,
             1.163e-05
           ],
           [
-            0.08992115,
-            0.09239084,
-            0.04952247,
+            0.08992114,
+            0.09239081,
+            0.04952246,
             0.01846271,
-            0.00538559,
+            0.0053856,
             0.00131104,
             0.00027742,
             5.248e-05,
@@ -94043,7 +94532,7 @@
           ],
           [
             0.05517867,
-            0.05581596,
+            0.05581595,
             0.02945049,
             0.01080664,
             0.00310228,
@@ -94064,7 +94553,7 @@
             2.06e-06
           ],
           [
-            0.01050475,
+            0.01050476,
             0.01029667,
             0.00526312,
             0.00187046,
@@ -94075,8 +94564,8 @@
             7.2e-07
           ],
           [
-            0.00362037,
-            0.0034928,
+            0.00362038,
+            0.00349281,
             0.00175703,
             0.00061446,
             0.00016806,
@@ -94098,7 +94587,7 @@
           ],
           [
             0.00031028,
-            0.00028993,
+            0.00028994,
             0.00014123,
             4.782e-05,
             1.266e-05,
@@ -94112,7 +94601,7 @@
           1,
           1
         ],
-        "mostLikelyScoreProbability": 0.10599522,
+        "mostLikelyScoreProbability": 0.10599521,
         "expectedGoals": {
           "home": 1.7967,
           "away": 1.0803
@@ -94121,7 +94610,7 @@
           "home": {
             "attack": {
               "mean": 0.705124,
-              "sd": 0.136918
+              "sd": 0.136919
             },
             "defence": {
               "mean": 1.146167,
@@ -94141,11 +94630,11 @@
         }
       },
       "polymarket": {
-        "homeWin": 0.525,
+        "homeWin": 0.535,
         "draw": 0.265,
-        "awayWin": 0.215,
+        "awayWin": 0.205,
         "eventUrl": "https://polymarket.com/event/fifwc-bra-nor-2026-07-05",
-        "updatedAt": "2026-07-03T11:21:19.872917Z"
+        "updatedAt": "2026-07-04T10:45:51.866388Z"
       }
     },
     {
@@ -94159,9 +94648,152 @@
       "team2Slot": "W80",
       "team1": "Mexico",
       "team2": "England",
-      "predictionDate": "2026-07-03",
-      "sourceUrl": "https://github.com/state-space-models/cuthberto-carlos/tree/main/outputs/predictions/2026-07-03/2026-07-05_Mexico_England",
+      "predictionDate": "2026-07-04",
+      "sourceUrl": "https://github.com/state-space-models/cuthberto-carlos/tree/main/outputs/predictions/2026-07-04/2026-07-05_Mexico_England",
       "predictionHistory": [
+        {
+          "predictionDate": "2026-07-03",
+          "sourceUrl": "https://github.com/state-space-models/cuthberto-carlos/tree/main/outputs/predictions/2026-07-03/2026-07-05_Mexico_England",
+          "prediction": {
+            "probabilities": {
+              "homeWin": 0.25922668,
+              "draw": 0.27822501,
+              "awayWin": 0.46254831
+            },
+            "scoreGrid": [
+              [
+                0.11220332,
+                0.14299489,
+                0.09435466,
+                0.04297845,
+                0.0152024,
+                0.00445402,
+                0.00112583,
+                0.00025252,
+                5.13e-05
+              ],
+              [
+                0.09888712,
+                0.12441701,
+                0.08103421,
+                0.03642721,
+                0.0127141,
+                0.00367498,
+                0.00091631,
+                0.0002027,
+                4.061e-05
+              ],
+              [
+                0.04542613,
+                0.05641062,
+                0.03625692,
+                0.01608124,
+                0.00553711,
+                0.00157867,
+                0.0003882,
+                8.468e-05,
+                1.673e-05
+              ],
+              [
+                0.01450162,
+                0.01776982,
+                0.01126823,
+                0.00493016,
+                0.00167432,
+                0.00047076,
+                0.00011415,
+                2.455e-05,
+                4.78e-06
+              ],
+              [
+                0.00361908,
+                0.00437499,
+                0.00273652,
+                0.00118085,
+                0.00039546,
+                0.00010963,
+                2.621e-05,
+                5.56e-06,
+                1.07e-06
+              ],
+              [
+                0.0007531,
+                0.00089795,
+                0.0005539,
+                0.00023568,
+                7.782e-05,
+                2.127e-05,
+                5.01e-06,
+                1.05e-06,
+                2e-07
+              ],
+              [
+                0.0001361,
+                0.00016003,
+                9.733e-05,
+                4.083e-05,
+                1.329e-05,
+                3.58e-06,
+                8.3e-07,
+                1.7e-07,
+                3e-08
+              ],
+              [
+                2.197e-05,
+                2.547e-05,
+                1.527e-05,
+                6.32e-06,
+                2.03e-06,
+                5.4e-07,
+                1.2e-07,
+                2e-08,
+                0.0
+              ],
+              [
+                3.23e-06,
+                3.7e-06,
+                2.18e-06,
+                8.9e-07,
+                2.8e-07,
+                7e-08,
+                2e-08,
+                0.0,
+                0.0
+              ]
+            ],
+            "mostLikelyScore": [
+              0,
+              1
+            ],
+            "mostLikelyScoreProbability": 0.14299489,
+            "expectedGoals": {
+              "home": 0.9,
+              "away": 1.3197
+            },
+            "skills": {
+              "home": {
+                "attack": {
+                  "mean": 0.391377,
+                  "sd": 0.132176
+                },
+                "defence": {
+                  "mean": 0.973646,
+                  "sd": 0.140602
+                }
+              },
+              "away": {
+                "attack": {
+                  "mean": 0.571579,
+                  "sd": 0.130919
+                },
+                "defence": {
+                  "mean": 1.181856,
+                  "sd": 0.161961
+                }
+              }
+            }
+          }
+        },
         {
           "predictionDate": "2026-07-02",
           "sourceUrl": "https://github.com/state-space-models/cuthberto-carlos/tree/main/outputs/predictions/2026-07-02/2026-07-05_Mexico_England",
@@ -94308,26 +94940,26 @@
       ],
       "prediction": {
         "probabilities": {
-          "homeWin": 0.25922668,
-          "draw": 0.27822501,
-          "awayWin": 0.46254831
+          "homeWin": 0.25922673,
+          "draw": 0.27822497,
+          "awayWin": 0.46254829
         },
         "scoreGrid": [
           [
-            0.11220332,
-            0.14299489,
+            0.11220329,
+            0.14299488,
             0.09435466,
-            0.04297845,
-            0.0152024,
-            0.00445402,
-            0.00112583,
+            0.04297846,
+            0.01520241,
+            0.00445403,
+            0.00112584,
             0.00025252,
             5.13e-05
           ],
           [
-            0.09888712,
-            0.12441701,
-            0.08103421,
+            0.09888711,
+            0.12441699,
+            0.0810342,
             0.03642721,
             0.0127141,
             0.00367498,
@@ -94338,29 +94970,29 @@
           [
             0.04542613,
             0.05641062,
-            0.03625692,
+            0.03625691,
             0.01608124,
             0.00553711,
-            0.00157867,
+            0.00157868,
             0.0003882,
             8.468e-05,
             1.673e-05
           ],
           [
-            0.01450162,
+            0.01450163,
             0.01776982,
             0.01126823,
             0.00493016,
             0.00167432,
-            0.00047076,
+            0.00047077,
             0.00011415,
             2.455e-05,
             4.78e-06
           ],
           [
             0.00361908,
-            0.00437499,
-            0.00273652,
+            0.004375,
+            0.00273653,
             0.00118085,
             0.00039546,
             0.00010963,
@@ -94417,7 +95049,7 @@
           0,
           1
         ],
-        "mostLikelyScoreProbability": 0.14299489,
+        "mostLikelyScoreProbability": 0.14299488,
         "expectedGoals": {
           "home": 0.9,
           "away": 1.3197
@@ -94430,7 +95062,7 @@
             },
             "defence": {
               "mean": 0.973646,
-              "sd": 0.140602
+              "sd": 0.140603
             }
           },
           "away": {
@@ -94450,7 +95082,7 @@
         "draw": 0.305,
         "awayWin": 0.395,
         "eventUrl": "https://polymarket.com/event/fifwc-mex-eng-2026-07-05",
-        "updatedAt": "2026-07-03T11:21:19.872917Z"
+        "updatedAt": "2026-07-04T10:45:51.866388Z"
       }
     },
     {
@@ -94461,7 +95093,302 @@
       "kickoffUtc": "2026-07-06T19:00:00Z",
       "venue": "Dallas (Arlington)",
       "team1Slot": "W83",
-      "team2Slot": "W84"
+      "team2Slot": "W84",
+      "team1": "Portugal",
+      "team2": "Spain",
+      "predictionDate": "2026-07-04",
+      "sourceUrl": "https://github.com/state-space-models/cuthberto-carlos/tree/main/outputs/predictions/2026-07-04/2026-07-06_Portugal_Spain",
+      "predictionHistory": [
+        {
+          "predictionDate": "2026-07-03",
+          "sourceUrl": "https://github.com/state-space-models/cuthberto-carlos/tree/main/outputs/predictions/2026-07-03/2026-07-06_Portugal_Spain",
+          "prediction": {
+            "probabilities": {
+              "homeWin": 0.27163225,
+              "draw": 0.24360644,
+              "awayWin": 0.48476131
+            },
+            "scoreGrid": [
+              [
+                0.06892145,
+                0.10573623,
+                0.08423411,
+                0.04645693,
+                0.01995391,
+                0.00711887,
+                0.0021973,
+                0.00060347,
+                0.00015053
+              ],
+              [
+                0.0753568,
+                0.11394357,
+                0.08945382,
+                0.04861346,
+                0.02057229,
+                0.00723054,
+                0.00219843,
+                0.00059471,
+                0.00014611
+              ],
+              [
+                0.04289678,
+                0.06391814,
+                0.04944421,
+                0.02647332,
+                0.01103636,
+                0.00382089,
+                0.00114425,
+                0.00030485,
+                7.376e-05
+              ],
+              [
+                0.01695004,
+                0.02488515,
+                0.01896507,
+                0.01000291,
+                0.00410754,
+                0.00140061,
+                0.00041308,
+                0.00010838,
+                2.582e-05
+              ],
+              [
+                0.00522977,
+                0.00756421,
+                0.00567865,
+                0.00295014,
+                0.00119312,
+                0.00040066,
+                0.00011636,
+                3.006e-05,
+                7.05e-06
+              ],
+              [
+                0.00134387,
+                0.00191467,
+                0.00141577,
+                0.00072438,
+                0.0002885,
+                9.54e-05,
+                2.728e-05,
+                6.94e-06,
+                1.6e-06
+              ],
+              [
+                0.00029956,
+                0.00042037,
+                0.00030612,
+                0.00015424,
+                6.049e-05,
+                1.969e-05,
+                5.54e-06,
+                1.39e-06,
+                3.2e-07
+              ],
+              [
+                5.958e-05,
+                8.233e-05,
+                5.904e-05,
+                2.929e-05,
+                1.131e-05,
+                3.63e-06,
+                1e-06,
+                2.5e-07,
+                6e-08
+              ],
+              [
+                1.079e-05,
+                1.468e-05,
+                1.037e-05,
+                5.06e-06,
+                1.93e-06,
+                6.1e-07,
+                1.7e-07,
+                4e-08,
+                1e-08
+              ]
+            ],
+            "mostLikelyScore": [
+              1,
+              1
+            ],
+            "mostLikelyScoreProbability": 0.11394357,
+            "expectedGoals": {
+              "home": 1.1184,
+              "away": 1.6046
+            },
+            "skills": {
+              "home": {
+                "attack": {
+                  "mean": 0.601331,
+                  "sd": 0.134418
+                },
+                "defence": {
+                  "mean": 1.021745,
+                  "sd": 0.156951
+                }
+              },
+              "away": {
+                "attack": {
+                  "mean": 0.814424,
+                  "sd": 0.126573
+                },
+                "defence": {
+                  "mean": 1.172895,
+                  "sd": 0.157783
+                }
+              }
+            }
+          }
+        }
+      ],
+      "prediction": {
+        "probabilities": {
+          "homeWin": 0.27163223,
+          "draw": 0.24360644,
+          "awayWin": 0.48476133
+        },
+        "scoreGrid": [
+          [
+            0.06892145,
+            0.10573623,
+            0.08423412,
+            0.04645693,
+            0.01995391,
+            0.00711887,
+            0.0021973,
+            0.00060347,
+            0.00015053
+          ],
+          [
+            0.07535679,
+            0.11394358,
+            0.08945382,
+            0.04861346,
+            0.02057229,
+            0.00723054,
+            0.00219843,
+            0.00059471,
+            0.00014611
+          ],
+          [
+            0.04289677,
+            0.06391813,
+            0.04944421,
+            0.02647332,
+            0.01103636,
+            0.00382089,
+            0.00114425,
+            0.00030485,
+            7.376e-05
+          ],
+          [
+            0.01695004,
+            0.02488514,
+            0.01896507,
+            0.01000291,
+            0.00410753,
+            0.00140061,
+            0.00041308,
+            0.00010838,
+            2.582e-05
+          ],
+          [
+            0.00522977,
+            0.00756421,
+            0.00567865,
+            0.00295014,
+            0.00119312,
+            0.00040066,
+            0.00011636,
+            3.006e-05,
+            7.05e-06
+          ],
+          [
+            0.00134387,
+            0.00191467,
+            0.00141576,
+            0.00072438,
+            0.0002885,
+            9.54e-05,
+            2.728e-05,
+            6.94e-06,
+            1.6e-06
+          ],
+          [
+            0.00029956,
+            0.00042037,
+            0.00030612,
+            0.00015424,
+            6.049e-05,
+            1.969e-05,
+            5.54e-06,
+            1.39e-06,
+            3.2e-07
+          ],
+          [
+            5.958e-05,
+            8.233e-05,
+            5.904e-05,
+            2.929e-05,
+            1.131e-05,
+            3.63e-06,
+            1e-06,
+            2.5e-07,
+            6e-08
+          ],
+          [
+            1.079e-05,
+            1.468e-05,
+            1.037e-05,
+            5.06e-06,
+            1.93e-06,
+            6.1e-07,
+            1.7e-07,
+            4e-08,
+            1e-08
+          ]
+        ],
+        "mostLikelyScore": [
+          1,
+          1
+        ],
+        "mostLikelyScoreProbability": 0.11394358,
+        "expectedGoals": {
+          "home": 1.1184,
+          "away": 1.6046
+        },
+        "skills": {
+          "home": {
+            "attack": {
+              "mean": 0.60133,
+              "sd": 0.134418
+            },
+            "defence": {
+              "mean": 1.021745,
+              "sd": 0.156951
+            }
+          },
+          "away": {
+            "attack": {
+              "mean": 0.814424,
+              "sd": 0.126573
+            },
+            "defence": {
+              "mean": 1.172895,
+              "sd": 0.157783
+            }
+          }
+        }
+      },
+      "polymarket": {
+        "homeWin": 0.225,
+        "draw": 0.265,
+        "awayWin": 0.515,
+        "eventUrl": "https://polymarket.com/event/fifwc-prt-esp-2026-07-06",
+        "updatedAt": "2026-07-04T10:45:51.866388Z"
+      }
     },
     {
       "id": "match-94",
@@ -94474,9 +95401,152 @@
       "team2Slot": "W82",
       "team1": "United States",
       "team2": "Belgium",
-      "predictionDate": "2026-07-03",
-      "sourceUrl": "https://github.com/state-space-models/cuthberto-carlos/tree/main/outputs/predictions/2026-07-03/2026-07-06_United States_Belgium",
+      "predictionDate": "2026-07-04",
+      "sourceUrl": "https://github.com/state-space-models/cuthberto-carlos/tree/main/outputs/predictions/2026-07-04/2026-07-06_United States_Belgium",
       "predictionHistory": [
+        {
+          "predictionDate": "2026-07-03",
+          "sourceUrl": "https://github.com/state-space-models/cuthberto-carlos/tree/main/outputs/predictions/2026-07-03/2026-07-06_United States_Belgium",
+          "prediction": {
+            "probabilities": {
+              "homeWin": 0.27147652,
+              "draw": 0.2218335,
+              "awayWin": 0.50668998
+            },
+            "scoreGrid": [
+              [
+                0.04608926,
+                0.08163743,
+                0.0748398,
+                0.04734108,
+                0.02324488,
+                0.00944923,
+                0.00331238,
+                0.00102982,
+                0.00028985
+              ],
+              [
+                0.05762563,
+                0.10059593,
+                0.09087961,
+                0.05664795,
+                0.02740675,
+                0.01097702,
+                0.00379107,
+                0.00116116,
+                0.00032196
+              ],
+              [
+                0.03745185,
+                0.06442696,
+                0.05735254,
+                0.03522419,
+                0.01679028,
+                0.00662527,
+                0.00225412,
+                0.00068011,
+                0.00018576
+              ],
+              [
+                0.01686869,
+                0.02859321,
+                0.02507877,
+                0.01517489,
+                0.00712604,
+                0.00276997,
+                0.00092834,
+                0.0002759,
+                7.422e-05
+              ],
+              [
+                0.00592328,
+                0.00989216,
+                0.00854779,
+                0.00509527,
+                0.002357,
+                0.00090247,
+                0.00029792,
+                8.721e-05,
+                2.311e-05
+              ],
+              [
+                0.00172946,
+                0.00284545,
+                0.00242213,
+                0.00142223,
+                0.00064804,
+                0.00024439,
+                7.946e-05,
+                2.291e-05,
+                5.98e-06
+              ],
+              [
+                0.00043735,
+                0.00070883,
+                0.00059434,
+                0.00034374,
+                0.00015427,
+                5.73e-05,
+                1.835e-05,
+                5.21e-06,
+                1.34e-06
+              ],
+              [
+                9.851e-05,
+                0.00015728,
+                0.00012989,
+                7.399e-05,
+                3.27e-05,
+                1.196e-05,
+                3.77e-06,
+                1.05e-06,
+                2.7e-07
+              ],
+              [
+                2.018e-05,
+                3.173e-05,
+                2.581e-05,
+                1.448e-05,
+                6.3e-06,
+                2.27e-06,
+                7e-07,
+                1.9e-07,
+                5e-08
+              ]
+            ],
+            "mostLikelyScore": [
+              1,
+              1
+            ],
+            "mostLikelyScoreProbability": 0.10059593,
+            "expectedGoals": {
+              "home": 1.28,
+              "away": 1.8531
+            },
+            "skills": {
+              "home": {
+                "attack": {
+                  "mean": 0.446699,
+                  "sd": 0.133516
+                },
+                "defence": {
+                  "mean": 0.712642,
+                  "sd": 0.141916
+                }
+              },
+              "away": {
+                "attack": {
+                  "mean": 0.652118,
+                  "sd": 0.130861
+                },
+                "defence": {
+                  "mean": 0.881862,
+                  "sd": 0.153932
+                }
+              }
+            }
+          }
+        },
         {
           "predictionDate": "2026-07-02",
           "sourceUrl": "https://github.com/state-space-models/cuthberto-carlos/tree/main/outputs/predictions/2026-07-02/2026-07-06_United States_Belgium",
@@ -94623,39 +95693,39 @@
       ],
       "prediction": {
         "probabilities": {
-          "homeWin": 0.27147652,
-          "draw": 0.2218335,
-          "awayWin": 0.50668998
+          "homeWin": 0.27147649,
+          "draw": 0.22183351,
+          "awayWin": 0.50669
         },
         "scoreGrid": [
           [
             0.04608926,
-            0.08163743,
-            0.0748398,
-            0.04734108,
-            0.02324488,
+            0.08163742,
+            0.07483981,
+            0.04734107,
+            0.02324489,
             0.00944923,
             0.00331238,
             0.00102982,
             0.00028985
           ],
           [
-            0.05762563,
-            0.10059593,
+            0.05762562,
+            0.10059592,
             0.09087961,
-            0.05664795,
-            0.02740675,
+            0.05664796,
+            0.02740676,
             0.01097702,
             0.00379107,
             0.00116116,
             0.00032196
           ],
           [
-            0.03745185,
-            0.06442696,
+            0.03745184,
+            0.06442695,
             0.05735254,
             0.03522419,
-            0.01679028,
+            0.01679029,
             0.00662527,
             0.00225412,
             0.00068011,
@@ -94674,7 +95744,7 @@
           ],
           [
             0.00592328,
-            0.00989216,
+            0.00989215,
             0.00854779,
             0.00509527,
             0.002357,
@@ -94698,7 +95768,7 @@
             0.00043735,
             0.00070883,
             0.00059434,
-            0.00034374,
+            0.00034375,
             0.00015427,
             5.73e-05,
             1.835e-05,
@@ -94732,7 +95802,7 @@
           1,
           1
         ],
-        "mostLikelyScoreProbability": 0.10059593,
+        "mostLikelyScoreProbability": 0.10059592,
         "expectedGoals": {
           "home": 1.28,
           "away": 1.8531
@@ -94740,11 +95810,11 @@
         "skills": {
           "home": {
             "attack": {
-              "mean": 0.446699,
+              "mean": 0.4467,
               "sd": 0.133516
             },
             "defence": {
-              "mean": 0.712642,
+              "mean": 0.712641,
               "sd": 0.141916
             }
           },
@@ -94761,11 +95831,11 @@
         }
       },
       "polymarket": {
-        "homeWin": 0.355,
+        "homeWin": 0.335,
         "draw": 0.295,
-        "awayWin": 0.345,
+        "awayWin": 0.375,
         "eventUrl": "https://polymarket.com/event/fifwc-usa-bel-2026-07-06",
-        "updatedAt": "2026-07-03T11:21:19.872917Z"
+        "updatedAt": "2026-07-04T10:45:51.866388Z"
       }
     },
     {
@@ -94786,7 +95856,8 @@
       "kickoffUtc": "2026-07-07T20:00:00Z",
       "venue": "Vancouver",
       "team1Slot": "W85",
-      "team2Slot": "W87"
+      "team2Slot": "W87",
+      "team1": "Switzerland"
     },
     {
       "id": "match-97",
