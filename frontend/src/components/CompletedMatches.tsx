@@ -62,7 +62,7 @@ export function CompletedMatches({ matches, knockoutMatches = [], teams, onOpen 
       </div>
       {completed.length > 0 ? (
         view === "cards" ? (
-          <div className="match-grid" data-testid="completed-card-view">
+          <div className="match-grid completed-matches-scroll" data-testid="completed-card-view" tabIndex={0} aria-label="Completed matches - card view, scroll to see more">
             {completed.map((match) =>
               match._type === 'group' ? (
                 <MatchCard
@@ -86,7 +86,7 @@ export function CompletedMatches({ matches, knockoutMatches = [], teams, onOpen 
             )}
           </div>
         ) : (
-          <div className="match-list" data-testid="completed-list-view">
+          <div className="match-list completed-matches-scroll" data-testid="completed-list-view" tabIndex={0} aria-label="Completed matches - list view, scroll to see more">
             {completed.map((match) =>
               match._type === 'group' ? (
                 <MatchListRow

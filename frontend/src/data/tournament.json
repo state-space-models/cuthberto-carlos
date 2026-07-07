@@ -4,8 +4,8 @@
   "snapshotDate": "2026-07-07",
   "snapshotPath": "outputs/predictions/2026-07-07",
   "snapshotUrl": "https://github.com/state-space-models/cuthberto-carlos/tree/main/outputs/predictions/2026-07-07",
-  "generatedAt": "2026-07-07T11:36:58.167857Z",
-  "sourceCommit": "be1c3d5ec42b",
+  "generatedAt": "2026-07-07T12:50:40.197862Z",
+  "sourceCommit": "733d2fa34f43",
   "model": {
     "name": "Cuthberto Carlos bivariate Poisson model",
     "resultProbabilityOrder": [
@@ -96811,7 +96811,156 @@
       "team1Slot": "W86",
       "team2Slot": "W88",
       "team1": "Argentina",
-      "team2": "Egypt"
+      "team2": "Egypt",
+      "predictionDate": "2026-07-07",
+      "sourceUrl": "https://github.com/state-space-models/cuthberto-carlos/tree/main/outputs/predictions/2026-07-07/2026-07-06_Argentina_Egypt",
+      "predictionHistory": [],
+      "prediction": {
+        "probabilities": {
+          "homeWin": 0.69494637,
+          "draw": 0.20444638,
+          "awayWin": 0.10060724
+        },
+        "scoreGrid": [
+          [
+            0.09276979,
+            0.04930731,
+            0.0136869,
+            0.00264552,
+            0.00040056,
+            5.067e-05,
+            5.58e-06,
+            5.5e-07,
+            5e-08
+          ],
+          [
+            0.16615077,
+            0.08729113,
+            0.02394284,
+            0.00457141,
+            0.0006835,
+            8.536e-05,
+            9.28e-06,
+            9e-07,
+            8e-08
+          ],
+          [
+            0.15409842,
+            0.08000857,
+            0.02168049,
+            0.00408822,
+            0.00060351,
+            7.439e-05,
+            7.98e-06,
+            7.7e-07,
+            7e-08
+          ],
+          [
+            0.09867332,
+            0.05061975,
+            0.01354875,
+            0.0025228,
+            0.00036764,
+            4.473e-05,
+            4.73e-06,
+            4.5e-07,
+            4e-08
+          ],
+          [
+            0.04907089,
+            0.02486817,
+            0.00657345,
+            0.00120844,
+            0.00017382,
+            2.087e-05,
+            2.18e-06,
+            2e-07,
+            2e-08
+          ],
+          [
+            0.02021457,
+            0.01011824,
+            0.00264091,
+            0.00047925,
+            6.803e-05,
+            8.06e-06,
+            8.3e-07,
+            8e-08,
+            1e-08
+          ],
+          [
+            0.00718476,
+            0.0035514,
+            0.00091512,
+            0.00016391,
+            2.296e-05,
+            2.68e-06,
+            2.7e-07,
+            2e-08,
+            0.0
+          ],
+          [
+            0.00226602,
+            0.00110593,
+            0.0002813,
+            4.972e-05,
+            6.87e-06,
+            7.9e-07,
+            8e-08,
+            1e-08,
+            0.0
+          ],
+          [
+            0.00064735,
+            0.0003119,
+            7.83e-05,
+            1.366e-05,
+            1.86e-06,
+            2.1e-07,
+            2e-08,
+            0.0,
+            0.0
+          ]
+        ],
+        "mostLikelyScore": [
+          1,
+          0
+        ],
+        "mostLikelyScoreProbability": 0.16615077,
+        "expectedGoals": {
+          "home": 1.902,
+          "away": 0.5321
+        },
+        "skills": {
+          "home": {
+            "attack": {
+              "mean": 0.699076,
+              "sd": 0.129103
+            },
+            "defence": {
+              "mean": 1.334586,
+              "sd": 0.164714
+            }
+          },
+          "away": {
+            "attack": {
+              "mean": 0.013229,
+              "sd": 0.134655
+            },
+            "defence": {
+              "mean": 0.73349,
+              "sd": 0.145023
+            }
+          }
+        }
+      },
+      "polymarket": {
+        "homeWin": 0.725,
+        "draw": 0.195,
+        "awayWin": 0.075,
+        "eventUrl": "https://polymarket.com/event/fifwc-arg-egy-2026-07-07",
+        "updatedAt": "2026-07-07T12:49:48.293725Z"
+      }
     },
     {
       "id": "match-96",
@@ -96823,7 +96972,156 @@
       "team1Slot": "W85",
       "team2Slot": "W87",
       "team1": "Switzerland",
-      "team2": "Colombia"
+      "team2": "Colombia",
+      "predictionDate": "2026-07-07",
+      "sourceUrl": "https://github.com/state-space-models/cuthberto-carlos/tree/main/outputs/predictions/2026-07-07/2026-07-06_Switzerland_Colombia",
+      "predictionHistory": [],
+      "prediction": {
+        "probabilities": {
+          "homeWin": 0.28013874,
+          "draw": 0.25808145,
+          "awayWin": 0.46177981
+        },
+        "scoreGrid": [
+          [
+            0.08423624,
+            0.11780027,
+            0.08560324,
+            0.04309589,
+            0.01690835,
+            0.00551415,
+            0.00155689,
+            0.00039141,
+            8.944e-05
+          ],
+          [
+            0.08714747,
+            0.12009873,
+            0.08599108,
+            0.04264901,
+            0.01648264,
+            0.00529423,
+            0.00147208,
+            0.00036443,
+            8.199e-05
+          ],
+          [
+            0.04698872,
+            0.06380196,
+            0.04500335,
+            0.02198565,
+            0.00836839,
+            0.00264699,
+            0.00072472,
+            0.00017664,
+            3.912e-05
+          ],
+          [
+            0.01760451,
+            0.0235476,
+            0.01635999,
+            0.00787134,
+            0.00295034,
+            0.00091887,
+            0.00024769,
+            5.943e-05,
+            1.296e-05
+          ],
+          [
+            0.00515546,
+            0.00679207,
+            0.00464726,
+            0.00220177,
+            0.00081256,
+            0.00024915,
+            6.611e-05,
+            1.561e-05,
+            3.35e-06
+          ],
+          [
+            0.00125869,
+            0.00163305,
+            0.00110025,
+            0.00051323,
+            0.00018647,
+            5.628e-05,
+            1.47e-05,
+            3.42e-06,
+            7.2e-07
+          ],
+          [
+            0.00026685,
+            0.00034091,
+            0.00022614,
+            0.00010384,
+            3.714e-05,
+            1.103e-05,
+            2.84e-06,
+            6.5e-07,
+            1.3e-07
+          ],
+          [
+            5.053e-05,
+            6.355e-05,
+            4.15e-05,
+            1.876e-05,
+            6.6e-06,
+            1.93e-06,
+            4.9e-07,
+            1.1e-07,
+            2e-08
+          ],
+          [
+            8.72e-06,
+            1.08e-05,
+            6.94e-06,
+            3.09e-06,
+            1.07e-06,
+            3.1e-07,
+            8e-08,
+            2e-08,
+            0.0
+          ]
+        ],
+        "mostLikelyScore": [
+          1,
+          1
+        ],
+        "mostLikelyScoreProbability": 0.12009873,
+        "expectedGoals": {
+          "home": 1.0588,
+          "away": 1.4573
+        },
+        "skills": {
+          "home": {
+            "attack": {
+              "mean": 0.533345,
+              "sd": 0.136641
+            },
+            "defence": {
+              "mean": 0.85173,
+              "sd": 0.147994
+            }
+          },
+          "away": {
+            "attack": {
+              "mean": 0.547208,
+              "sd": 0.13896
+            },
+            "defence": {
+              "mean": 1.1604,
+              "sd": 0.159065
+            }
+          }
+        }
+      },
+      "polymarket": {
+        "homeWin": 0.265,
+        "draw": 0.315,
+        "awayWin": 0.425,
+        "eventUrl": "https://polymarket.com/event/fifwc-che-col-2026-07-07",
+        "updatedAt": "2026-07-07T12:49:48.293725Z"
+      }
     },
     {
       "id": "match-97",
@@ -97270,7 +97568,7 @@
         "draw": 0.245,
         "awayWin": 0.145,
         "eventUrl": "https://polymarket.com/event/fifwc-fra-mar-2026-07-09",
-        "updatedAt": "2026-07-07T11:35:31.344846Z"
+        "updatedAt": "2026-07-07T12:49:48.293725Z"
       }
     },
     {
@@ -97428,10 +97726,10 @@
       },
       "polymarket": {
         "homeWin": 0.605,
-        "draw": 0.235,
+        "draw": 0.245,
         "awayWin": 0.165,
         "eventUrl": "https://polymarket.com/event/fifwc-esp-bel-2026-07-10",
-        "updatedAt": "2026-07-07T11:35:31.344846Z"
+        "updatedAt": "2026-07-07T12:49:48.293725Z"
       }
     },
     {
@@ -97732,11 +98030,11 @@
         }
       },
       "polymarket": {
-        "homeWin": 0.235,
+        "homeWin": 0.225,
         "draw": 0.265,
         "awayWin": 0.515,
         "eventUrl": "https://polymarket.com/event/fifwc-nor-eng-2026-07-11",
-        "updatedAt": "2026-07-07T11:35:31.344846Z"
+        "updatedAt": "2026-07-07T12:49:48.293725Z"
       }
     },
     {
