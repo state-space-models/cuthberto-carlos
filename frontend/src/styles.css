@@ -562,6 +562,32 @@ h2 {
   background: #eeece3;
 }
 
+/* Scrollable container for completed matches - shows ~2 rows of cards */
+.completed-matches-scroll {
+  max-height: calc(2 * 235px + 1.2rem); /* 2 card rows + gap */
+  overflow-y: auto !important;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+}
+
+/* For cards: 2 rows = 2 cards per row, so max ~4 cards visible */
+[data-testid="completed-card-view"].completed-matches-scroll {
+  max-height: calc(2 * 235px + 1.2rem); /* 2 rows of cards */
+  padding-right: 0.35rem;
+}
+
+/* For list: match the same visual height as 2 card rows */
+[data-testid="completed-list-view"].completed-matches-scroll {
+  max-height: calc(2 * 235px + 1.2rem); /* Same visual height as cards */
+  padding-right: 0;
+}
+
+/* Focus indicator for scrollable areas */
+.completed-matches-scroll:focus-visible {
+  outline: 3px solid rgba(241, 210, 74, 0.75);
+  outline-offset: 4px;
+}
+
 .match-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
