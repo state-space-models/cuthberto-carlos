@@ -4,8 +4,8 @@
   "snapshotDate": "2026-07-11",
   "snapshotPath": "outputs/predictions/2026-07-11",
   "snapshotUrl": "https://github.com/state-space-models/cuthberto-carlos/tree/main/outputs/predictions/2026-07-11",
-  "generatedAt": "2026-07-11T10:08:23.942707Z",
-  "sourceCommit": "b6cca8fa4fc1",
+  "generatedAt": "2026-07-12T10:17:39.044379Z",
+  "sourceCommit": "1ff2454fb4c2",
   "model": {
     "name": "Cuthberto Carlos bivariate Poisson model",
     "resultProbabilityOrder": [
@@ -98238,6 +98238,35 @@
       "team2Slot": "W92",
       "team1": "Norway",
       "team2": "England",
+      "score": {
+        "fullTime": [
+          1,
+          1
+        ],
+        "extraTime": [
+          1,
+          2
+        ],
+        "homeGoals": [
+          {
+            "name": "Andreas Schjelderup",
+            "minute": "36",
+            "penalty": null
+          }
+        ],
+        "awayGoals": [
+          {
+            "name": "Jude Bellingham",
+            "minute": "45+2",
+            "penalty": null
+          },
+          {
+            "name": "Jude Bellingham",
+            "minute": "93",
+            "penalty": null
+          }
+        ]
+      },
       "predictionDate": "2026-07-11",
       "sourceUrl": "https://github.com/state-space-models/cuthberto-carlos/tree/main/outputs/predictions/2026-07-11/2026-07-11_Norway_England",
       "predictionHistory": [
@@ -98952,13 +98981,6 @@
             }
           }
         }
-      },
-      "polymarket": {
-        "homeWin": 0.24375,
-        "draw": 0.25625,
-        "awayWin": 0.50375,
-        "eventUrl": "https://polymarket.com/event/fifwc-nor-eng-2026-07-11",
-        "updatedAt": "2026-07-11T10:08:05.70434Z"
       }
     },
     {
@@ -98972,6 +98994,40 @@
       "team2Slot": "W96",
       "team1": "Argentina",
       "team2": "Switzerland",
+      "score": {
+        "fullTime": [
+          1,
+          1
+        ],
+        "extraTime": [
+          3,
+          1
+        ],
+        "homeGoals": [
+          {
+            "name": "Alexis Mac Allister",
+            "minute": "10",
+            "penalty": null
+          },
+          {
+            "name": "Julián Alvarez",
+            "minute": "112",
+            "penalty": null
+          },
+          {
+            "name": "Lautaro Martínez",
+            "minute": "120+1",
+            "penalty": null
+          }
+        ],
+        "awayGoals": [
+          {
+            "name": "Dan Ndoye",
+            "minute": "67",
+            "penalty": null
+          }
+        ]
+      },
       "predictionDate": "2026-07-11",
       "sourceUrl": "https://github.com/state-space-models/cuthberto-carlos/tree/main/outputs/predictions/2026-07-11/2026-07-11_Argentina_Switzerland",
       "predictionHistory": [
@@ -99400,13 +99456,6 @@
             }
           }
         }
-      },
-      "polymarket": {
-        "homeWin": 0.57875,
-        "draw": 0.26875,
-        "awayWin": 0.16125,
-        "eventUrl": "https://polymarket.com/event/fifwc-arg-che-2026-07-11",
-        "updatedAt": "2026-07-11T10:08:05.70434Z"
       }
     },
     {
@@ -99417,7 +99466,9 @@
       "kickoffUtc": "2026-07-14T19:00:00Z",
       "venue": "Dallas (Arlington)",
       "team1Slot": "W97",
-      "team2Slot": "W98"
+      "team2Slot": "W98",
+      "team1": "France",
+      "team2": "Spain"
     },
     {
       "id": "match-102",
