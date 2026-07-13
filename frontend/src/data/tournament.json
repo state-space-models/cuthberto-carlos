@@ -4,8 +4,8 @@
   "snapshotDate": "2026-07-11",
   "snapshotPath": "outputs/predictions/2026-07-11",
   "snapshotUrl": "https://github.com/state-space-models/cuthberto-carlos/tree/main/outputs/predictions/2026-07-11",
-  "generatedAt": "2026-07-12T10:17:39.044379Z",
-  "sourceCommit": "1ff2454fb4c2",
+  "generatedAt": "2026-07-13T11:49:42.997512Z",
+  "sourceCommit": "334576c67293",
   "model": {
     "name": "Cuthberto Carlos bivariate Poisson model",
     "resultProbabilityOrder": [
@@ -99478,7 +99478,9 @@
       "kickoffUtc": "2026-07-15T19:00:00Z",
       "venue": "Atlanta",
       "team1Slot": "W99",
-      "team2Slot": "W100"
+      "team2Slot": "W100",
+      "team1": "England",
+      "team2": "Argentina"
     },
     {
       "id": "match-103",
