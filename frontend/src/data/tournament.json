@@ -4,8 +4,8 @@
   "snapshotDate": "2026-07-13",
   "snapshotPath": "outputs/predictions/2026-07-13",
   "snapshotUrl": "https://github.com/state-space-models/cuthberto-carlos/tree/main/outputs/predictions/2026-07-13",
-  "generatedAt": "2026-07-13T17:59:17.973091Z",
-  "sourceCommit": "8c7aef7ac94c",
+  "generatedAt": "2026-07-14T10:28:58.229392Z",
+  "sourceCommit": "f126c28c7e41",
   "model": {
     "name": "Cuthberto Carlos bivariate Poisson model",
     "resultProbabilityOrder": [
@@ -99612,11 +99612,11 @@
         }
       },
       "polymarket": {
-        "homeWin": 0.41125,
+        "homeWin": 0.40625,
         "draw": 0.29875,
-        "awayWin": 0.29625,
+        "awayWin": 0.29875,
         "eventUrl": "https://polymarket.com/event/fifwc-fra-esp-2026-07-14",
-        "updatedAt": "2026-07-13T17:55:17.806795Z"
+        "updatedAt": "2026-07-14T10:28:40.703894Z"
       }
     },
     {
@@ -99773,11 +99773,11 @@
         }
       },
       "polymarket": {
-        "homeWin": 0.36125,
-        "draw": 0.32625,
-        "awayWin": 0.30875,
+        "homeWin": 0.35875,
+        "draw": 0.32875,
+        "awayWin": 0.31125,
         "eventUrl": "https://polymarket.com/event/fifwc-eng-arg-2026-07-15",
-        "updatedAt": "2026-07-13T17:55:07.841793Z"
+        "updatedAt": "2026-07-14T10:28:40.703894Z"
       }
     },
     {
