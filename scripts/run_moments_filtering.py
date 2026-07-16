@@ -27,14 +27,14 @@ params = {k: jnp.asarray(v) for k, v in params.items()}
 
 num_teams = len(teams_id_to_name_dict)
 
-init_chol_cov = jnp.linalg.cholesky(params["init_cov"])
-
 # Add dummy element at index 0 for each leaf
 model_inputs = jax.tree.map(
     lambda x: jnp.concatenate([jnp.zeros_like(x[:1]), x], axis=0), jax_data
 )
 
-filter_obj, factorializer, single_team_filter = model_moments.build(**params)
+filter_obj, factorializer, single_team_filter = model_moments.build(
+    num_teams=num_teams, **params
+)
 
 _, _, out_factorial_final = factorial_filter(
     filter_obj, factorializer, model_inputs, output_factorial=False

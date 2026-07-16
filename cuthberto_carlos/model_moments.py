@@ -220,7 +220,7 @@ def get_observation_params_noop(
     return observation_mean_and_chol_cov, state.mean, jnp.array([jnp.nan])
 
 
-def build(init_mean, init_chol_cov, alpha, beta, friendly_scale, kappa):
+def build(init_mean, init_chol_cov, alpha, beta, friendly_scale, kappa, num_teams):
     """Build the moments filters and factorializer for the football model.
 
     Args:
@@ -233,6 +233,8 @@ def build(init_mean, init_chol_cov, alpha, beta, friendly_scale, kappa):
             parameters on the expected score for friendly matches. Larger values correspond
             to less influence (and thus higher variance in the observation model).
         kappa: Mean-reversion rate per day for the OU dynamics.
+        num_teams: The number of teams, used to determine the shape of the initial
+            state and the number of factors in the factorializer.
 
     Returns:
         A tuple containing the moments filter for match updates, the factorializer, and
@@ -243,6 +245,7 @@ def build(init_mean, init_chol_cov, alpha, beta, friendly_scale, kappa):
             get_init_params,
             init_mean=init_mean,
             init_chol_cov=init_chol_cov,
+            num_teams=num_teams,
         ),
         get_dynamics_params=partial(
             get_dynamics_params,
