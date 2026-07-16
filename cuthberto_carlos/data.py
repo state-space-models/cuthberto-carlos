@@ -78,9 +78,7 @@ def download_data(
     ]
 
     # Remove matches where either team is NA (e.g., future knockout matches without determined teams)
-    data_all = data_all[
-        data_all["home_team"].notna() & data_all["away_team"].notna()
-    ]
+    data_all = data_all[data_all["home_team"].notna() & data_all["away_team"].notna()]
 
     # Extract unique teams
     home_counts: pd.Series = data_all["home_team"].value_counts()

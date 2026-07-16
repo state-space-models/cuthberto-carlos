@@ -5,7 +5,8 @@ The prediction files contain ``probs_results`` in the order:
 draw, home win, away win. This script ignores scoreline probabilities.
 
 Results are downloaded from the same international-results source used by the
-model. Odds are scraped from FotMob's displayed 1X2 match odds.
+model. Historical executable prices are taken from Polymarket's public Gamma
+and CLOB APIs, at the end of the prediction batch's UTC date.
 """
 
 from __future__ import annotations
@@ -22,7 +23,7 @@ from collections.abc import Iterable
 from dataclasses import dataclass
 from pathlib import Path
 import sys
-from typing import Any
+from typing import Any, cast
 
 import pandas as pd
 import plotnine as pn
@@ -36,6 +37,12 @@ DEFAULT_PREDICTION_PARENT = Path("outputs/predictions")
 DEFAULT_OUTPUT_PARENT = Path("outputs/kelly_backtest")
 DEFAULT_COMBINED_OUTPUT_ROOT = DEFAULT_OUTPUT_PARENT / "combined"
 DEFAULT_FOTMOB_CCODE3 = "GBR"
+POLYMARKET_EVENTS_URL = "https://gamma-api.polymarket.com/events/keyset"
+POLYMARKET_PRICE_HISTORY_URL = "https://clob.polymarket.com/prices-history"
+POLYMARKET_WORLD_CUP_TAG_ID = "102232"
+POLYMARKET_WORLD_CUP_SERIES_ID = "11433"
+POLYMARKET_MONEYLINE_TYPE = "moneyline"
+DEFAULT_POLYMARKET_PRE_KICKOFF_HOURS = 2.0
 RESULT_ORDER = ("draw", "home", "away")
 
 
@@ -332,6 +339,262 @@ def cached_json_request(
     else:
         cache_path.write_text(json.dumps(payload, indent=2, sort_keys=True))
         return payload
+
+
+def json_string_list(value: Any) -> list[str]:
+    """Parse a Gamma API JSON-encoded array of strings."""
+    if isinstance(value, list) and all(isinstance(item, str) for item in value):
+        return value
+    try:
+        parsed = json.loads(value)
+    except (TypeError, json.JSONDecodeError):
+        return []
+    return (
+        parsed
+        if isinstance(parsed, list) and all(isinstance(item, str) for item in parsed)
+        else []
+    )
+
+
+def polymarket_closed_events(
+    cache_dir: Path, tag_id: str, series_id: str
+) -> list[dict[str, Any]]:
+    """Fetch all closed events for a Polymarket sports series."""
+    events: list[dict[str, Any]] = []
+    cursor: str | None = None
+    page_number = 0
+    while True:
+        query = {
+            "limit": "100",
+            "tag_id": tag_id,
+            "series_id": series_id,
+            "closed": "true",
+            "decimalized": "true",
+        }
+        if cursor:
+            query["after_cursor"] = cursor
+        url = f"{POLYMARKET_EVENTS_URL}?{urllib.parse.urlencode(query)}"
+        cache_path = (
+            cache_dir / "polymarket" / "events" / f"page_{page_number:03d}.json"
+        )
+        payload = cached_json_request(url, cache_path, timeout=30.0)
+        page_events = payload.get("events") if isinstance(payload, dict) else None
+        if not isinstance(page_events, list):
+            raise ValueError("Polymarket response is missing an events array")
+        events.extend(event for event in page_events if isinstance(event, dict))
+        cursor = payload.get("next_cursor")
+        if not cursor:
+            return events
+        if not isinstance(cursor, str):
+            raise ValueError("Polymarket response has an invalid next_cursor")
+        page_number += 1
+
+
+def polymarket_price_history(token_id: str, cache_dir: Path) -> list[dict[str, Any]]:
+    """Fetch the complete public CLOB trade-price history for a Yes token."""
+    query = urllib.parse.urlencode(
+        {"market": token_id, "interval": "max", "fidelity": "1440"}
+    )
+    url = f"{POLYMARKET_PRICE_HISTORY_URL}?{query}"
+    cache_path = cache_dir / "polymarket" / "price_history" / f"{token_id}_1d.json"
+    payload = cached_json_request(url, cache_path, timeout=30.0)
+    history = payload.get("history") if isinstance(payload, dict) else None
+    return history if isinstance(history, list) else []
+
+
+def polymarket_price_as_of(
+    token_id: str, cutoff: pd.Timestamp, cache_dir: Path
+) -> tuple[float, pd.Timestamp] | None:
+    """Return the latest valid trade price at or before a UTC cutoff."""
+    cutoff_timestamp = int(cutoff.timestamp())
+    latest: tuple[float, int] | None = None
+    for point in polymarket_price_history(token_id, cache_dir):
+        if not isinstance(point, dict) or not is_number(point.get("t")):
+            continue
+        timestamp = int(float(point["t"]))
+        price = point.get("p")
+        if timestamp > cutoff_timestamp or not is_number(price):
+            continue
+        if price is None:
+            continue
+        price_float = float(price)
+        if not 0 < price_float < 1:
+            continue
+        if latest is None or timestamp > latest[1]:
+            latest = (price_float, timestamp)
+    if latest is None:
+        return None
+    return latest[0], cast(pd.Timestamp, pd.to_datetime(latest[1], unit="s", utc=True))
+
+
+def polymarket_decimal_odds(price: float, market: dict[str, Any]) -> float:
+    """Convert a taker Yes price into fee-inclusive decimal payout odds."""
+    fee_schedule = market.get("feeSchedule")
+    fee_rate = (
+        float(fee_schedule["rate"])
+        if isinstance(fee_schedule, dict)
+        and market.get("feesEnabled") is True
+        and is_number(fee_schedule.get("rate"))
+        else 0.0
+    )
+    cost_per_share = price * (1.0 + fee_rate * (1.0 - price))
+    return 1.0 / cost_per_share
+
+
+def polymarket_kickoff(
+    event: dict[str, Any], markets: list[Any]
+) -> pd.Timestamp | None:
+    """Return the scheduled kickoff, preferring a moneyline market timestamp."""
+    values = [
+        market.get("gameStartTime")
+        for market in markets
+        if isinstance(market, dict) and isinstance(market.get("gameStartTime"), str)
+    ]
+    if not values and isinstance(event.get("endDate"), str):
+        values.append(event["endDate"])
+    for value in values:
+        try:
+            return pd.to_datetime(value, utc=True)
+        except (TypeError, ValueError):
+            continue
+    return None
+
+
+def polymarket_event_outcomes(
+    event: dict[str, Any],
+    prediction: Prediction,
+    cache_dir: Path,
+    pre_kickoff_hours: float = DEFAULT_POLYMARKET_PRE_KICKOFF_HOURS,
+) -> Odds | None:
+    """Build a fixture's three Polymarket prices as of its prediction date."""
+    title = event.get("title")
+    markets = event.get("markets")
+    slug = event.get("slug")
+    if (
+        not isinstance(title, str)
+        or not isinstance(markets, list)
+        or not isinstance(slug, str)
+    ):
+        return None
+    teams = re.split(r"\s+vs\.?\s+", title, maxsplit=1, flags=re.IGNORECASE)
+    if len(teams) != 2:
+        return None
+    event_teams = {canonical_team(team) for team in teams}
+    prediction_teams = {
+        canonical_team(prediction.home_team),
+        canonical_team(prediction.away_team),
+    }
+    if event_teams != prediction_teams:
+        return None
+    event_date = event.get("eventDate")
+    if isinstance(event_date, str) and (
+        abs(
+            (
+                pd.to_datetime(event_date).date()
+                - pd.to_datetime(prediction.date).date()
+            ).days
+        )
+        > 1
+    ):
+        return None
+
+    # A batch date has day-level precision, so use its UTC close. Cap that at a
+    # pre-kickoff buffer so same-day batches cannot use in-play prices.
+    prediction_cutoff = pd.Timestamp(
+        f"{prediction_batch_date(prediction).date()}T23:59:59Z"
+    )
+    kickoff = polymarket_kickoff(event, markets)
+    if kickoff is None:
+        return None
+    cutoff = cast(
+        pd.Timestamp,
+        min(
+            prediction_cutoff,
+            kickoff - pd.Timedelta(hours=pre_kickoff_hours),
+        ),
+    )
+    prices: dict[str, tuple[float, pd.Timestamp, str]] = {}
+    for market in markets:
+        if (
+            not isinstance(market, dict)
+            or market.get("sportsMarketType") != POLYMARKET_MONEYLINE_TYPE
+        ):
+            continue
+        metadata = market.get("marketMetadata")
+        selection = (
+            metadata.get("opticOddsSelection")
+            if isinstance(metadata, dict)
+            else market.get("groupItemTitle")
+        )
+        token_ids = json_string_list(market.get("clobTokenIds"))
+        if not isinstance(selection, str) or not token_ids:
+            continue
+        if selection.casefold() == "draw":
+            outcome = "draw"
+        else:
+            outcome = canonical_team(selection)
+        if outcome != "draw" and outcome not in event_teams:
+            continue
+        if outcome in prices:
+            return None
+        as_of = polymarket_price_as_of(token_ids[0], cutoff, cache_dir)
+        if as_of is None:
+            continue
+        price, priced_at = as_of
+        prices[outcome] = (
+            polymarket_decimal_odds(price, market),
+            priced_at,
+            token_ids[0],
+        )
+
+    required = {
+        "draw",
+        canonical_team(prediction.home_team),
+        canonical_team(prediction.away_team),
+    }
+    if set(prices) != required:
+        return None
+    home = prices[canonical_team(prediction.home_team)]
+    draw = prices["draw"]
+    away = prices[canonical_team(prediction.away_team)]
+    return Odds(
+        date=prediction.date,
+        home_team=prediction.home_team,
+        away_team=prediction.away_team,
+        odds_home=home[0],
+        odds_draw=draw[0],
+        odds_away=away[0],
+        source=(
+            f"polymarket:{slug}:as_of={cutoff.isoformat()}:"
+            f"prices={home[1].isoformat()},{draw[1].isoformat()},{away[1].isoformat()}"
+        ),
+    )
+
+
+def odds_from_polymarket(
+    predictions: Iterable[Prediction],
+    cache_dir: Path,
+    tag_id: str,
+    series_id: str,
+    pre_kickoff_hours: float = DEFAULT_POLYMARKET_PRE_KICKOFF_HOURS,
+) -> list[Odds]:
+    """Load pre-kickoff, fee-inclusive Polymarket 1X2 odds for predictions."""
+    events = polymarket_closed_events(cache_dir, tag_id, series_id)
+    odds_rows: list[Odds] = []
+    for prediction in predictions:
+        matches = [
+            polymarket_event_outcomes(event, prediction, cache_dir, pre_kickoff_hours)
+            for event in events
+        ]
+        matched = [odds for odds in matches if odds is not None]
+        if len(matched) == 1:
+            odds_rows.append(matched[0])
+        elif len(matched) > 1:
+            print(
+                "Skipping ambiguous Polymarket markets for "
+                f"{prediction.home_team} vs {prediction.away_team} on {prediction.date}"
+            )
+    return odds_rows
 
 
 def fotmob_match_list_payload(
@@ -788,7 +1051,13 @@ def write_bankroll_plot(path: Path, trajectory_rows: list[dict[str, Any]]) -> No
 
 def load_odds(args: argparse.Namespace, predictions: list[Prediction]) -> list[Odds]:
     cache_dir = args.output_dir / "cache"
-    return odds_from_fotmob(predictions, cache_dir, args.fotmob_ccode3)
+    return odds_from_polymarket(
+        predictions,
+        cache_dir,
+        args.polymarket_tag_id,
+        args.polymarket_series_id,
+        args.polymarket_pre_kickoff_hours,
+    )
 
 
 def build_backtest_matches(
@@ -864,6 +1133,22 @@ def parse_args() -> argparse.Namespace:
         help="Caps total stake per match as a fraction of current bankroll.",
     )
     parser.add_argument("--fotmob-ccode3", default=DEFAULT_FOTMOB_CCODE3)
+    parser.add_argument(
+        "--polymarket-tag-id",
+        default=POLYMARKET_WORLD_CUP_TAG_ID,
+        help="Polymarket sport/tournament tag used to discover closed markets.",
+    )
+    parser.add_argument(
+        "--polymarket-series-id",
+        default=POLYMARKET_WORLD_CUP_SERIES_ID,
+        help="Polymarket series used to discover closed markets.",
+    )
+    parser.add_argument(
+        "--polymarket-pre-kickoff-hours",
+        type=float,
+        default=DEFAULT_POLYMARKET_PRE_KICKOFF_HOURS,
+        help="Require the selected Polymarket trade to be this many hours before kickoff.",
+    )
     return parser.parse_args()
 
 
@@ -884,6 +1169,8 @@ def main() -> None:
         raise ValueError("--starting-bankroll must be positive.")
     if not (0 < args.max_total_stake_fraction <= 1):
         raise ValueError("--max-total-stake-fraction must be in (0, 1].")
+    if args.polymarket_pre_kickoff_hours < 0:
+        raise ValueError("--polymarket-pre-kickoff-hours must be non-negative.")
 
     primary_results = load_results()
     primary_result_index = build_result_index(primary_results)
