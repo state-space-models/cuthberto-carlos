@@ -45,12 +45,15 @@ pd_data, _, teams_id_to_name_dict, teams_name_to_id_dict = download_data(
 # Future data labelled with home_score=away_score=-1
 pd_data_future = pd_data[pd_data["home_score"] == -1].copy()
 jax_data_future = to_jax_data(pd_data_future)
+num_teams = len(teams_id_to_name_dict)
 
 factorial_state_and_timestamp = load_arraytree(FACTORIAL_STATE_PATH)
 factorial_state = factorial_state_and_timestamp["factorial_state"]
 factorial_timestamp = factorial_state_and_timestamp["timestamp"]
 
-_, factorializer, single_team_filter = model_moments.build(**params)
+_, factorializer, single_team_filter = model_moments.build(
+    **params, num_teams=num_teams
+)
 
 
 def propagate_and_predict(

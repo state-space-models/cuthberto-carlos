@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
 import type {
+  ActualGoal,
+  KnockoutMatch,
   MatchPrediction,
   PredictionDetails,
   PredictionHistoryEntry,
@@ -14,12 +16,63 @@ import {
 } from "../utils";
 import { MatchScoreComparison } from "./MatchScoreComparison";
 import { TeamFlag } from "./TeamFlag";
+import { PolymarketDetail } from "./PolymarketComparison";
+
+interface DrawerMatch {
+  id: string;
+  homeTeam: string;
+  awayTeam: string;
+  kickoffUtc: string;
+  venue: string;
+  eyebrow: string;
+  prediction: PredictionDetails;
+  predictionDate: string;
+  sourceUrl: string;
+  predictionHistory: PredictionHistoryEntry[];
+  polymarket?: MatchPrediction["polymarket"];
+  actualResult?: MatchPrediction["actualResult"];
+  knockoutScore?: KnockoutMatch["score"];
+}
 
 interface MatchDetailDrawerProps {
-  match: MatchPrediction | null;
+  match: MatchPrediction | KnockoutMatch | null;
+  matches: MatchPrediction[];
   teams: Record<string, Team>;
   modelName: string;
   onClose: () => void;
+}
+
+function normalizeMatch(match: MatchPrediction | KnockoutMatch): DrawerMatch {
+  if ("homeTeam" in match) {
+    return {
+      id: match.id,
+      homeTeam: match.homeTeam,
+      awayTeam: match.awayTeam,
+      kickoffUtc: match.kickoffUtc,
+      venue: match.venue,
+      eyebrow: `Group ${match.group}`,
+      prediction: match.prediction,
+      predictionDate: match.predictionDate,
+      sourceUrl: match.sourceUrl,
+      predictionHistory: match.predictionHistory,
+      polymarket: match.polymarket,
+      actualResult: match.actualResult,
+    };
+  }
+  return {
+    id: match.id,
+    homeTeam: match.team1 ?? match.team1Slot,
+    awayTeam: match.team2 ?? match.team2Slot,
+    kickoffUtc: match.kickoffUtc,
+    venue: match.venue,
+    eyebrow: match.round,
+    prediction: match.prediction!,
+    predictionDate: match.predictionDate!,
+    sourceUrl: match.sourceUrl!,
+    predictionHistory: match.predictionHistory ?? [],
+    polymarket: match.polymarket,
+    knockoutScore: match.score,
+  };
 }
 
 type PredictionVersion = PredictionHistoryEntry;
@@ -27,6 +80,88 @@ type PredictionVersion = PredictionHistoryEntry;
 const FIRST_TEAM_COLOR = "#15803d";
 const SECOND_TEAM_COLOR = "#dc2626";
 const DRAW_COLOR = "#777b76";
+
+function formatMatchDate(date: string): string {
+  return new Intl.DateTimeFormat(undefined, {
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+    timeZone: "UTC",
+  }).format(new Date(`${date}T12:00:00Z`));
+}
+
+interface KnockoutScoreComparisonProps {
+  match: DrawerMatch;
+  prediction: PredictionDetails;
+  variant: "drawer" | "card" | "list";
+}
+
+function GoalList({ goals }: { goals: ActualGoal[] }) {
+  if (!goals.length) return <span className="score-comparison__goals-placeholder" aria-hidden="true" />;
+
+  return (
+    <ul className="score-comparison__goals" aria-label="Goal scorers">
+      {goals.map((goal, index) => (
+        <li key={`${goal.name}-${goal.minute}-${index}`}>
+          <span className="player-name">{goal.name}</span>
+          <span>{goal.minute}'</span>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+function KnockoutScoreComparison({
+  match,
+  prediction,
+  variant,
+}: KnockoutScoreComparisonProps) {
+  const [predHome, predAway] = prediction.mostLikelyScore;
+  const actualScore = match.knockoutScore;
+
+  if (!actualScore) return null;
+
+  const actualHome = actualScore.extraTime?.[0] ?? actualScore.fullTime[0];
+  const actualAway = actualScore.extraTime?.[1] ?? actualScore.fullTime[1];
+  const hasPenalties = !!actualScore.penalties;
+  const hasExtraTime = !!actualScore.extraTime && !hasPenalties;
+
+  // Determine winner: check penalties first, then final score
+  const finalScore = actualScore.penalties ?? actualScore.extraTime ?? actualScore.fullTime;
+  const winner = finalScore[0] > finalScore[1] ? match.homeTeam : match.awayTeam;
+
+  const homeGoals = actualScore.homeGoals ?? [];
+  const awayGoals = actualScore.awayGoals ?? [];
+  const hasScorers = homeGoals.length > 0 || awayGoals.length > 0;
+
+  return (
+    <div className={`score-comparison score-comparison--${variant} ${hasScorers ? 'score-comparison--with-scorers' : ''}`}>
+      <div className="score-comparison__item score-comparison__prediction">
+        <span>Predicted score</span>
+        <strong>{predHome}–{predAway}</strong>
+      </div>
+      <div className="score-comparison__actual-row">
+        <GoalList goals={homeGoals} />
+        <div className="score-comparison__item score-comparison__actual">
+          <span>Actual score</span>
+          <strong>
+            {actualHome}–{actualAway}
+            {hasExtraTime && <small> AET</small>}
+          </strong>
+          {hasPenalties && (
+            <small className="score-comparison__penalty-score">
+              ({actualScore.penalties![0]}–{actualScore.penalties![1]})
+            </small>
+          )}
+          <small className="score-comparison__winner">
+            {winner} wins
+          </small>
+        </div>
+        <GoalList goals={awayGoals} />
+      </div>
+    </div>
+  );
+}
 
 function ProbabilityRow({
   label,
@@ -109,7 +244,7 @@ function StrengthHistory({
   versions,
   selectedDate,
 }: {
-  match: MatchPrediction;
+  match: DrawerMatch;
   versions: PredictionVersion[];
   selectedDate: string;
 }) {
@@ -237,8 +372,68 @@ function StrengthHistory({
   );
 }
 
+function RecentTeamMatches({
+  match,
+  matches,
+  predictionDate,
+  teams,
+}: {
+  match: DrawerMatch;
+  matches: MatchPrediction[];
+  predictionDate: string;
+  teams: Record<string, Team>;
+}) {
+  const teamNames = new Set([match.homeTeam, match.awayTeam]);
+  const recentMatches = matches
+    .filter(
+      (candidate) =>
+        candidate.id !== match.id &&
+        candidate.actualResult &&
+        candidate.date < predictionDate &&
+        (teamNames.has(candidate.homeTeam) || teamNames.has(candidate.awayTeam)),
+    )
+    .sort((left, right) => right.kickoffUtc.localeCompare(left.kickoffUtc));
+
+  return (
+    <section className="drawer-panel drawer-panel--wide recent-matches">
+      <h3>Recent matches</h3>
+      <p className="panel-note">
+        Completed matches involving {match.homeTeam} or {match.awayTeam} before {predictionDate}.
+      </p>
+      {recentMatches.length > 0 ? (
+        <ul
+          className="recent-matches__list"
+          aria-label={`Matches involving ${match.homeTeam} or ${match.awayTeam} before ${predictionDate}`}
+        >
+          {recentMatches.map((recentMatch) => {
+            const result = recentMatch.actualResult!;
+            return (
+              <li className="recent-matches__item" key={recentMatch.id}>
+                <time dateTime={recentMatch.date}>{formatMatchDate(recentMatch.date)}</time>
+                <span className="recent-matches__fixture">
+                  <TeamFlag team={teams[recentMatch.homeTeam]} compact />
+                  <strong aria-label="Final score">
+                    {result.homeScore}–{result.awayScore}
+                  </strong>
+                  <TeamFlag team={teams[recentMatch.awayTeam]} compact />
+                </span>
+                <span className="recent-matches__venue">{recentMatch.venue}</span>
+              </li>
+            );
+          })}
+        </ul>
+      ) : (
+        <p className="recent-matches__empty">
+          No completed matches involving either team before this prediction.
+        </p>
+      )}
+    </section>
+  );
+}
+
 export function MatchDetailDrawer({
   match,
+  matches,
   teams,
   modelName,
   onClose,
@@ -265,32 +460,40 @@ export function MatchDetailDrawer({
 
   if (!match) return null;
 
-  const home = teams[match.homeTeam];
-  const away = teams[match.awayTeam];
+  const normalized = normalizeMatch(match);
+  const home = teams[normalized.homeTeam];
+  const away = teams[normalized.awayTeam];
   const versions: PredictionVersion[] = [
-    ...match.predictionHistory,
+    ...normalized.predictionHistory,
     {
-      predictionDate: match.predictionDate,
-      sourceUrl: match.sourceUrl,
-      prediction: match.prediction,
+      predictionDate: normalized.predictionDate,
+      sourceUrl: normalized.sourceUrl,
+      prediction: normalized.prediction,
     },
   ].sort((left, right) => left.predictionDate.localeCompare(right.predictionDate));
   const selectedVersion =
     versions.find((version) => version.predictionDate === selectedPredictionDate) ??
     versions[versions.length - 1];
+  const latestPredictionDate = versions[versions.length - 1].predictionDate;
   const selectedPrediction = selectedVersion.prediction;
   const probabilities = selectedPrediction.probabilities;
-  const ongoing = isMatchOngoing(match);
-  const completed = isMatchCompleted(match);
-  const hasActualResult = !!match.actualResult;
+  const ongoing = isMatchOngoing(normalized);
+  const completed = isMatchCompleted(normalized);
+  const hasActualResult = !!normalized.actualResult;
+  const hasKnockoutScore = !!normalized.knockoutScore;
+  const isKnockout = hasKnockoutScore;
 
   // Use actual result if available, otherwise show prediction
   const displayHomeScore = hasActualResult
-    ? match.actualResult!.homeScore
-    : selectedPrediction.mostLikelyScore[0];
+    ? normalized.actualResult!.homeScore
+    : hasKnockoutScore
+      ? (normalized.knockoutScore!.extraTime ?? normalized.knockoutScore!.fullTime)[0]
+      : selectedPrediction.mostLikelyScore[0];
   const displayAwayScore = hasActualResult
-    ? match.actualResult!.awayScore
-    : selectedPrediction.mostLikelyScore[1];
+    ? normalized.actualResult!.awayScore
+    : hasKnockoutScore
+      ? (normalized.knockoutScore!.extraTime ?? normalized.knockoutScore!.fullTime)[1]
+      : selectedPrediction.mostLikelyScore[1];
 
   return (
     <div className="drawer-backdrop" role="presentation" onMouseDown={onClose}>
@@ -308,20 +511,29 @@ export function MatchDetailDrawer({
 
         <header className="drawer-header">
           <span className="eyebrow">
-            Group {match.group} · {formatKickoff(match.kickoffUtc)}
+            {normalized.eyebrow} · {formatKickoff(normalized.kickoffUtc)}
             {ongoing && <span className="drawer-live-badge">LIVE</span>}
           </span>
-          <h2 id="prediction-title">{match.homeTeam} vs {match.awayTeam}</h2>
-          <p>{match.venue}</p>
+          <h2 id="prediction-title">{normalized.homeTeam} vs {normalized.awayTeam}</h2>
+          <p>{normalized.venue}</p>
           <div className="drawer-matchup">
             <TeamFlag team={home} />
-            {completed ? (
-              <MatchScoreComparison match={match} variant="drawer" />
+            {(completed || hasActualResult) && !isKnockout ? (
+              <MatchScoreComparison match={match as MatchPrediction} variant="drawer" />
+            ) : (completed || hasKnockoutScore) && isKnockout ? (
+              <KnockoutScoreComparison
+                match={normalized}
+                prediction={selectedPrediction}
+                variant="drawer"
+              />
             ) : (
               <span className="drawer-score">
-                <small>{ongoing ? "Current score" : hasActualResult ? "Final score" : "Most likely"}</small>
+                <small>{ongoing ? "Current score" : hasActualResult || hasKnockoutScore ? "Final score" : "Most likely"}</small>
                 {displayHomeScore}–{displayAwayScore}
-                {!ongoing && !hasActualResult && <em>{formatPercent(selectedPrediction.mostLikelyScoreProbability, 1)}</em>}
+                {!ongoing && !hasActualResult && !hasKnockoutScore && <em>{formatPercent(selectedPrediction.mostLikelyScoreProbability, 1)}</em>}
+                {hasKnockoutScore && normalized.knockoutScore?.extraTime && !normalized.knockoutScore?.penalties && (
+                  <em>AET</em>
+                )}
               </span>
             )}
             <TeamFlag team={away} />
@@ -330,33 +542,37 @@ export function MatchDetailDrawer({
 
         {versions.length > 1 && (
           <div className="prediction-date-selector" role="group" aria-label="Prediction date">
-            <span>View prediction</span>
-            {versions.slice().reverse().map((version, index) => (
-              <button
-                type="button"
-                key={version.predictionDate}
-                aria-pressed={version.predictionDate === selectedVersion.predictionDate}
-                onClick={() => setSelectedPredictionDate(version.predictionDate)}
+            <label htmlFor="prediction-date-select">View prediction</label>
+            <span className="prediction-date-selector__control">
+              <select
+                id="prediction-date-select"
+                value={selectedVersion.predictionDate}
+                onChange={(event) => setSelectedPredictionDate(event.target.value)}
               >
-                {version.predictionDate}
-                {index === 0 && <small>Latest</small>}
-              </button>
-            ))}
+                {versions.slice().reverse().map((version) => (
+                  <option key={version.predictionDate} value={version.predictionDate}>
+                    {version.predictionDate}{version.predictionDate === latestPredictionDate ? " (latest)" : ""}
+                  </option>
+                ))}
+              </select>
+            </span>
           </div>
         )}
 
         <div className="drawer-grid">
           <section className="drawer-panel">
             <h3>Result probabilities</h3>
-            <ProbabilityRow label={`${match.homeTeam} win`} value={probabilities.homeWin} color={FIRST_TEAM_COLOR} />
+            <ProbabilityRow label={`${normalized.homeTeam} win`} value={probabilities.homeWin} color={FIRST_TEAM_COLOR} />
             <ProbabilityRow label="Draw" value={probabilities.draw} color={DRAW_COLOR} />
-            <ProbabilityRow label={`${match.awayTeam} win`} value={probabilities.awayWin} color={SECOND_TEAM_COLOR} />
+            <ProbabilityRow label={`${normalized.awayTeam} win`} value={probabilities.awayWin} color={SECOND_TEAM_COLOR} />
           </section>
+
+          <PolymarketDetail match={normalized} />
 
           <section className="drawer-panel drawer-panel--skills">
             <h3>Team strength estimates</h3>
             <StrengthHistory
-              match={match}
+              match={normalized}
               versions={versions}
               selectedDate={selectedVersion.predictionDate}
             />
@@ -366,14 +582,26 @@ export function MatchDetailDrawer({
           <section className="drawer-panel drawer-panel--wide">
             <h3>Scoreline distribution</h3>
             <p className="panel-note">
-              Expected goals: {match.homeTeam} {selectedPrediction.expectedGoals.home.toFixed(2)}, {match.awayTeam} {selectedPrediction.expectedGoals.away.toFixed(2)}.
+              Expected goals: {normalized.homeTeam} {selectedPrediction.expectedGoals.home.toFixed(2)}, {normalized.awayTeam} {selectedPrediction.expectedGoals.away.toFixed(2)}.
+            </p>
+            <p className="panel-note predicted-score">
+              <strong>Predicted Score</strong>
+              <span>{selectedPrediction.mostLikelyScore[0]}–{selectedPrediction.mostLikelyScore[1]}</span>
+              <em>{formatPercent(selectedPrediction.mostLikelyScoreProbability, 1)}</em>
             </p>
             <ScoreHeatmap
               prediction={selectedPrediction}
-              homeTeam={match.homeTeam}
-              awayTeam={match.awayTeam}
+              homeTeam={normalized.homeTeam}
+              awayTeam={normalized.awayTeam}
             />
           </section>
+
+          <RecentTeamMatches
+            match={normalized}
+            matches={matches}
+            predictionDate={selectedVersion.predictionDate}
+            teams={teams}
+          />
         </div>
 
         <footer className="drawer-footer">
@@ -381,11 +609,11 @@ export function MatchDetailDrawer({
             <a href={selectedVersion.sourceUrl} target="_blank" rel="noreferrer">
               Prediction generated {selectedVersion.predictionDate} <span aria-hidden="true">↗</span>
             </a>
-            {match.predictionHistory.length > 0 && (
+            {normalized.predictionHistory.length > 0 && (
               <div className="prediction-history">
                 <strong>Previous predictions</strong>
                 <ul>
-                  {match.predictionHistory.map((historical) => (
+                  {normalized.predictionHistory.map((historical) => (
                     <li key={historical.predictionDate}>
                       <a href={historical.sourceUrl} target="_blank" rel="noreferrer">
                         {historical.predictionDate} <span aria-hidden="true">↗</span>

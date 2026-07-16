@@ -1,6 +1,12 @@
 import { useMemo, useState, type MouseEvent } from "react";
 import type { GroupProjection, MatchPrediction, Team } from "../types";
-import { formatKickoffParts, getActualGroupStats, isMatchCompleted, isMatchOngoing } from "../utils";
+import {
+  formatKickoffParts,
+  getActualGroupStats,
+  getClinchedTopTwoTeams,
+  isMatchCompleted,
+  isMatchOngoing,
+} from "../utils";
 import { MatchScoreComparison } from "./MatchScoreComparison";
 import { TeamFlag } from "./TeamFlag";
 
@@ -24,6 +30,7 @@ function GroupCard({
 }) {
   const groupMatches = group.matchIds.map((id) => matchMap.get(id)).filter(Boolean) as MatchPrediction[];
   const actualStats = getActualGroupStats(groupMatches);
+  const clinchedTeams = getClinchedTopTwoTeams(groupMatches);
   const sortedProjection = [...group.projection].sort((left, right) => {
     const leftStats = actualStats[left.team];
     const rightStats = actualStats[right.team];
@@ -91,7 +98,16 @@ function GroupCard({
                   <td>
                     <span className={`rank-marker rank-marker--${row.rank}`}>{row.rank}</span>
                   </td>
-                  <th scope="row"><TeamFlag team={teams[row.team]} compact /></th>
+                  <th scope="row">
+                    <span className="standings-team">
+                      <TeamFlag team={teams[row.team]} compact />
+                      {clinchedTeams.has(row.team) && (
+                        <span className="qualification-badge" title="Guaranteed a top-two finish">
+                          Qualified
+                        </span>
+                      )}
+                    </span>
+                  </th>
                   <td>{stats.games}</td>
                   <td>{stats.wins}</td>
                   <td>{stats.draws}</td>

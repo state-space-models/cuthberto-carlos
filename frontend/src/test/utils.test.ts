@@ -4,7 +4,9 @@ import {
   aggregateScoreGrid,
   describeBracketSlot,
   getActualGroupStats,
+  getClinchedTopTwoTeams,
   getCompletedMatches,
+  getOngoingMatches,
   getUpcomingMatches,
 } from "../utils";
 
@@ -58,6 +60,27 @@ describe("getCompletedMatches", () => {
       getCompletedMatches(matches, new Date("2026-06-11T18:00:00Z")).map((item) => item.id),
     ).toEqual(["newer", "older"]);
   });
+
+  it("partitions fixtures into exactly one time-based state at each boundary", () => {
+    const fixture = match("boundary", "2026-06-11T14:00:00Z");
+    const times = [
+      new Date("2026-06-11T13:59:59.999Z"),
+      new Date("2026-06-11T14:00:00.000Z"),
+      new Date("2026-06-11T15:59:59.999Z"),
+      new Date("2026-06-11T16:00:00.000Z"),
+    ];
+
+    expect(times.map((now) => [
+      getUpcomingMatches([fixture], now).length,
+      getOngoingMatches([fixture], now).length,
+      getCompletedMatches([fixture], now).length,
+    ])).toEqual([
+      [1, 0, 0],
+      [0, 1, 0],
+      [0, 1, 0],
+      [0, 0, 1],
+    ]);
+  });
 });
 
 describe("getActualGroupStats", () => {
@@ -97,6 +120,54 @@ describe("getActualGroupStats", () => {
         points: 0, goalDifference: 0, goalsScored: 0,
       },
     });
+  });
+});
+
+describe("getClinchedTopTwoTeams", () => {
+  function fixture(
+    id: string,
+    homeTeam: string,
+    awayTeam: string,
+    result?: [number, number],
+  ): MatchPrediction {
+    const item = match(id, `2026-06-${String(10 + Number(id)).padStart(2, "0")}T12:00:00Z`);
+    item.homeTeam = homeTeam;
+    item.awayTeam = awayTeam;
+    if (result) {
+      item.actualResult = {
+        homeScore: result[0],
+        awayScore: result[1],
+        homeGoals: [],
+        awayGoals: [],
+      };
+    }
+    return item;
+  }
+
+  it("marks Mexico qualified when no remaining outcome can push it below second", () => {
+    const matches = [
+      fixture("1", "Mexico", "South Africa", [2, 0]),
+      fixture("2", "South Korea", "Czech Republic", [2, 1]),
+      fixture("3", "Mexico", "South Korea", [1, 0]),
+      fixture("4", "Czech Republic", "South Africa", [1, 1]),
+      fixture("5", "Mexico", "Czech Republic"),
+      fixture("6", "South Korea", "South Africa"),
+    ];
+
+    expect(Array.from(getClinchedTopTwoTeams(matches, new Date("2026-07-01T00:00:00Z")))).toEqual(["Mexico"]);
+  });
+
+  it("uses remaining match dependencies and treats point ties conservatively", () => {
+    const matches = [
+      fixture("1", "A", "B", [1, 0]),
+      fixture("2", "C", "D", [1, 0]),
+      fixture("3", "A", "C", [1, 0]),
+      fixture("4", "B", "D", [1, 0]),
+      fixture("5", "A", "D"),
+      fixture("6", "B", "C"),
+    ];
+
+    expect(getClinchedTopTwoTeams(matches, new Date("2026-07-01T00:00:00Z"))).toEqual(new Set(["A"]));
   });
 });
 

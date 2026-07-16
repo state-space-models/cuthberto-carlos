@@ -1,10 +1,11 @@
 import { useEffect, useState } from "react";
-import type { ActualGoal, ActualResult, MatchPrediction, Team } from "./types";
+import type { ActualGoal, ActualResult, KnockoutMatch, KnockoutScore, MatchPrediction, Team } from "./types";
 
 export type LiveResultsStatus = "loading" | "current" | "fallback";
 
 interface LiveResultsState {
   matches: MatchPrediction[];
+  knockoutMatches: KnockoutMatch[];
   status: LiveResultsStatus;
   lastCheckedAt: string | null;
 }
@@ -16,10 +17,14 @@ interface OpenFootballGoal {
 }
 
 interface OpenFootballFixture {
+  num?: number;
+  round?: string;
   date: string;
+  time?: string;
+  ground?: string;
   team1: string;
   team2: string;
-  score?: { ft?: [number, number] };
+  score?: { ft?: [number, number]; et?: [number, number]; p?: [number, number] };
   goals1?: OpenFootballGoal[];
   goals2?: OpenFootballGoal[];
 }
@@ -82,8 +87,26 @@ function parseFixture(value: unknown): OpenFootballFixture | null {
     team1: value.team1,
     team2: value.team2,
   };
+  if (value.num !== undefined) {
+    if (!Number.isInteger(value.num)) return null;
+    fixture.num = value.num as number;
+  }
+  for (const key of ["round", "time", "ground"] as const) {
+    if (value[key] !== undefined) {
+      if (typeof value[key] !== "string") return null;
+      fixture[key] = value[key] as string;
+    }
+  }
   if (isRecord(value.score) && isScore(value.score.ft)) {
     fixture.score = { ft: value.score.ft };
+    if (value.score.et !== undefined) {
+      if (!isScore(value.score.et)) return null;
+      fixture.score.et = value.score.et;
+    }
+    if (value.score.p !== undefined) {
+      if (!isScore(value.score.p)) return null;
+      fixture.score.p = value.score.p;
+    }
   }
   if (Array.isArray(value.goals1)) {
     const goals = value.goals1.map(parseGoal);
@@ -176,6 +199,58 @@ export function mergeLiveResults(
   });
 }
 
+const BRACKET_SLOT = /^(?:[12][A-L]|3[A-L/]+|[WL]\d+)$/;
+
+function knockoutScore(fixture: OpenFootballFixture): KnockoutScore | undefined {
+  if (!fixture.score?.ft) return undefined;
+  return {
+    fullTime: fixture.score.ft,
+    ...(fixture.score.et ? { extraTime: fixture.score.et } : {}),
+    ...(fixture.score.p ? { penalties: fixture.score.p } : {}),
+    ...(fixture.goals1?.length ? { homeGoals: convertGoals(fixture.goals1, undefined) } : {}),
+    ...(fixture.goals2?.length ? { awayGoals: convertGoals(fixture.goals2, undefined) } : {}),
+  };
+}
+
+function parseSourceKickoff(date: string, time: string | undefined): string | null {
+  if (!time) return null;
+  const match = time.match(/^(\d{2}):(\d{2}) UTC([+-]\d{1,2})$/);
+  if (!match) return null;
+  const [, hour, minute, offsetHour] = match;
+  const sign = Number(offsetHour) >= 0 ? "+" : "-";
+  const offset = `${sign}${String(Math.abs(Number(offsetHour))).padStart(2, "0")}:00`;
+  const parsed = new Date(`${date}T${hour}:${minute}:00${offset}`);
+  return Number.isNaN(parsed.getTime()) ? null : parsed.toISOString();
+}
+
+export function mergeKnockoutSchedule(
+  staticMatches: KnockoutMatch[],
+  schedule: OpenFootballSchedule,
+): KnockoutMatch[] {
+  const fixtures = new Map(
+    schedule.matches
+      .filter((fixture) => fixture.num !== undefined)
+      .map((fixture) => [fixture.num!, fixture]),
+  );
+  return staticMatches.map((match) => {
+    const fixture = fixtures.get(match.matchNumber);
+    if (!fixture) return match;
+    const kickoffUtc = parseSourceKickoff(fixture.date, fixture.time) ?? match.kickoffUtc;
+    const team1 = BRACKET_SLOT.test(fixture.team1) ? undefined : canonicalTeam(fixture.team1);
+    const team2 = BRACKET_SLOT.test(fixture.team2) ? undefined : canonicalTeam(fixture.team2);
+    const score = knockoutScore(fixture);
+    return {
+      ...match,
+      date: fixture.date,
+      kickoffUtc,
+      venue: fixture.ground ?? match.venue,
+      ...(team1 ? { team1 } : {}),
+      ...(team2 ? { team2 } : {}),
+      ...(score ? { score } : {}),
+    };
+  });
+}
+
 function scheduleUrl(dataUrl: string, now = Date.now()): string {
   const url = new URL(dataUrl);
   url.searchParams.set("refresh", String(Math.floor(now / FIVE_MINUTES_MS)));
@@ -201,9 +276,11 @@ export function useLiveResults(
   staticMatches: MatchPrediction[],
   dataUrl: string | undefined,
   teams: Record<string, Team>,
+  staticKnockoutMatches: KnockoutMatch[] = [],
 ): LiveResultsState {
   const [state, setState] = useState<LiveResultsState>({
     matches: staticMatches,
+    knockoutMatches: staticKnockoutMatches,
     status: dataUrl ? "loading" : "fallback",
     lastCheckedAt: null,
   });
@@ -211,7 +288,7 @@ export function useLiveResults(
   useEffect(() => {
     let active = true;
     if (!dataUrl) {
-      setState({ matches: staticMatches, status: "fallback", lastCheckedAt: null });
+      setState({ matches: staticMatches, knockoutMatches: staticKnockoutMatches, status: "fallback", lastCheckedAt: null });
       return () => { active = false; };
     }
 
@@ -220,6 +297,7 @@ export function useLiveResults(
         if (!active) return;
         setState({
           matches: mergeLiveResults(staticMatches, schedule, teams),
+          knockoutMatches: mergeKnockoutSchedule(staticKnockoutMatches, schedule),
           status: "current",
           lastCheckedAt: new Date().toISOString(),
         });
@@ -228,13 +306,14 @@ export function useLiveResults(
         if (!active) return;
         setState({
           matches: staticMatches,
+          knockoutMatches: staticKnockoutMatches,
           status: "fallback",
           lastCheckedAt: new Date().toISOString(),
         });
       });
 
     return () => { active = false; };
-  }, [dataUrl, staticMatches, teams]);
+  }, [dataUrl, staticMatches, staticKnockoutMatches, teams]);
 
   return state;
 }

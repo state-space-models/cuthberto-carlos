@@ -8,6 +8,7 @@ import {
 } from "../utils";
 import { TeamFlag } from "./TeamFlag";
 import { MatchScoreComparison } from "./MatchScoreComparison";
+import { PolymarketCardComparison } from "./PolymarketComparison";
 
 interface MatchCardProps {
   match: MatchPrediction;
@@ -15,6 +16,7 @@ interface MatchCardProps {
   onOpen: (match: MatchPrediction, trigger: HTMLElement) => void;
   showScoreComparison?: boolean;
   hidePredictionDetails?: boolean;
+  showPolymarket?: boolean;
 }
 
 export function MatchCard({
@@ -23,6 +25,7 @@ export function MatchCard({
   onOpen,
   showScoreComparison = false,
   hidePredictionDetails = false,
+  showPolymarket = false,
 }: MatchCardProps) {
   const kickoff = formatKickoffParts(match.kickoffUtc);
   const probabilities = match.prediction.probabilities;
@@ -40,12 +43,18 @@ export function MatchCard({
     ? match.actualResult!.awayScore
     : predictedAwayScore;
 
-  function handleOpen(event: MouseEvent<HTMLButtonElement>) {
+  function handleOpen(event: MouseEvent<HTMLElement>) {
     onOpen(match, event.currentTarget);
   }
 
   return (
-    <article className={`match-card ${ongoing ? "match-card--ongoing" : ""}`}>
+    <article 
+      className={`match-card ${ongoing ? "match-card--ongoing" : ""}`}
+      onClick={handleOpen}
+      tabIndex={0}
+      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleOpen(e as unknown as MouseEvent<HTMLElement>); } }}
+      style={{ cursor: 'pointer' }}
+    >
       <div className="match-card__meta">
         <span className="eyebrow">Group {match.group}</span>
         <span>{kickoff.date}</span>
@@ -85,7 +94,9 @@ export function MatchCard({
         <div className="match-card__result-badge">Final</div>
       )}
       <p className="match-card__venue">{match.venue}</p>
-      {!hidePredictionDetails && (
+      {!hidePredictionDetails && showPolymarket && match.polymarket ? (
+        <PolymarketCardComparison match={match} />
+      ) : !hidePredictionDetails ? (
         <>
           <div className="probability-strip" aria-label="Result probabilities">
             <span
@@ -110,17 +121,7 @@ export function MatchCard({
             <span>{match.awayTeam} {formatPercent(probabilities.awayWin)}</span>
           </div>
         </>
-      )}
-      <div className="match-card__footer match-card__footer--actions-only">
-        <span className="match-card__actions">
-          <button className="text-button" type="button" onClick={handleOpen}>
-            Explore prediction
-          </button>
-          <a className="text-link" href={match.sourceUrl} target="_blank" rel="noreferrer">
-            Source <span aria-hidden="true">↗</span>
-          </a>
-        </span>
-      </div>
+      ) : null}
     </article>
   );
 }

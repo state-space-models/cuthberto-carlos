@@ -1,17 +1,30 @@
 import { useState } from "react";
-import type { MatchPrediction, Team } from "../types";
-import { getCompletedMatches } from "../utils";
+import type { KnockoutMatch, MatchPrediction, Team } from "../types";
+import { getCompletedMatches, getCompletedKnockoutMatches } from "../utils";
 import { MatchCard } from "./MatchCard";
 import { MatchListRow } from "./MatchListRow";
+import { KnockoutMatchCard } from "./KnockoutMatchCard";
+import { KnockoutMatchListRow } from "./KnockoutMatchListRow";
 
 interface CompletedMatchesProps {
   matches: MatchPrediction[];
+  knockoutMatches?: KnockoutMatch[];
   teams: Record<string, Team>;
-  onOpen: (match: MatchPrediction, trigger: HTMLElement) => void;
+  onOpen: (match: MatchPrediction | KnockoutMatch, trigger: HTMLElement) => void;
 }
 
-export function CompletedMatches({ matches, teams, onOpen }: CompletedMatchesProps) {
-  const completed = getCompletedMatches(matches);
+export function CompletedMatches({ matches, knockoutMatches = [], teams, onOpen }: CompletedMatchesProps) {
+  const completedGroup = getCompletedMatches(matches);
+  const completedKnockout = getCompletedKnockoutMatches(knockoutMatches);
+  
+  // Combine and sort by kickoff time (newest first)
+  const completed = [
+    ...completedGroup.map(m => ({ ...m, _type: 'group' as const })),
+    ...completedKnockout.map(m => ({ ...m, _type: 'knockout' as const })),
+  ].sort((a, b) => 
+    new Date(b.kickoffUtc).getTime() - new Date(a.kickoffUtc).getTime()
+  );
+  
   const [view, setView] = useState<"cards" | "list">("list");
 
   return (
@@ -49,35 +62,57 @@ export function CompletedMatches({ matches, teams, onOpen }: CompletedMatchesPro
       </div>
       {completed.length > 0 ? (
         view === "cards" ? (
-          <div className="match-grid" data-testid="completed-card-view">
-            {completed.map((match) => (
-              <MatchCard
-                key={match.id}
-                match={match}
-                teams={teams}
-                onOpen={onOpen}
-                showScoreComparison
-                hidePredictionDetails
-              />
-            ))}
+          <div className="match-grid completed-matches-scroll" data-testid="completed-card-view" tabIndex={0} aria-label="Completed matches - card view, scroll to see more">
+            {completed.map((match) =>
+              match._type === 'group' ? (
+                <MatchCard
+                  key={match.id}
+                  match={match}
+                  teams={teams}
+                  onOpen={onOpen}
+                  showScoreComparison
+                  hidePredictionDetails
+                />
+              ) : (
+                <KnockoutMatchCard
+                  key={match.id}
+                  match={match}
+                  teams={teams}
+                  onOpen={onOpen}
+                  showScoreComparison
+                  hidePredictionDetails
+                />
+              )
+            )}
           </div>
         ) : (
-          <div className="match-list" data-testid="completed-list-view">
-            {completed.map((match) => (
-              <MatchListRow
-                key={match.id}
-                match={match}
-                teams={teams}
-                onOpen={onOpen}
-                showScoreComparison
-                hidePredictionDetails
-              />
-            ))}
+          <div className="match-list completed-matches-scroll" data-testid="completed-list-view" tabIndex={0} aria-label="Completed matches - list view, scroll to see more">
+            {completed.map((match) =>
+              match._type === 'group' ? (
+                <MatchListRow
+                  key={match.id}
+                  match={match}
+                  teams={teams}
+                  onOpen={onOpen}
+                  showScoreComparison
+                  hidePredictionDetails
+                />
+              ) : (
+                <KnockoutMatchListRow
+                  key={match.id}
+                  match={match}
+                  teams={teams}
+                  onOpen={onOpen}
+                  showScoreComparison
+                  hidePredictionDetails
+                />
+              )
+            )}
           </div>
         )
       ) : (
         <div className="empty-state">
-          <strong>No completed group fixtures yet.</strong>
+          <strong>No completed fixtures yet.</strong>
           <span>The original predictions will appear here after matches finish.</span>
         </div>
       )}

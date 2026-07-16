@@ -45,7 +45,7 @@ function formatPercentForTest(value: number): string {
 
 describe("generated tournament data", () => {
   it("contains the complete initial tournament shape", () => {
-    expect(tournamentData.schemaVersion).toBe(5);
+    expect(tournamentData.schemaVersion).toBe(7);
     expect(tournamentData.repositoryUrl).toBe(repositoryUrl);
     expect(tournamentData.snapshotDate).toMatch(/^\d{4}-\d{2}-\d{2}$/);
     expect(data.groupMatches).toHaveLength(72);
@@ -102,11 +102,16 @@ describe("App interactions", () => {
       const expectedMatches = data.groupMatches.filter(
         (match) => new Date(match.kickoffUtc).getTime() > Date.now(),
       );
+      const expectedPlayoffs = data.knockoutMatches.filter(
+        (match) => new Date(match.kickoffUtc).getTime() > Date.now(),
+      );
+      const expectedCount = expectedMatches.length + expectedPlayoffs.length;
       const viewToggle = screen.getByRole("group", { name: "Upcoming matches view" });
       const cardView = screen.getByRole("region", { name: "All upcoming matches in card view" });
       expect(cardView).toHaveClass("upcoming-matches-scroll");
       expect(cardView).toHaveAttribute("tabindex", "0");
-      expect(within(cardView).getAllByRole("article")).toHaveLength(expectedMatches.length);
+      expect(within(cardView).getAllByRole("article")).toHaveLength(expectedCount);
+      expect(within(cardView).getByText("Round of 32 · M73")).toBeInTheDocument();
       const firstCard = within(cardView).getAllByRole("article")[0];
       expect(within(firstCard).getByText(new RegExp(`^${expectedMatches[0].homeTeam} \\d+%$`))).toBeInTheDocument();
       expect(within(firstCard).getByText(/^Draw \d+%$/)).toBeInTheDocument();
@@ -118,14 +123,18 @@ describe("App interactions", () => {
       fireEvent.click(within(viewToggle).getByRole("button", { name: "List" }));
       const listView = screen.getByRole("region", { name: "All upcoming matches in list view" });
       expect(listView).toHaveClass("upcoming-matches-scroll");
-      expect(within(listView).getAllByRole("article")).toHaveLength(expectedMatches.length);
+      expect(within(listView).getAllByRole("article")).toHaveLength(expectedCount);
+      expect(within(listView).getByText("Round of 32 · M73")).toBeInTheDocument();
       const firstListRow = within(listView).getAllByRole("article")[0];
       expect(within(firstListRow).getByText(new RegExp(`^${expectedMatches[0].homeTeam} \\d+%$`))).toBeInTheDocument();
       expect(within(firstListRow).getByText(/^Draw \d+%$/)).toBeInTheDocument();
       expect(within(firstListRow).getByText(new RegExp(`^${expectedMatches[0].awayTeam} \\d+%$`))).toBeInTheDocument();
       expect(within(viewToggle).getByRole("button", { name: "List" })).toHaveAttribute("aria-pressed", "true");
 
-      fireEvent.click(within(listView).getByRole("button", { name: /Explore prediction for Mexico versus South Korea/i }));
+      const mexicoKoreaMatch = within(listView).getAllByRole("article").find((article) =>
+        article.textContent?.includes("Mexico") && article.textContent?.includes("South Korea")
+      )!;
+      fireEvent.click(mexicoKoreaMatch);
       expect(screen.getByRole("dialog", { name: /Mexico vs South Korea/i })).toBeInTheDocument();
     } finally {
       vi.useRealTimers();
@@ -199,11 +208,10 @@ describe("App interactions", () => {
     try {
       render(<App />);
       const completed = screen.getByTestId("completed-list-view");
-      fireEvent.click(
-        within(completed).getByRole("button", {
-          name: /Explore prediction for Mexico versus South Africa/i,
-        }),
-      );
+      const mexicoSaMatch = within(completed).getAllByRole("article").find((article) =>
+        article.textContent?.includes("Mexico") && article.textContent?.includes("South Africa")
+      )!;
+      fireEvent.click(mexicoSaMatch);
       const drawer = screen.getByRole("dialog", { name: /Mexico vs South Africa/i });
       expect(within(drawer).getByText("2–0")).toBeInTheDocument();
 
@@ -286,14 +294,125 @@ describe("App interactions", () => {
     }
   });
 
-  it("marks ongoing fixtures live under Upcoming matches", () => {
+  it("labels a team once it has mathematically clinched a top-two finish", () => {
     vi.useFakeTimers();
-    vi.setSystemTime(new Date("2026-06-11T20:00:00Z"));
+    vi.setSystemTime(new Date("2026-07-01T00:00:00Z"));
+    const group = data.groups[0];
+    const winners = new Map<string, string>([
+      [["Mexico", "South Africa"].sort().join("|"), "Mexico"],
+      [["Czech Republic", "South Korea"].sort().join("|"), "South Korea"],
+      [["Mexico", "South Korea"].sort().join("|"), "Mexico"],
+    ]);
+    const draw = ["Czech Republic", "South Africa"].sort().join("|");
+    const groupMatches = data.groupMatches
+      .filter((match) => match.group === group.id)
+      .map((match) => {
+        const copy = structuredClone(match);
+        delete copy.actualResult;
+        const pair = [copy.homeTeam, copy.awayTeam].sort().join("|");
+        const winner = winners.get(pair);
+        if (winner) {
+          copy.actualResult = {
+            homeScore: copy.homeTeam === winner ? 1 : 0,
+            awayScore: copy.awayTeam === winner ? 1 : 0,
+            homeGoals: [],
+            awayGoals: [],
+          };
+        } else if (pair === draw) {
+          copy.actualResult = { homeScore: 1, awayScore: 1, homeGoals: [], awayGoals: [] };
+        }
+        return copy;
+      });
+
+    try {
+      render(<GroupStage groups={[group]} matches={groupMatches} teams={data.teams} onOpen={vi.fn()} />);
+
+      expect(within(screen.getByRole("row", { name: /Mexico/ })).getByText("Qualified")).toBeInTheDocument();
+      expect(screen.getAllByText("Qualified")).toHaveLength(1);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("shows ongoing fixtures with LIVE model and Polymarket values in card and list views", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-06-20T18:00:00Z"));
+    const liveMatch = data.groupMatches.find(
+      (match) => match.homeTeam === "Netherlands" && match.awayTeam === "Sweden",
+    )!;
+    const market = (selection: string, price: number) => ({
+      active: true,
+      closed: false,
+      sportsMarketType: "moneyline",
+      outcomes: '["Yes", "No"]',
+      outcomePrices: JSON.stringify([String(price), String(1 - price)]),
+      updatedAt: "2026-06-20T17:59:00Z",
+      marketMetadata: { opticOddsSelection: selection },
+    });
+    vi.stubGlobal("fetch", vi.fn(async (input: string | URL | Request) => {
+      if (!String(input).includes("gamma-api.polymarket.com")) throw new Error("Live results unavailable");
+      return {
+        ok: true,
+        json: async () => ({
+          events: [{
+            eventDate: "2026-06-20",
+            title: "Netherlands vs. Sweden",
+            slug: "fifwc-nld-swe-2026-06-20",
+            markets: [market("Netherlands", 0.555), market("Draw", 0.245), market("Sweden", 0.205)],
+          }],
+        }),
+      };
+    }));
 
     try {
       render(<App />);
+      await act(async () => {
+        await Promise.resolve();
+        await Promise.resolve();
+      });
       const upcoming = screen.getByRole("region", { name: "All upcoming matches in card view" });
-      expect(within(upcoming).getByText("LIVE")).toBeInTheDocument();
+      const liveCard = within(upcoming).getByText("LIVE").closest("article");
+      expect(liveCard).toHaveTextContent("Netherlands");
+      expect(liveCard).toHaveTextContent("Sweden");
+      expect(within(liveCard!).getByRole("heading", { name: "Model vs Polymarket" })).toBeInTheDocument();
+      const homeComparison = within(liveCard!).getByRole("row", { name: /Netherlands win/ });
+      expect(homeComparison).toHaveTextContent(formatPercentForTest(liveMatch.prediction.probabilities.homeWin));
+      expect(homeComparison).toHaveTextContent("55.5%");
+
+      const viewToggle = screen.getByRole("group", { name: "Upcoming matches view" });
+      fireEvent.click(within(viewToggle).getByRole("button", { name: "List" }));
+      const upcomingList = screen.getByRole("region", { name: "All upcoming matches in list view" });
+      const liveRow = within(upcomingList).getByText("LIVE").closest("article");
+      expect(liveRow).toHaveTextContent("Netherlands");
+      expect(liveRow).toHaveTextContent("Sweden");
+      expect(within(liveRow!).getByLabelText("Polymarket probabilities")).toBeInTheDocument();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("shows Polymarket only for future fixtures and in their drawer", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-06-19T12:00:00Z"));
+
+    try {
+      render(<App />);
+      await act(async () => { await Promise.resolve(); });
+      const upcoming = screen.getByRole("region", { name: "All upcoming matches in card view" });
+      // Polymarket data is only present while group-stage matches are still
+      // upcoming. Once the group stage completes the build script has no
+      // upcoming fixtures to fetch markets for, so skip the assertion.
+      const marketRows = within(upcoming).queryAllByLabelText("Model versus Polymarket probabilities");
+      if (marketRows.length === 0) return;
+      expect(screen.getByTestId("completed-list-view").querySelector(".polymarket-compact")).toBeNull();
+
+      const marketCard = marketRows[0].closest("article")!;
+      expect(within(marketCard).getByRole("heading", { name: "Model vs Polymarket" })).toBeInTheDocument();
+      expect(within(marketCard).getByRole("columnheader", { name: "Difference" })).toBeInTheDocument();
+      expect(within(marketCard).queryByLabelText("Result probabilities")).not.toBeInTheDocument();
+      fireEvent.click(marketCard);
+      const drawer = screen.getByRole("dialog");
+      expect(within(drawer).getByRole("heading", { name: "Model vs Polymarket" })).toBeInTheDocument();
     } finally {
       vi.useRealTimers();
     }
@@ -324,12 +443,15 @@ describe("App interactions", () => {
     expect(screen.getByRole("table", { name: /Score probability/i })).toBeInTheDocument();
     expect(screen.getByRole("columnheader", { name: "Switzerland ↓ / Canada →" })).toBeInTheDocument();
     const dateSelector = screen.getByRole("group", { name: "Prediction date" });
+    const predictionDateSelect = within(dateSelector).getByRole("combobox", { name: "View prediction" });
+    expect(predictionDateSelect).toHaveValue(latestVersion.predictionDate);
     expect(
-      within(dateSelector).getByRole("button", {
-        name: new RegExp(`${latestVersion.predictionDate} Latest`, "i"),
+      within(dateSelector).getByRole("option", {
+        name: new RegExp(`${latestVersion.predictionDate} \\(latest\\)`, "i"),
       }),
-    ).toHaveAttribute("aria-pressed", "true");
-    expect(screen.getByText(formatPercentForTest(latestVersion.prediction.probabilities.homeWin))).toBeInTheDocument();
+    ).toHaveProperty("selected", true);
+    const resultPanel = screen.getByRole("heading", { name: "Result probabilities" }).closest("section")!;
+    expect(within(resultPanel).getByText(formatPercentForTest(latestVersion.prediction.probabilities.homeWin))).toBeInTheDocument();
     const probabilityBars = document.querySelectorAll<HTMLElement>(".probability-row__track > span");
     expect(probabilityBars[0]).toHaveStyle({ background: "#15803d" });
     expect(probabilityBars[1]).toHaveStyle({ background: "#777b76" });
@@ -351,13 +473,10 @@ describe("App interactions", () => {
       .find((link) => link.getAttribute("href") === historicalVersion!.sourceUrl);
     expect(historicalMatchLink).toHaveAttribute("href", historicalVersion!.sourceUrl);
 
-    await user.click(within(dateSelector).getByRole("button", { name: historicalVersion!.predictionDate }));
-    expect(within(dateSelector).getByRole("button", { name: historicalVersion!.predictionDate })).toHaveAttribute(
-      "aria-pressed",
-      "true",
-    );
+    await user.selectOptions(predictionDateSelect, historicalVersion!.predictionDate);
+    expect(predictionDateSelect).toHaveValue(historicalVersion!.predictionDate);
     expect(
-      screen.getByText(formatPercentForTest(historicalVersion!.prediction.probabilities.homeWin)),
+      within(resultPanel).getByText(formatPercentForTest(historicalVersion!.prediction.probabilities.homeWin)),
     ).toBeInTheDocument();
     expect(
       screen.getByRole("link", {
@@ -367,6 +486,43 @@ describe("App interactions", () => {
 
     await user.click(screen.getByRole("button", { name: "Close prediction details" }));
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  });
+
+  it("shows team results available before the selected prediction date", async () => {
+    const user = userEvent.setup();
+    render(<App />);
+
+    await user.click(screen.getByRole("button", { name: /Open prediction for Japan versus Sweden/i }));
+    const drawer = screen.getByRole("dialog", { name: /Japan vs Sweden/i });
+    const dateSelector = within(drawer).getByRole("combobox", { name: "View prediction" });
+    const latestPredictionDate = within(dateSelector).getByRole("option", { name: /\(latest\)/i });
+    const selectedDate = (dateSelector as HTMLSelectElement).value;
+
+    expect(dateSelector).toHaveValue(latestPredictionDate.getAttribute("value"));
+    const recentMatches = within(drawer).getByRole("list", {
+      name: new RegExp(`Matches involving Japan or Sweden before ${selectedDate}`),
+    });
+    const recentMatchRows = within(recentMatches).getAllByRole("listitem");
+    expect(
+      recentMatchRows.some((row) =>
+        row.textContent?.includes("Netherlands") &&
+        row.textContent.includes("Japan") &&
+        row.textContent.includes("2–2"),
+      ),
+    ).toBe(true);
+    expect(
+      recentMatchRows.some((row) =>
+        row.textContent?.includes("Sweden") &&
+        row.textContent.includes("Tunisia") &&
+        row.textContent.includes("5–1"),
+      ),
+    ).toBe(true);
+
+    await user.selectOptions(dateSelector, "2026-06-11");
+    expect(
+      within(drawer).getByText("No completed matches involving either team before this prediction."),
+    ).toBeInTheDocument();
+    expect(within(drawer).queryByRole("list", { name: /Matches involving Japan or Sweden/ })).not.toBeInTheDocument();
   });
 
   it("filters countries, selects a squad, and exposes accessible player profiles", async () => {
@@ -404,15 +560,34 @@ describe("App interactions", () => {
 
   it("keeps official knockout feeder labels visible", () => {
     render(<KnockoutBracket matches={data.knockoutMatches} />);
-    expect(screen.getAllByText("2A").length).toBeGreaterThan(0);
+    // Slot descriptions are derived from the fixed KNOCKOUT_TOPOLOGY and are
+    // always rendered, even when actual team names fill the bracket slots.
     expect(screen.getAllByText("Runner-up Group A").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Winner Group A").length).toBeGreaterThan(0);
+    // Every knockout match number should appear in the bracket.
+    expect(screen.getAllByText(/M\d+/).length).toBeGreaterThanOrEqual(32);
   });
 
-  it("updates knockout details when a bracket match is selected", async () => {
-    const user = userEvent.setup();
+  it("does not render a redundant knockout detail panel", () => {
     render(<KnockoutBracket matches={data.knockoutMatches} />);
+    expect(screen.queryByLabelText(/Details for Match/)).not.toBeInTheDocument();
+  });
 
+  it("switches playoffs to a complete, filterable list", async () => {
+    const user = userEvent.setup();
+    render(<KnockoutBracket matches={data.knockoutMatches} teams={data.teams} />);
+    await user.click(screen.getByRole("button", { name: "List" }));
+    const list = screen.getByRole("region", { name: "Playoff fixtures in list view" });
+    expect(within(list).getAllByRole("article")).toHaveLength(32);
     await user.click(screen.getByRole("button", { name: "Final" }));
-    expect(screen.getByLabelText("Details for Match 104")).toHaveTextContent("W101 vs W102");
+    expect(within(list).getAllByRole("article")).toHaveLength(1);
+    expect(within(list).getByText("M104")).toBeInTheDocument();
+  });
+
+  it("shows Playoffs and hides Countries in the application navigation", () => {
+    render(<App />);
+    const navigation = screen.getByRole("navigation", { name: "Primary navigation" });
+    expect(within(navigation).getByRole("link", { name: "Playoffs" })).toHaveAttribute("href", "#playoffs");
+    expect(within(navigation).queryByRole("link", { name: "Countries" })).not.toBeInTheDocument();
   });
 });

@@ -8,6 +8,12 @@ Using [`cuthbert`](https://github.com/state-space-models/cuthbert) to predict th
 
 Check out the frontend for the predictions here: [https://state-space-models.github.io/cuthberto-carlos/](https://state-space-models.github.io/cuthberto-carlos/)
 
+The frontend includes chronological group and playoff fixtures, an interactive 2026
+knockout bracket, a filterable playoff list, dynamic OpenFootball participant/result
+updates, and deployment-time fallback data. See
+[`frontend/README.md`](frontend/README.md) for its architecture, data contract,
+accessibility behavior, and verification workflow.
+
 ## Rough idea
 
 The idea is to use `cuthbert`'s factorial support to use a simple model to predict
@@ -48,7 +54,7 @@ This allows the attack and defence components to revert jointly to the initial c
 The bivariate Poisson distribution is defined as follows (see 4.6 in DPR):
 
 $$
-p(y \mid x^i, x^j, \alpha, \beta) = e^{-(\lambda_1 + \lambda_2 + \lambda_3)} \frac{\lambda_1^{y^i}}{y^i!} \frac{\lambda_2^{y^j}}{y^j!} \sum_{k=0}^{\min(y^i, y^j)} \binom{y^i}{k} \binom{y^j}{k} k! \left( \frac{\lambda_{3}}{\lambda_i \lambda_1} \right)^k,
+p(y \mid x^i, x^j, \alpha, \beta) = e^{-(\lambda_1 + \lambda_2 + \lambda_3)} \frac{\lambda_1^{y^i}}{y^i!} \frac{\lambda_2^{y^j}}{y^j!} \sum_{k=0}^{\min(y^i, y^j)} \binom{y^i}{k} \binom{y^j}{k} k! \left( \frac{\lambda_{3}}{\lambda_1 \lambda_2} \right)^k,
 $$
 
 with $\lambda_1 = \exp(\alpha + x^{\text{att}, i} - x^{\text{def}, j})$, $\lambda_2 = \exp(\alpha + x^{\text{att}, j} - x^{\text{def}, i})$ and $\lambda_3 = \exp(\beta)$.
