@@ -4,8 +4,8 @@
   "snapshotDate": "2026-07-15",
   "snapshotPath": "outputs/predictions/2026-07-15",
   "snapshotUrl": "https://github.com/state-space-models/cuthberto-carlos/tree/main/outputs/predictions/2026-07-15",
-  "generatedAt": "2026-07-15T10:41:34.640038Z",
-  "sourceCommit": "8e7ecc1f0f69",
+  "generatedAt": "2026-07-16T11:46:40.292959Z",
+  "sourceCommit": "4260b4fa3f8f",
   "model": {
     "name": "Cuthberto Carlos bivariate Poisson model",
     "resultProbabilityOrder": [
@@ -99642,6 +99642,31 @@
       "team2Slot": "W100",
       "team1": "England",
       "team2": "Argentina",
+      "score": {
+        "fullTime": [
+          1,
+          2
+        ],
+        "homeGoals": [
+          {
+            "name": "Anthony Gordon",
+            "minute": "55",
+            "penalty": null
+          }
+        ],
+        "awayGoals": [
+          {
+            "name": "Enzo Fernández",
+            "minute": "86",
+            "penalty": null
+          },
+          {
+            "name": "Lautaro Martínez",
+            "minute": "92",
+            "penalty": null
+          }
+        ]
+      },
       "predictionDate": "2026-07-15",
       "sourceUrl": "https://github.com/state-space-models/cuthberto-carlos/tree/main/outputs/predictions/2026-07-15/2026-07-15_England_Argentina",
       "predictionHistory": [
@@ -99927,13 +99952,6 @@
             }
           }
         }
-      },
-      "polymarket": {
-        "homeWin": 0.35125,
-        "draw": 0.33375,
-        "awayWin": 0.31625,
-        "eventUrl": "https://polymarket.com/event/fifwc-eng-arg-2026-07-15",
-        "updatedAt": "2026-07-15T10:41:03.094426Z"
       }
     },
     {
@@ -99945,7 +99963,8 @@
       "venue": "Miami (Miami Gardens)",
       "team1Slot": "L101",
       "team2Slot": "L102",
-      "team1": "France"
+      "team1": "France",
+      "team2": "England"
     },
     {
       "id": "match-104",
@@ -99956,7 +99975,8 @@
       "venue": "New York/New Jersey (East Rutherford)",
       "team1Slot": "W101",
       "team2Slot": "W102",
-      "team1": "Spain"
+      "team1": "Spain",
+      "team2": "Argentina"
     }
   ]
 }
