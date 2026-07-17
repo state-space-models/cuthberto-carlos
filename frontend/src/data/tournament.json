@@ -1,11 +1,11 @@
 {
   "schemaVersion": 7,
   "repositoryUrl": "https://github.com/state-space-models/cuthberto-carlos",
-  "snapshotDate": "2026-07-15",
-  "snapshotPath": "outputs/predictions/2026-07-15",
-  "snapshotUrl": "https://github.com/state-space-models/cuthberto-carlos/tree/main/outputs/predictions/2026-07-15",
-  "generatedAt": "2026-07-16T11:52:04.847523Z",
-  "sourceCommit": "1e4d825ac1fc",
+  "snapshotDate": "2026-07-16",
+  "snapshotPath": "outputs/predictions/2026-07-16",
+  "snapshotUrl": "https://github.com/state-space-models/cuthberto-carlos/tree/main/outputs/predictions/2026-07-16",
+  "generatedAt": "2026-07-17T10:29:15.533079Z",
+  "sourceCommit": "7975125378c3",
   "model": {
     "name": "Cuthberto Carlos bivariate Poisson model",
     "resultProbabilityOrder": [
@@ -99964,7 +99964,156 @@
       "team1Slot": "L101",
       "team2Slot": "L102",
       "team1": "France",
-      "team2": "England"
+      "team2": "England",
+      "predictionDate": "2026-07-16",
+      "sourceUrl": "https://github.com/state-space-models/cuthberto-carlos/tree/main/outputs/predictions/2026-07-16/2026-07-18_France_England",
+      "predictionHistory": [],
+      "prediction": {
+        "probabilities": {
+          "homeWin": 0.37927104,
+          "draw": 0.27224437,
+          "awayWin": 0.34848459
+        },
+        "scoreGrid": [
+          [
+            0.09420227,
+            0.10690216,
+            0.0628625,
+            0.02553845,
+            0.00806354,
+            0.00211053,
+            0.00047697,
+            9.573e-05,
+            1.742e-05
+          ],
+          [
+            0.11227942,
+            0.12589326,
+            0.07313256,
+            0.0293458,
+            0.00915045,
+            0.00236488,
+            0.00052766,
+            0.00010454,
+            1.877e-05
+          ],
+          [
+            0.06951086,
+            0.07699313,
+            0.04417609,
+            0.01750585,
+            0.00538985,
+            0.00137525,
+            0.0003029,
+            5.923e-05,
+            1.05e-05
+          ],
+          [
+            0.02980091,
+            0.03260242,
+            0.01847313,
+            0.00722818,
+            0.00219713,
+            0.0005534,
+            0.0001203,
+            2.322e-05,
+            4.06e-06
+          ],
+          [
+            0.00995301,
+            0.01075287,
+            0.00601592,
+            0.00232391,
+            0.0006973,
+            0.00017335,
+            3.719e-05,
+            7.08e-06,
+            1.22e-06
+          ],
+          [
+            0.00276202,
+            0.0029463,
+            0.00162734,
+            0.00062053,
+            0.00018377,
+            4.509e-05,
+            9.54e-06,
+            1.79e-06,
+            3.1e-07
+          ],
+          [
+            0.00066335,
+            0.00069857,
+            0.00038087,
+            0.00014334,
+            4.189e-05,
+            1.014e-05,
+            2.12e-06,
+            3.9e-07,
+            7e-08
+          ],
+          [
+            0.00014181,
+            0.00014741,
+            7.932e-05,
+            2.946e-05,
+            8.5e-06,
+            2.03e-06,
+            4.2e-07,
+            8e-08,
+            1e-08
+          ],
+          [
+            2.754e-05,
+            2.826e-05,
+            1.501e-05,
+            5.5e-06,
+            1.56e-06,
+            3.7e-07,
+            7e-08,
+            1e-08,
+            0.0
+          ]
+        ],
+        "mostLikelyScore": [
+          1,
+          1
+        ],
+        "mostLikelyScoreProbability": 0.12589326,
+        "expectedGoals": {
+          "home": 1.2324,
+          "away": 1.1662
+        },
+        "skills": {
+          "home": {
+            "attack": {
+              "mean": 0.685691,
+              "sd": 0.127775
+            },
+            "defence": {
+              "mean": 1.116959,
+              "sd": 0.147421
+            }
+          },
+          "away": {
+            "attack": {
+              "mean": 0.590133,
+              "sd": 0.126109
+            },
+            "defence": {
+              "mean": 1.158268,
+              "sd": 0.154898
+            }
+          }
+        }
+      },
+      "polymarket": {
+        "homeWin": 0.495,
+        "draw": 0.255,
+        "awayWin": 0.245,
+        "eventUrl": "https://polymarket.com/event/fifwc-fra-eng-2026-07-18",
+        "updatedAt": "2026-07-17T10:27:27.938523Z"
+      }
     },
     {
       "id": "match-104",
@@ -99976,7 +100125,156 @@
       "team1Slot": "W101",
       "team2Slot": "W102",
       "team1": "Spain",
-      "team2": "Argentina"
+      "team2": "Argentina",
+      "predictionDate": "2026-07-16",
+      "sourceUrl": "https://github.com/state-space-models/cuthberto-carlos/tree/main/outputs/predictions/2026-07-16/2026-07-19_Spain_Argentina",
+      "predictionHistory": [],
+      "prediction": {
+        "probabilities": {
+          "homeWin": 0.36796249,
+          "draw": 0.27105324,
+          "awayWin": 0.36098427
+        },
+        "scoreGrid": [
+          [
+            0.09239013,
+            0.10780856,
+            0.0652016,
+            0.02724937,
+            0.00885273,
+            0.00238465,
+            0.00055476,
+            0.00011464,
+            2.148e-05
+          ],
+          [
+            0.10888044,
+            0.12557531,
+            0.07505184,
+            0.03099137,
+            0.00994663,
+            0.00264651,
+            0.00060805,
+            0.00012408,
+            2.295e-05
+          ],
+          [
+            0.0666171,
+            0.07592549,
+            0.0448355,
+            0.01828994,
+            0.00579822,
+            0.00152363,
+            0.00034568,
+            6.965e-05,
+            1.272e-05
+          ],
+          [
+            0.02821273,
+            0.03177017,
+            0.01853363,
+            0.00746784,
+            0.00233809,
+            0.0006067,
+            0.00013591,
+            2.703e-05,
+            4.87e-06
+          ],
+          [
+            0.00930365,
+            0.01034974,
+            0.00596362,
+            0.00237315,
+            0.00073369,
+            0.00018797,
+            4.157e-05,
+            8.16e-06,
+            1.45e-06
+          ],
+          [
+            0.00254806,
+            0.00279976,
+            0.00159323,
+            0.00062606,
+            0.0001911,
+            4.834e-05,
+            1.055e-05,
+            2.04e-06,
+            3.6e-07
+          ],
+          [
+            0.00060369,
+            0.00065508,
+            0.0003681,
+            0.00014281,
+            4.304e-05,
+            1.074e-05,
+            2.32e-06,
+            4.4e-07,
+            8e-08
+          ],
+          [
+            0.00012725,
+            0.00013635,
+            7.565e-05,
+            2.897e-05,
+            8.62e-06,
+            2.12e-06,
+            4.5e-07,
+            9e-08,
+            1e-08
+          ],
+          [
+            2.436e-05,
+            2.577e-05,
+            1.412e-05,
+            5.34e-06,
+            1.57e-06,
+            3.8e-07,
+            8e-08,
+            1e-08,
+            0.0
+          ]
+        ],
+        "mostLikelyScore": [
+          1,
+          1
+        ],
+        "mostLikelyScoreProbability": 0.12557531,
+        "expectedGoals": {
+          "home": 1.2171,
+          "away": 1.2017
+        },
+        "skills": {
+          "home": {
+            "attack": {
+              "mean": 0.837255,
+              "sd": 0.121079
+            },
+            "defence": {
+              "mean": 1.229064,
+              "sd": 0.150408
+            }
+          },
+          "away": {
+            "attack": {
+              "mean": 0.732283,
+              "sd": 0.123625
+            },
+            "defence": {
+              "mean": 1.322144,
+              "sd": 0.158483
+            }
+          }
+        }
+      },
+      "polymarket": {
+        "homeWin": 0.425,
+        "draw": 0.315,
+        "awayWin": 0.265,
+        "eventUrl": "https://polymarket.com/event/fifwc-esp-arg-2026-07-19",
+        "updatedAt": "2026-07-17T10:27:27.938523Z"
+      }
     }
   ]
 }
